@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Solid Chat Bubble -->
+    <path
+        android:fillColor="#0F5B1A"
+        android:pathData="M 30,24 C 20,24 16,28 16,38 L 16,70 C 16,80 20,84 30,84 L 46,84 L 54,94 L 62,84 L 78,84 C 88,84 92,80 92,70 L 92,38 C 92,28 88,24 78,24 Z" />
+        
+    <!-- White Letter P cut out from the chat bubble -->
+    <path
+        android:fillColor="#E8F5E9"
+        android:pathData="M 34,38 C 42,38 46,41 46,47 C 46,53 42,56 34,56 L 28,56 L 28,70 L 22,70 L 22,38 Z M 28,43 L 28,51 L 34,51 C 38,51 39,49 39,47 C 39,45 38,43 34,43 Z" />
+        
+    <!-- White Chart cut out from the chat bubble -->
+    <path
+        android:fillColor="#E8F5E9"
+        android:pathData="M 52,60 L 58,60 L 58,70 L 52,70 Z M 64,52 L 70,52 L 70,70 L 64,70 Z M 76,44 L 82,44 L 82,70 L 76,70 Z" />
+</vector>
