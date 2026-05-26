@@ -65,6 +65,14 @@ fun SettingsScreen(
     var notificationFrequency by remember { mutableStateOf("Weekly") }
     val frequencyOptions = listOf("Daily", "Weekly", "Monthly")
 
+    val userName by viewModel.userName.collectAsStateWithLifecycle()
+    var showEditNameDialog by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.loadUserNameAndFirstLaunch(context)
+    }
+
     Scaffold(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
@@ -147,6 +155,41 @@ fun SettingsScreen(
             
             // 1. Profile Card
             item {
+                if (showEditNameDialog) {
+                    var tempName by remember { mutableStateOf(userName) }
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    AlertDialog(
+                        onDismissRequest = { showEditNameDialog = false },
+                        title = { Text("Edit Display Name", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
+                        text = {
+                            OutlinedTextField(
+                                value = tempName,
+                                onValueChange = { tempName = it },
+                                label = { Text("Name") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    if (tempName.isNotBlank()) {
+                                        viewModel.setUserName(tempName.trim(), context)
+                                    }
+                                    showEditNameDialog = false
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight),
+                                shape = RoundedCornerShape(8.dp)
+                            ) { Text("Save") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showEditNameDialog = false }) { Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        },
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                }
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -168,11 +211,11 @@ fun SettingsScreen(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Guest User", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(userName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Text("Tap to link Google Account", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                         }
                         IconButton(
-                            onClick = { /* Edit Action */ },
+                            onClick = { showEditNameDialog = true },
                             modifier = Modifier
                                 .clip(CircleShape)
                                 .background(AccentGreenLight)
