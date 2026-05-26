@@ -1,0 +1,6 @@
+{
+  "name": "PesaSense",
+  "description": "Personal Android app that automatically parses and categorizes M-PESA SMS transactions locally on-device.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
