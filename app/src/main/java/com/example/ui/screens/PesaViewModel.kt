@@ -75,6 +75,26 @@ class PesaViewModel(private val repository: PesaRepository) : ViewModel() {
     private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
     val notifications = _notifications.asStateFlow()
 
+    val userName = MutableStateFlow("User")
+    val isFirstLaunch = MutableStateFlow(true)
+
+    fun setUserName(name: String, context: android.content.Context) {
+        userName.value = name
+        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit().putString("user_name", name).apply()
+    }
+
+    fun loadUserNameAndFirstLaunch(context: android.content.Context) {
+        val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+        userName.value = prefs.getString("user_name", "User") ?: "User"
+        isFirstLaunch.value = prefs.getBoolean("first_launch", true)
+    }
+
+    fun completeOnboarding(name: String, context: android.content.Context) {
+        setUserName(name, context)
+        isFirstLaunch.value = false
+        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit().putBoolean("first_launch", false).apply()
+    }
+
     fun addNotification(message: String) {
         _notifications.value = listOf(AppNotification(message = message)) + _notifications.value
     }
