@@ -1,7 +1,7 @@
-# PesaSense Studio
+# PesaSense
 **Intelligent financial tracking and seamless analytics, right at your fingertips.**
 
-![PesaSense Studio](app/src/main/res/drawable/splash_screen_img.png)
+![PesaSense](app/src/main/res/drawable/splash_screen_img.png)
 
 ## Core Features
 *   **Automated Expense Tracking**: Securely sync and parse your MPESA transaction SMS data locally.
@@ -22,12 +22,12 @@
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/pesasense-studio.git
-    cd pesasense-studio
+    git clone https://github.com/your-username/PesaSense.git
+    cd PesaSense
     ```
 2.  **Open in Android Studio:**
     *   Launch Android Studio.
-    *   Select `File > Open` and choose the `pesasense-studio` directory.
+    *   Select `File > Open` and choose the `PesaSense` directory.
 3.  **Build and Run:**
     *   Sync project with Gradle files.
     *   Select your emulator or physical device.
@@ -48,3 +48,4 @@ When setting up this repository on GitHub, don't forget to populate your right s
 *   **Description**: *A privacy-first Android application built with Jetpack Compose for seamless MPESA transaction tracking, budget planning, and financial analytics.*
 *   **Website Link**: (Leave blank for now, or link to a demonstration video/portfolio)
 *   **Topics/Tags**: `android`, `kotlin`, `jetpack-compose`, `finance-tracker`, `mpesa`, `material-design-3`, `offline-first`
+
