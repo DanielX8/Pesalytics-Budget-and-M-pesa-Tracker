@@ -91,6 +91,7 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(Unit) {
+        viewModel.loadUserNameAndFirstLaunch(context)
         if (!hasRequestedSmsPermission) {
             val permission = android.Manifest.permission.READ_SMS
             if (androidx.core.content.ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -312,8 +313,9 @@ fun DashboardScreen(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    val userName by viewModel.userName.collectAsStateWithLifecycle()
                     Text(
-                        text = "Daniel",
+                        text = userName,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold
                     )

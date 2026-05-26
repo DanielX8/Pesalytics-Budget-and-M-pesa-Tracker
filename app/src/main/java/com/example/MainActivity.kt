@@ -230,9 +230,25 @@ fun PesaSenseApp(viewModel: PesaViewModel) {
                 composable<Splash> {
                     SplashScreen(
                         viewModel = viewModel,
-                        onSplashComplete = {
+                        onSplashComplete = { isFirstLaunch ->
+                            if (isFirstLaunch) {
+                                navController.navigate(Onboarding) {
+                                    popUpTo(Splash) { inclusive = true }
+                                }
+                            } else {
+                                navController.navigate(Home) {
+                                    popUpTo(Splash) { inclusive = true }
+                                }
+                            }
+                        }
+                    )
+                }
+                composable<Onboarding> {
+                    OnboardingScreen(
+                        viewModel = viewModel,
+                        onNavigateNext = {
                             navController.navigate(Home) {
-                                popUpTo(Splash) { inclusive = true }
+                                popUpTo(Onboarding) { inclusive = true }
                             }
                         }
                     )

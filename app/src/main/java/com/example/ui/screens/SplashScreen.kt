@@ -27,7 +27,7 @@ import androidx.compose.runtime.getValue
 import com.example.model.ThemeMode
 
 @Composable
-fun SplashScreen(viewModel: PesaViewModel, onSplashComplete: () -> Unit) {
+fun SplashScreen(viewModel: PesaViewModel, onSplashComplete: (Boolean) -> Unit) {
     val alpha = remember { Animatable(0f) }
     val scale = remember { Animatable(0.92f) }
     
@@ -38,7 +38,10 @@ fun SplashScreen(viewModel: PesaViewModel, onSplashComplete: () -> Unit) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     LaunchedEffect(Unit) {
+        viewModel.loadUserNameAndFirstLaunch(context)
         // Fade in + subtle scale-up together
         coroutineScope {
             launch {
@@ -74,7 +77,7 @@ fun SplashScreen(viewModel: PesaViewModel, onSplashComplete: () -> Unit) {
             }
         }
 
-        onSplashComplete()
+        onSplashComplete(viewModel.isFirstLaunch.value)
     }
 
     Box(
