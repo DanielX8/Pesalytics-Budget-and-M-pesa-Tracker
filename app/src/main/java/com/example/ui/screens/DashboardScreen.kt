@@ -842,7 +842,7 @@ fun getIconForTransaction(transaction: Transaction): androidx.compose.ui.graphic
         category == "received money" || category == "income" || transaction.type == TransactionType.RECEIVE_MONEY || transaction.type == TransactionType.MANUAL_INCOME -> Icons.AutoMirrored.Filled.TrendingDown
         category == "shopping" || category == "buy goods" -> Icons.Default.ShoppingCart
         category == "bills" || category == "paybill" -> Icons.Default.Payment
-        category == "loan repayment" -> Icons.Default.AccountBalance
+        category == "fuliza" -> Icons.Default.AccountBalance
         payee.contains("bank") -> Icons.Default.AccountBalance
         payee.contains("kplc") -> Icons.Default.Bolt
         else -> Icons.AutoMirrored.Filled.TrendingUp

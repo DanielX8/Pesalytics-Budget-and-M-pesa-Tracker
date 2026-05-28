@@ -9,6 +9,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.R
 import com.example.model.Bill
 import com.example.model.BillCycle
 import com.example.ui.theme.AccentGreenLight
@@ -165,7 +167,12 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                 CenterAlignedTopAppBar(
                     title = { 
-                        Text("PesaSense", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
+                        Image(
+                            painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
+                            contentDescription = "PesaSense",
+                            modifier = Modifier.height(32.dp),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                        )
                     },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {

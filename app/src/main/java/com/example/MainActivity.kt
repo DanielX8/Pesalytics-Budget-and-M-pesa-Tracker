@@ -132,7 +132,14 @@ fun PesaSenseApp(viewModel: PesaViewModel) {
                     containerColor = MaterialTheme.colorScheme.surface
                 ) {
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                        icon = { 
+                            val isSelected = currentDestination?.hierarchy?.any { it.hasRoute<Home>() } == true
+                            Icon(
+                                painter = androidx.compose.ui.res.painterResource(id = if (isSelected) R.drawable.ic_nav_home_filled else R.drawable.ic_nav_home), 
+                                contentDescription = "Home",
+                                modifier = Modifier.size(24.dp)
+                            ) 
+                        },
                         label = { Text("Home") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Home>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
@@ -177,7 +184,14 @@ fun PesaSenseApp(viewModel: PesaViewModel) {
                         }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Loop, contentDescription = "Bills") },
+                        icon = { 
+                            val isSelected = currentDestination?.hierarchy?.any { it.hasRoute<Bills>() } == true
+                            Icon(
+                                painter = androidx.compose.ui.res.painterResource(id = if (isSelected) R.drawable.ic_nav_bills_filled else R.drawable.ic_nav_bills), 
+                                contentDescription = "Bills",
+                                modifier = Modifier.size(24.dp)
+                            ) 
+                        },
                         label = { Text("Bills") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Bills>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
@@ -196,7 +210,14 @@ fun PesaSenseApp(viewModel: PesaViewModel) {
                         }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+                        icon = { 
+                            val isSelected = currentDestination?.hierarchy?.any { it.hasRoute<Settings>() } == true
+                            Icon(
+                                painter = androidx.compose.ui.res.painterResource(id = if (isSelected) R.drawable.ic_nav_settings_filled else R.drawable.ic_nav_settings), 
+                                contentDescription = "Settings",
+                                modifier = Modifier.size(24.dp)
+                            ) 
+                        },
                         label = { Text("Settings") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Settings>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(

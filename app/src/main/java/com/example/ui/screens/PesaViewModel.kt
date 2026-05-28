@@ -233,7 +233,7 @@ class PesaViewModel(private val repository: PesaRepository) : ViewModel() {
         }
 
         if (fields != null && matchedType != null && fields.amount > 0.0) {
-            val payeeRaw = fields.payee
+            val payeeRaw = fields.payee.replace(Regex("\\s+\\d{4,}$"), "").trim()
 
             // Tier 2 Custom Checking
             var category = customRules.find { payeeRaw.contains(it.payeePattern, ignoreCase = true) }?.mappedCategory
@@ -245,7 +245,7 @@ class PesaViewModel(private val repository: PesaRepository) : ViewModel() {
                     TransactionType.RECEIVE_MONEY -> "Income"
                     TransactionType.WITHDRAW -> "Cash"
                     TransactionType.AIRTIME -> "Airtime"
-                    TransactionType.MANUAL_EXPENSE -> if (body.contains("Fuliza", ignoreCase = true)) "Loan Repayment" else "Other"
+                    TransactionType.MANUAL_EXPENSE -> if (body.contains("Fuliza", ignoreCase = true)) "Fuliza" else "Other"
                     else -> "Other"
                 }
             }

@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.AccentGreenLight
 import com.example.ui.theme.WarningOrange
 
@@ -40,7 +42,12 @@ fun SubscriptionScreen(
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                 CenterAlignedTopAppBar(
                     title = { 
-                        Text("PesaSense", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
+                        Image(
+                            painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
+                            contentDescription = "PesaSense",
+                            modifier = Modifier.height(32.dp),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                        )
                     },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
