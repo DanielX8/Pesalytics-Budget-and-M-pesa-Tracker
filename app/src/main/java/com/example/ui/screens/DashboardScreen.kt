@@ -198,7 +198,7 @@ fun DashboardScreen(
             onShare = {
                 val sendIntent: android.content.Intent = android.content.Intent().apply {
                     action = android.content.Intent.ACTION_SEND
-                    putExtra(android.content.Intent.EXTRA_TEXT, "Transaction Receipt:\nRef: ${selectedTransaction!!.remoteRef}\nPayee: ${selectedTransaction!!.payee}\nAmount: KES ${formatCurrency(selectedTransaction!!.amount)}")
+                    putExtra(android.content.Intent.EXTRA_TEXT, "PesaSense Transaction Receipt:\nRef: ${selectedTransaction!!.remoteRef}\nPayee: ${selectedTransaction!!.payee}\nAmount: KES ${formatCurrency(selectedTransaction!!.amount)}")
                     type = "text/plain"
                 }
                 val shareIntent = android.content.Intent.createChooser(sendIntent, null)
@@ -534,8 +534,8 @@ fun QuickNavButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label:
 @Composable
 fun HeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
     val isLightMode = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val startColor = if (isLightMode) AccentGreenLight else AccentGreenDark
-    val endColor = if (isLightMode) AccentGreenDark else HeroGradientEnd
+    val startColor = if (isLightMode) androidx.compose.ui.graphics.Color(0xFF55D687) else androidx.compose.ui.graphics.Color(0xFF348C55)
+    val endColor = if (isLightMode) androidx.compose.ui.graphics.Color(0xFF348C55) else androidx.compose.ui.graphics.Color(0xFF1A4D2E)
 
     Card(
         modifier = Modifier
@@ -707,7 +707,7 @@ fun TransactionDetailsSheet(
             ) {
                 val isIncome = transaction.type == TransactionType.RECEIVE_MONEY || transaction.type == TransactionType.MANUAL_INCOME
                 val amountText = if (isIncome) "+ KES ${formatCurrency(transaction.amount)}" else "- KES ${formatCurrency(transaction.amount)}"
-                val amountColor = if (isIncome) MaterialTheme.colorScheme.primary else ExpenseRed
+                val amountColor = if (isIncome) AccentGreenLight else ExpenseRed
                 
                 Text(
                     text = amountText,
@@ -720,7 +720,7 @@ fun TransactionDetailsSheet(
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val icon = getIconForTransaction(transaction)
-                    val tint = if (isIncome) MaterialTheme.colorScheme.primary else ExpenseRed
+                    val tint = if (isIncome) AccentGreenLight else ExpenseRed
                     Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -855,7 +855,7 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null) {
     if (transaction.isFeeTransaction) return
 
     val isIncome = transaction.type == TransactionType.RECEIVE_MONEY || transaction.type == TransactionType.MANUAL_INCOME
-    val color = if (isIncome) MaterialTheme.colorScheme.primary else ExpenseRed
+    val color = if (isIncome) AccentGreenLight else ExpenseRed
     val icon = getIconForTransaction(transaction)
 
     Row(
@@ -943,3 +943,5 @@ fun getGreetingMessage(): String {
         else -> "Lovely night 🌙"
     }
 }
+
+

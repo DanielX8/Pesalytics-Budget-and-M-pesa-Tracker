@@ -148,7 +148,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
             onShare = {
                 val sendIntent: android.content.Intent = android.content.Intent().apply {
                     action = android.content.Intent.ACTION_SEND
-                    putExtra(android.content.Intent.EXTRA_TEXT, "Transaction Receipt:\nRef: ${selectedTransaction!!.remoteRef}\nPayee: ${selectedTransaction!!.payee}\nAmount: KES ${formatCurrency(selectedTransaction!!.amount)}")
+                    putExtra(android.content.Intent.EXTRA_TEXT, "PesaSense Transaction Receipt:\nRef: ${selectedTransaction!!.remoteRef}\nPayee: ${selectedTransaction!!.payee}\nAmount: KES ${formatCurrency(selectedTransaction!!.amount)}")
                     type = "text/plain"
                 }
                 val shareIntent = android.content.Intent.createChooser(sendIntent, null)
@@ -207,11 +207,10 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Summary Metric
             val filteredAmount = filteredTransactions.sumOf { 
                 if (it.type == com.example.model.TransactionType.RECEIVE_MONEY || it.type == com.example.model.TransactionType.MANUAL_INCOME) it.amount else -it.amount 
             }
-            val amtColor = if (filteredAmount >= 0) MaterialTheme.colorScheme.primary else com.example.ui.theme.ExpenseRed
+            val amtColor = if (filteredAmount >= 0) com.example.ui.theme.AccentGreenLight else com.example.ui.theme.ExpenseRed
             val amtPrefix = if (filteredAmount >= 0) "+KES " else "-KES "
             
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {

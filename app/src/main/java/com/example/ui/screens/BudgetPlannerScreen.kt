@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,6 +49,7 @@ fun BudgetPlannerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showAddBudgetSheet by remember { mutableStateOf(false) }
+    var showEditGlobalBudgetDialog by remember { mutableStateOf(false) }
 
     val globalBudget = uiState.budgets.find { it.category == "Overall" }
     val categoryBudgets = uiState.budgets.filter { it.category != "Overall" }
@@ -70,27 +73,46 @@ fun BudgetPlannerScreen(
                     },
                     actions = {
                         if (globalBudget != null) {
-                            IconButton(onClick = { showAddBudgetSheet = true }) {
-                                Icon(Icons.Default.Add, contentDescription = "Add Category Budget", tint = MaterialTheme.colorScheme.primary)
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 16.dp)
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(AccentGreenDark) // Deep Emerald
+                                    .clickable { showAddBudgetSheet = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add Category Budget", tint = Color.White, modifier = Modifier.size(20.dp))
                             }
                         }
-                        Icon(
-                            Icons.Default.AccountCircle,
-                            contentDescription = "Profile",
-                            modifier = Modifier.size(32.dp).clip(CircleShape),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
                 )
-                Text("BUDGET PLANNER", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
             }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (globalBudget == null) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "Budget Planner",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Set your monthly limits and control your spending.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                if (globalBudget == null) {
                 EmptyStateBudget(
                     onSaveGlobalLimit = { limit -> viewModel.addOrUpdateBudget("Overall", limit) },
                     onCreateCategoryBudget = { showAddBudgetSheet = true }
@@ -99,8 +121,13 @@ fun BudgetPlannerScreen(
                 ActiveStateBudget(
                     globalBudget = globalBudget,
                     categoryBudgets = categoryBudgets,
-                    totalSpentThisMonth = uiState.monthlyExpense
+                    totalSpentThisMonth = uiState.monthlyExpense,
+                    onDeleteBudget = { cat -> viewModel.deleteBudget(cat) },
+                    onEditBudget = { _ -> showAddBudgetSheet = true },
+                    onEditGlobalBudget = { showEditGlobalBudgetDialog = true },
+                    onDeleteGlobalBudget = { viewModel.deleteBudget("Overall") }
                 )
+                }
             }
         }
 
@@ -118,6 +145,42 @@ fun BudgetPlannerScreen(
                 onDismiss = { showAddBudgetSheet = false }
             )
         }
+
+        if (showEditGlobalBudgetDialog && globalBudget != null) {
+            var newLimit by remember { mutableStateOf(globalBudget.limitAmount.toInt().toString()) }
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showEditGlobalBudgetDialog = false },
+                title = { Text("Edit Overall Budget") },
+                text = {
+                    Column {
+                        androidx.compose.material3.OutlinedTextField(
+                            value = newLimit,
+                            onValueChange = { newLimit = it },
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                            label = { Text("Limit Amount (KES)") },
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Note: The limit will be shown in the home dashboard screen after being set.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        newLimit.toDoubleOrNull()?.let { amt ->
+                            viewModel.addOrUpdateBudget("Overall", amt)
+                        }
+                        showEditGlobalBudgetDialog = false
+                    }) { Text("Save") }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { showEditGlobalBudgetDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
     }
 }
 
@@ -129,7 +192,7 @@ fun EmptyStateBudget(
     var globalLimitInput by remember { mutableStateOf("") }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         item {
@@ -169,6 +232,14 @@ fun EmptyStateBudget(
                     ) {
                         Text("Save Limit")
                     }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Note: The limit will be shown in the home dashboard screen after being set.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -222,10 +293,14 @@ fun AnalyticsTeaserCard(title: String, value: String, modifier: Modifier) {
 fun ActiveStateBudget(
     globalBudget: Budget,
     categoryBudgets: List<Budget>,
-    totalSpentThisMonth: Double
+    totalSpentThisMonth: Double,
+    onDeleteBudget: (String) -> Unit,
+    onEditBudget: (Budget) -> Unit,
+    onEditGlobalBudget: () -> Unit,
+    onDeleteGlobalBudget: () -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         item {
@@ -240,14 +315,23 @@ fun ActiveStateBudget(
                 elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Column {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("TOTAL LIMIT", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("KES ${formatCurrency(globalBudget.limitAmount)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         }
-                        Text(if (isOver) "Exceeded" else "${(progress * 100).toInt()}% Used", fontWeight = FontWeight.Bold, color = if (isOver) ExpenseRed else AccentGreenLight)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onEditGlobalBudget, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            IconButton(onClick = onDeleteGlobalBudget, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ExpenseRed, modifier = Modifier.size(16.dp))
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(if (isOver) "Exceeded" else "${(progress * 100).toInt()}% Used", fontWeight = FontWeight.Bold, color = if (isOver) ExpenseRed else AccentGreenLight, modifier = Modifier.align(Alignment.End))
+                    Spacer(modifier = Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = { progress.coerceIn(0f, 1f) },
                         modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
@@ -283,8 +367,18 @@ fun ActiveStateBudget(
 
             Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(catBudget.category, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    Text("KES ${formatCurrency(catSpent)} / KES ${formatCurrency(catBudget.limitAmount)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(catBudget.category, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        IconButton(onClick = { onDeleteBudget(catBudget.category) }, modifier = Modifier.size(24.dp).padding(start = 4.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Remove limit", tint = ExpenseRed, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("KES ${formatCurrency(catSpent)} / KES ${formatCurrency(catBudget.limitAmount)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        IconButton(onClick = { onEditBudget(catBudget) }, modifier = Modifier.size(24.dp).padding(start = 4.dp)) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit limit", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 LinearProgressIndicator(

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Delete
 import com.example.model.Bill
 import com.example.model.Budget
 import com.example.model.CustomRule
@@ -68,6 +69,9 @@ interface BudgetDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBudget(budget: Budget)
+
+    @Delete
+    suspend fun deleteBudget(budget: Budget)
 }
 
 @Dao

@@ -42,6 +42,10 @@ class PesaRepository(
     suspend fun insertBudget(budget: Budget) {
         budgetDao.insertBudget(budget)
     }
+
+    suspend fun deleteBudget(budget: Budget) {
+        budgetDao.deleteBudget(budget)
+    }
     
     suspend fun insertCustomRule(rule: CustomRule) {
         customRuleDao.insertRule(rule)

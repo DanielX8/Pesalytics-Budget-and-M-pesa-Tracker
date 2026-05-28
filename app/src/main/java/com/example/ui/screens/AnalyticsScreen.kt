@@ -151,7 +151,7 @@ fun AnalyticsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
                 )
-                Text("ANALYTICS DASHBOARD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
+
             }
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -164,7 +164,24 @@ fun AnalyticsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Analytics Dashboard",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Visualize your spending habits.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             item {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -563,14 +580,14 @@ fun SpendingRhythmChart(transactions: List<com.example.model.Transaction>) {
                 rhythmData.forEachIndexed { index, (day, amount, _) ->
                     val isToday = index == 6
                     val proportion = (amount / maxSpend).toFloat()
-                    val barColor = if (isToday) Color(0xFF32D795) else MaterialTheme.colorScheme.surfaceVariant
+                    val barColor = if (isToday) com.example.ui.theme.AccentGreenLight else MaterialTheme.colorScheme.surfaceVariant
                     
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom, modifier = Modifier.fillMaxHeight()) {
                         if (amount > 0) {
                             Text(
                                 text = if (amount >= 1000) String.format(Locale.US, "%.0fk", amount / 1000.0) else amount.toInt().toString(),
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                color = if (isToday) Color(0xFF32D795) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (isToday) com.example.ui.theme.AccentGreenLight else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
                             )
                             Spacer(modifier = Modifier.height(4.dp))
@@ -606,7 +623,7 @@ fun SpendingRhythmChart(transactions: List<com.example.model.Transaction>) {
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Row(modifier = Modifier.padding(16.dp)) {
-                        Text("You spend most on ", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF32D795))
+                        Text("You spend most on ", style = MaterialTheme.typography.bodyMedium, color = com.example.ui.theme.AccentGreenLight)
                         Text(highestDayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         Text(" (KES ${formatCurrency(highestAmount)}/day)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -670,7 +687,7 @@ fun NeedsVsWantsCard(transactions: List<com.example.model.Transaction>) {
     val total = needsAmount + wantsAmount
     val needsPercent = if (total > 0) (needsAmount / total).toFloat() else 0f
     
-    val needsColor = Color(0xFF32D795) // Mint green
+    val needsColor = com.example.ui.theme.AccentGreenLight // Mint green
     val wantsColor = Color(0xFFFF5252) // Bright red
     
     var showWantsTooltip by remember { mutableStateOf(false) }
@@ -829,7 +846,7 @@ fun SpendingCalendar(transactions: List<com.example.model.Transaction>, monthSta
     val highestAmount = highestDayEntry?.value ?: 0.0
 
     // Colors
-    val baseColor = Color(0xFF32D795)
+    val baseColor = com.example.ui.theme.AccentGreenLight
     val colorLevel0 = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     val colorLevel1 = baseColor.copy(alpha = 0.25f)
     val colorLevel2 = baseColor.copy(alpha = 0.5f)
@@ -908,8 +925,16 @@ fun SpendingCalendar(transactions: List<com.example.model.Transaction>, monthSta
                                     .aspectRatio(2f)
                                     .padding(horizontal = 2.dp)
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(cellColor)
-                            )
+                                    .background(cellColor),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val textColor = if (amount > 0 && amount >= maxDailySpend * 0.5f) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant
+                                Text(
+                                    text = currentDay.toString(),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = textColor
+                                )
+                            }
                             currentDay++
                         } else {
                             Box(modifier = Modifier.weight(1f).aspectRatio(2f).padding(horizontal = 2.dp))
@@ -975,4 +1000,5 @@ fun SpendingCalendar(transactions: List<com.example.model.Transaction>, monthSta
         }
     }
 }
+
 

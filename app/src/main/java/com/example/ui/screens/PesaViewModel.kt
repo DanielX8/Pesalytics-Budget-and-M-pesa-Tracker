@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -45,7 +46,10 @@ data class HomeUiState(
     val budgets: List<com.example.model.Budget> = emptyList()
 )
 
-class PesaViewModel(private val repository: PesaRepository) : ViewModel() {
+class PesaViewModel(
+    private val repository: PesaRepository,
+    private val notificationHelper: com.example.notifications.NotificationHelper? = null
+) : ViewModel() {
 
     private val _selectedMonthIndex = MutableStateFlow(Calendar.getInstance().get(Calendar.MONTH))
     val selectedMonthIndex = _selectedMonthIndex.asStateFlow()
@@ -76,23 +80,45 @@ class PesaViewModel(private val repository: PesaRepository) : ViewModel() {
     val notifications = _notifications.asStateFlow()
 
     val userName = MutableStateFlow("User")
+    val userAvatar = MutableStateFlow(0)
     val isFirstLaunch = MutableStateFlow(true)
+    val isPremium = MutableStateFlow(false)
+
+    fun setProfileInfo(name: String, avatarIndex: Int, context: android.content.Context) {
+        userName.value = name
+        userAvatar.value = avatarIndex
+        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
+            .putString("user_name", name)
+            .putInt("user_avatar", avatarIndex)
+            .apply()
+    }
 
     fun setUserName(name: String, context: android.content.Context) {
         userName.value = name
-        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit().putString("user_name", name).apply()
+        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
+            .putString("user_name", name)
+            .apply()
     }
 
     fun loadUserNameAndFirstLaunch(context: android.content.Context) {
         val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
         userName.value = prefs.getString("user_name", "User") ?: "User"
-        isFirstLaunch.value = prefs.getBoolean("first_launch", true)
+        userAvatar.value = prefs.getInt("user_avatar", 0)
+        isFirstLaunch.value = !prefs.getBoolean("has_completed_onboarding", false)
+        isPremium.value = prefs.getBoolean("is_premium", false)
     }
 
-    fun completeOnboarding(name: String, context: android.content.Context) {
-        setUserName(name, context)
+    fun upgradeToPremium(context: android.content.Context) {
+        isPremium.value = true
+        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
+            .putBoolean("is_premium", true)
+            .apply()
+    }
+
+    fun completeOnboarding(name: String, avatarIndex: Int, context: android.content.Context) {
+        setProfileInfo(name, avatarIndex, context)
         isFirstLaunch.value = false
-        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit().putBoolean("first_launch", false).apply()
+        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit().putBoolean("has_completed_onboarding", true).apply()
     }
 
     fun addNotification(message: String) {
@@ -141,11 +167,22 @@ class PesaViewModel(private val repository: PesaRepository) : ViewModel() {
                 if (transactionsList.isNotEmpty()) {
                     repository.insertTransactions(transactionsList)
                     _notifications.value = listOf(AppNotification(message = "Synced ${transactionsList.size} new MPESA records.")) + _notifications.value
+                    checkBudgetThresholds()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "M-Pesa messages synced successfully", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "M-Pesa messages synced successfully (no new messages)", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 }
 
             } catch (e: Exception) {
                 e.printStackTrace()
                 _notifications.value = listOf(AppNotification(message = "Failed to sync SMS.")) + _notifications.value
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Failed to sync messages", android.widget.Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -348,7 +385,7 @@ class PesaViewModel(private val repository: PesaRepository) : ViewModel() {
         currentMonthYearString.flatMapLatest { repository.getBudgetsForMonth(it) }
     ) { transactions, income, expense, isVisible, budgets ->
         val balance = transactions.maxByOrNull { it.timestamp }?.balanceAfter ?: 0.0
-        val globalBudget = budgets.find { it.category == "GLOBAL" }
+        val globalBudget = budgets.find { it.category == "Overall" }
         HomeUiState(
             transactions = transactions,
             recentTransactions = transactions.take(10),
@@ -410,18 +447,50 @@ class PesaViewModel(private val repository: PesaRepository) : ViewModel() {
         }
     }
 
+    fun deleteBudget(category: String) {
+        viewModelScope.launch {
+            val monthYear = currentMonthYearString.value
+            if (monthYear.isNotEmpty()) {
+                repository.deleteBudget(Budget(category = category, limitAmount = 0.0, monthYear = monthYear))
+            }
+        }
+    }
+
     fun updateTransactionCategory(transaction: Transaction, newCategory: String) {
         viewModelScope.launch {
             repository.updateTransactionCategoryAndRetrain(transaction.id, transaction.payee, newCategory)
         }
     }
+
+    private fun checkBudgetThresholds() {
+        if (notificationHelper == null) return
+        viewModelScope.launch {
+            val monthYear = currentMonthYearString.value
+            val currentMonthStartMs = currentMonthStart.value
+            val budgets = repository.getBudgetsForMonth(monthYear).firstOrNull() ?: emptyList()
+            val expenses = repository.getMonthlyExpense(currentMonthStartMs).firstOrNull() ?: 0.0
+            
+            val globalBudget = budgets.find { it.category == "GLOBAL" }
+            if (globalBudget != null && globalBudget.limitAmount > 0) {
+                val percentage = expenses / globalBudget.limitAmount
+                if (percentage >= 1.0) {
+                    notificationHelper.showBudgetAlert("Budget Exceeded", "You have exceeded your global budget!")
+                } else if (percentage >= 0.8) {
+                    notificationHelper.showBudgetAlert("Budget Warning", "You've used ${"%.0f".format(percentage * 100)}% of your global budget.")
+                }
+            }
+        }
+    }
 }
 
-class PesaViewModelFactory(private val repository: PesaRepository) : ViewModelProvider.Factory {
+class PesaViewModelFactory(
+    private val repository: PesaRepository,
+    private val notificationHelper: com.example.notifications.NotificationHelper? = null
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PesaViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return PesaViewModel(repository) as T
+            return PesaViewModel(repository, notificationHelper) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
