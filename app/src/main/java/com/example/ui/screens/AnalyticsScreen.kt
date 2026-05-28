@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -15,8 +16,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.R
 import com.example.model.TransactionType
 import com.example.ui.theme.*
 import java.text.SimpleDateFormat
@@ -80,7 +84,12 @@ fun AnalyticsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                 CenterAlignedTopAppBar(
                     title = { 
-                        Text("PesaSense", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
+                        Image(
+                            painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
+                            contentDescription = "PesaSense",
+                            modifier = Modifier.height(32.dp),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                        )
                     },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
@@ -203,6 +212,10 @@ fun AnalyticsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
             }
             
             item {
+                Text("PATTERNS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 0.dp))
+            }
+
+            item {
                 SpendingRhythmChart(monthTransactions)
             }
             
@@ -211,7 +224,7 @@ fun AnalyticsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
             }
 
             item {
-                SpendingCalendar(monthTransactions, startTimestamp)
+                SpendingCalendar(monthTransactions, startTimestamp, displayMonth)
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
@@ -454,7 +467,8 @@ fun TransactionFeesCard(transactions: List<com.example.model.Transaction>) {
 
 @Composable
 fun SpendingRhythmChart(transactions: List<com.example.model.Transaction>) {
-    val expenses = transactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
+    val allowedTypes = listOf(TransactionType.SEND_MONEY, TransactionType.WITHDRAW, TransactionType.PAYBILL, TransactionType.BUY_GOODS)
+    val expenses = transactions.filter { it.type in allowedTypes }
     
     // Last 7 days ending today
     val last7Days = (6 downTo 0).map { offset ->
@@ -464,16 +478,47 @@ fun SpendingRhythmChart(transactions: List<com.example.model.Transaction>) {
     }
     
     val dayFormat = SimpleDateFormat("EEE", Locale.getDefault())
+    val fullDayFormat = SimpleDateFormat("EEEE", Locale.getDefault())
+    
+    var highestDayName = ""
+    var highestAmount = 0.0
     
     val rhythmData = last7Days.map { dayCal ->
         val daySpend = expenses.filter { 
             val cal = Calendar.getInstance().apply { timeInMillis = it.timestamp }
             cal.get(Calendar.YEAR) == dayCal.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == dayCal.get(Calendar.DAY_OF_YEAR)
         }.sumOf { it.amount }
-        Pair(dayFormat.format(dayCal.time), daySpend)
+        
+        if (daySpend > highestAmount) {
+            highestAmount = daySpend
+            highestDayName = fullDayFormat.format(dayCal.time)
+        }
+        
+        Triple(dayFormat.format(dayCal.time), daySpend, dayCal.get(Calendar.DAY_OF_WEEK))
     }
     
     val maxSpend = rhythmData.maxOfOrNull { it.second }?.takeIf { it > 0 } ?: 1.0
+    
+    // Calculate averages
+    var weekdaySum = 0.0
+    var weekdayCount = 0
+    var weekendSum = 0.0
+    var weekendCount = 0
+    
+    rhythmData.forEach { (_, amount, dayOfWeek) ->
+        if (dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY) {
+            weekendSum += amount
+            weekendCount++
+        } else {
+            weekdaySum += amount
+            weekdayCount++
+        }
+    }
+    
+    val weekdayAvg = if (weekdayCount > 0) weekdaySum / weekdayCount else 0.0
+    val weekendAvg = if (weekendCount > 0) weekendSum / weekendCount else 0.0
+
+    var showRhythmTooltip by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
@@ -481,39 +526,122 @@ fun SpendingRhythmChart(transactions: List<com.example.model.Transaction>) {
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("Spending Rhythm", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Spending Rhythm", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box {
+                        Icon(
+                            imageVector = Icons.Default.Info, 
+                            contentDescription = "Info", 
+                            modifier = Modifier.size(16.dp).clickable { showRhythmTooltip = true }, 
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        DropdownMenu(
+                            expanded = showRhythmTooltip,
+                            onDismissRequest = { showRhythmTooltip = false },
+                            modifier = Modifier.width(250.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).padding(8.dp)
+                        ) {
+                            Text("Spending Rhythm", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Cumulative spending pattern over the last 7 days.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                Icon(imageVector = Icons.AutoMirrored.Filled.CallMade, contentDescription = "Expand", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             Text("Last 7 Days", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             
+            // Bar chart area
             Row(
-                modifier = Modifier.fillMaxWidth().height(150.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth().height(160.dp).padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                rhythmData.forEachIndexed { index, (day, amount) ->
-                    val isToday = index == 6 // 6 is the last element because it's 6 downTo 0
+                rhythmData.forEachIndexed { index, (day, amount, _) ->
+                    val isToday = index == 6
                     val proportion = (amount / maxSpend).toFloat()
-                    val barColor = if (isToday) TransferBlue.copy(alpha = 0.8f) else TransferBlue.copy(alpha = 0.3f)
-                    val labelColor = if (isToday) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    val barColor = if (isToday) Color(0xFF32D795) else MaterialTheme.colorScheme.surfaceVariant
                     
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom, modifier = Modifier.fillMaxHeight()) {
                         if (amount > 0) {
                             Text(
-                                text = if (amount >= 1000) String.format(java.util.Locale.US, "%.1fk", amount / 1000.0) else amount.toInt().toString(),
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = if (amount >= 1000) String.format(Locale.US, "%.0fk", amount / 1000.0) else amount.toInt().toString(),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = if (isToday) Color(0xFF32D795) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                         }
+                        
                         Box(
                             modifier = Modifier
-                                .width(24.dp)
-                                .fillMaxHeight(proportion.coerceAtLeast(0.05f))
-                                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                .width(32.dp)
+                                .fillMaxHeight(proportion.coerceAtLeast(0.02f))
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(barColor)
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Box(modifier = Modifier.width(32.dp).height(1.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(day, style = MaterialTheme.typography.labelSmall, color = labelColor, fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal)
+                        Text(
+                            day, 
+                            style = MaterialTheme.typography.labelSmall, 
+                            color = if (isToday) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            if (highestAmount > 0) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Row(modifier = Modifier.padding(16.dp)) {
+                        Text("You spend most on ", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF32D795))
+                        Text(highestDayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text(" (KES ${formatCurrency(highestAmount)}/day)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Weekday avg", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("KES ${formatCurrency(weekdayAvg)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text("Mon - Fri", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
+                    }
+                }
+                
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Weekend avg", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("KES ${formatCurrency(weekendAvg)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text("Sat - Sun", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
                     }
                 }
             }
@@ -540,7 +668,12 @@ fun NeedsVsWantsCard(transactions: List<com.example.model.Transaction>) {
     }
     
     val total = needsAmount + wantsAmount
-    val needsPercent = if (total > 0) (needsAmount / total).toFloat() else 0.5f
+    val needsPercent = if (total > 0) (needsAmount / total).toFloat() else 0f
+    
+    val needsColor = Color(0xFF32D795) // Mint green
+    val wantsColor = Color(0xFFFF5252) // Bright red
+    
+    var showWantsTooltip by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
@@ -548,7 +681,32 @@ fun NeedsVsWantsCard(transactions: List<com.example.model.Transaction>) {
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("Needs vs Wants", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Needs vs Wants", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box {
+                        Icon(
+                            imageVector = Icons.Default.Info, 
+                            contentDescription = "Info", 
+                            modifier = Modifier.size(16.dp).clickable { showWantsTooltip = true }, 
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        DropdownMenu(
+                            expanded = showWantsTooltip,
+                            onDismissRequest = { showWantsTooltip = false },
+                            modifier = Modifier.width(250.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).padding(8.dp)
+                        ) {
+                            Text("Needs vs Wants", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("A breakdown of your essential expenses vs discretionary spending.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                Icon(imageVector = Icons.AutoMirrored.Filled.CallMade, contentDescription = "Expand", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("This month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(24.dp))
             
             if (total == 0.0) {
@@ -556,36 +714,79 @@ fun NeedsVsWantsCard(transactions: List<com.example.model.Transaction>) {
                 return@Column
             }
 
+            // Horizontal Progress Bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(16.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(6.dp))
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.weight(needsPercent.coerceAtLeast(0.01f)).fillMaxHeight().background(AccentGreenLight))
-                    Box(modifier = Modifier.weight((1f - needsPercent).coerceAtLeast(0.01f)).fillMaxHeight().background(ExpenseRed))
+                    if (needsPercent > 0f) {
+                        Box(modifier = Modifier.weight(needsPercent).fillMaxHeight().background(needsColor))
+                    }
+                    if (needsPercent < 1f) {
+                        Box(modifier = Modifier.weight(1f - needsPercent).fillMaxHeight().background(wantsColor))
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("NEEDS", style = MaterialTheme.typography.labelSmall, color = AccentGreenLight, fontWeight = FontWeight.Bold)
-                    Text("${(needsPercent * 100).toInt()}%", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(needsColor))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("NEEDS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("${(needsPercent * 100).toInt()}%", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = needsColor)
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text("KES ${formatCurrency(needsAmount)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("WANTS", style = MaterialTheme.typography.labelSmall, color = ExpenseRed, fontWeight = FontWeight.Bold)
-                    Text("${((1f - needsPercent) * 100).toInt()}%", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                
+                Box(modifier = Modifier.width(1.dp).height(60.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)))
+                
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(wantsColor))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("WANTS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("${((1f - needsPercent) * 100).toInt()}%", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = wantsColor)
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text("KES ${formatCurrency(wantsAmount)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Insight Card
+            val isHighWants = wantsAmount > needsAmount
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = if (isHighWants) wantsColor.copy(alpha = 0.15f) else needsColor.copy(alpha = 0.15f)),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Box(modifier = Modifier.padding(16.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = if (isHighWants) "High discretionary spending. Time for Hansei?" else "Great job keeping wants low!",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isHighWants) wantsColor else needsColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpendingCalendar(transactions: List<com.example.model.Transaction>, monthStartTimestamp: Long) {
+fun SpendingCalendar(transactions: List<com.example.model.Transaction>, monthStartTimestamp: Long, displayMonth: String) {
     val expenses = transactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
     
     val cal = Calendar.getInstance()
@@ -614,6 +815,39 @@ fun SpendingCalendar(transactions: List<com.example.model.Transaction>, monthSta
     }
     
     val maxDailySpend = spendMap.values.maxOrNull()?.takeIf { it > 0 } ?: 1.0
+    val highestDayEntry = spendMap.maxByOrNull { it.value }
+    val noSpendDaysCount = spendMap.values.count { it == 0.0 }
+    
+    // Determine highest day text
+    val highestDayText = if (highestDayEntry != null && highestDayEntry.value > 0) {
+        cal.timeInMillis = monthStartTimestamp
+        cal.set(Calendar.DAY_OF_MONTH, highestDayEntry.key)
+        SimpleDateFormat("MMM d", Locale.getDefault()).format(cal.time)
+    } else {
+        "N/A"
+    }
+    val highestAmount = highestDayEntry?.value ?: 0.0
+
+    // Colors
+    val baseColor = Color(0xFF32D795)
+    val colorLevel0 = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val colorLevel1 = baseColor.copy(alpha = 0.25f)
+    val colorLevel2 = baseColor.copy(alpha = 0.5f)
+    val colorLevel3 = baseColor.copy(alpha = 0.75f)
+    val colorLevel4 = baseColor
+    
+    fun getColorForAmount(amount: Double): Color {
+        if (amount == 0.0) return colorLevel0
+        val intensity = (amount / maxDailySpend).toFloat()
+        return when {
+            intensity < 0.25f -> colorLevel1
+            intensity < 0.5f -> colorLevel2
+            intensity < 0.75f -> colorLevel3
+            else -> colorLevel4
+        }
+    }
+
+    var showTooltip by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
@@ -621,8 +855,30 @@ fun SpendingCalendar(transactions: List<com.example.model.Transaction>, monthSta
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("Spending Calendar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
+            // Header
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Spending Calendar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Box {
+                    Icon(
+                        imageVector = Icons.Default.Info, 
+                        contentDescription = "Info", 
+                        modifier = Modifier.size(16.dp).clickable { showTooltip = true }, 
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    DropdownMenu(
+                        expanded = showTooltip,
+                        onDismissRequest = { showTooltip = false },
+                        modifier = Modifier.width(250.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).padding(8.dp)
+                    ) {
+                        Text("Spending Calendar", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Your spending by day. Brighter colour means more spent, grey means no activity.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            Text(displayMonth, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(24.dp))
             
             // Days of week header
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -634,63 +890,87 @@ fun SpendingCalendar(transactions: List<com.example.model.Transaction>, monthSta
             
             // Grid
             var currentDay = 1
-            // Compute offset for the first week (firstDayOfWeek is 1 for Sunday, which matches our array)
             val offset = firstDayOfWeek - 1
-            
             val totalCells = Math.ceil((daysInMonth + offset) / 7.0).toInt() * 7
             
             for (row in 0 until (totalCells / 7)) {
-                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     for (col in 0..6) {
                         if (row == 0 && col < offset) {
-                            Box(modifier = Modifier.weight(1f).aspectRatio(1f))
+                            Box(modifier = Modifier.weight(1f).aspectRatio(2f).padding(horizontal = 2.dp))
                         } else if (currentDay <= daysInMonth) {
                             val amount = spendMap[currentDay] ?: 0.0
-                            val intensity = if (maxDailySpend > 0) (amount / maxDailySpend).toFloat() else 0f
-                            
-                            val cellColor = if (amount == 0.0) {
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) // No Spend Grey/Blue
-                            } else {
-                                // Interpolate green
-                                androidx.compose.ui.graphics.lerp(Color(0xFFA5D6A7), Color(0xFF1B5E20), intensity)
-                            }
+                            val cellColor = getColorForAmount(amount)
                             
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .aspectRatio(1f)
-                                    .padding(2.dp)
+                                    .aspectRatio(2f)
+                                    .padding(horizontal = 2.dp)
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(cellColor),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = currentDay.toString(),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                    color = if (amount == 0.0) MaterialTheme.colorScheme.onSurfaceVariant else Color.White
-                                )
-                            }
+                                    .background(cellColor)
+                            )
                             currentDay++
                         } else {
-                            Box(modifier = Modifier.weight(1f).aspectRatio(1f))
+                            Box(modifier = Modifier.weight(1f).aspectRatio(2f).padding(horizontal = 2.dp))
                         }
                     }
                 }
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            // Legend
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                Text("Low", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Less", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.width(8.dp))
-                Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)))
+                listOf(colorLevel0, colorLevel1, colorLevel2, colorLevel3, colorLevel4).forEach { color ->
+                    Box(modifier = Modifier.size(14.dp, 10.dp).clip(RoundedCornerShape(2.dp)).background(color))
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
                 Spacer(modifier = Modifier.width(4.dp))
-                Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFFA5D6A7)))
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF4CAF50)))
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF1B5E20)))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("High", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("More", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Stats Cards
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Highest Card
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Highest", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(highestDayText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("KES ${formatCurrency(highestAmount)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                
+                // No-Spend Days Card
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("No-Spend Days", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("$noSpendDaysCount", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TransferBlue)
+                        Text("this period", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
     }
