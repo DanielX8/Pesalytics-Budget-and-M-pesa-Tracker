@@ -33,6 +33,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -64,10 +68,19 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    val now = System.currentTimeMillis()
-    val sevenDaysFromNow = now + 7 * 24 * 60 * 60 * 1000L
+    val calendar = Calendar.getInstance()
+    calendar.firstDayOfWeek = Calendar.MONDAY
+    calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    val startOfWeek = calendar.timeInMillis
+    
+    calendar.add(Calendar.DAY_OF_YEAR, 7)
+    val endOfWeek = calendar.timeInMillis
 
-    val dueThisWeek = bills.filter { it.nextDueDate in now..sevenDaysFromNow }.sumOf { it.amount }
+    val dueThisWeek = bills.filter { it.nextDueDate in startOfWeek..endOfWeek }.sumOf { it.amount }
 
     if (showAddBillDialog) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -186,7 +199,7 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
                 )
-                Text("BILLS TRACKER", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
+
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -200,15 +213,50 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Bills Tracker",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Manage and track your upcoming bills.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+            item {
+                val totalBillsAmount = bills.sumOf { it.amount }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text("Due This Week", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("KES ${formatCurrency(dueThisWeek)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Due This Week", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("KES ${formatCurrency(dueThisWeek)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Total Bills", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("KES ${formatCurrency(totalBillsAmount)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
@@ -368,16 +416,26 @@ fun AddBillBottomSheetContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        OutlinedTextField(
-            value = dateFormatter.format(java.util.Date(nextDue)),
-            onValueChange = { },
-            readOnly = true,
-            label = { Text("NEXT DUE DATE", style = MaterialTheme.typography.labelSmall) },
-            trailingIcon = { Icon(Icons.Default.DateRange, "Pick Date") },
-            modifier = Modifier.fillMaxWidth().pointerInput(Unit) {
-                detectTapGestures(onTap = { showDatePicker = true })
-            }
-        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = dateFormatter.format(java.util.Date(nextDue)),
+                onValueChange = { },
+                readOnly = true,
+                label = { Text("NEXT DUE DATE", style = MaterialTheme.typography.labelSmall) },
+                trailingIcon = { 
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Default.DateRange, "Pick Date") 
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clickable { showDatePicker = true }
+                    .background(Color.Transparent)
+            )
+        }
 
         if (showDatePicker) {
             val datePickerState = rememberDatePickerState(initialSelectedDateMillis = nextDue)
@@ -425,17 +483,25 @@ fun BillItem(
 ) {
     val now = System.currentTimeMillis()
     val hoursToDue = (bill.nextDueDate - now) / (1000 * 60 * 60)
-    
-    val isUrgent = !bill.isAutoPay && hoursToDue in 0..48
-    
-    val daysToDue = hoursToDue / 24
+    val daysToDue = Math.max(0L, hoursToDue / 24)
     
     val dueDateStr = when {
-        bill.isAutoPay -> "Auto-Pays in ${Math.max(0, daysToDue)} days"
         hoursToDue < 0 -> "Overdue"
-        hoursToDue < 24 -> "Due Tomorrow"
-        hoursToDue <= 48 -> "Due in 2 days"
-        else -> "Due in $daysToDue days"
+        daysToDue == 0L -> "Due today"
+        else -> "In $daysToDue days"
+    }
+
+    val statusColor = when {
+        hoursToDue < 0 -> ExpenseRed
+        daysToDue <= 3 -> ExpenseRed
+        else -> WarningOrange
+    }
+
+    val iconImage = when {
+        bill.name.contains("TV", ignoreCase = true) -> Icons.Default.Tv
+        bill.name.contains("Electricity", ignoreCase = true) || bill.name.contains("KPLC", ignoreCase = true) -> Icons.Default.Bolt
+        bill.name.contains("Fiber", ignoreCase = true) || bill.name.contains("Internet", ignoreCase = true) || bill.name.contains("Zuku", ignoreCase = true) -> Icons.Default.Wifi
+        else -> Icons.Default.ReceiptLong
     }
 
     Row(
@@ -447,20 +513,18 @@ fun BillItem(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val iconBgColor = if (isUrgent) ExpenseRed.copy(alpha = 0.2f) else if (bill.isAutoPay) AccentGreenLight.copy(alpha = 0.2f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-        val iconTint = if (isUrgent) ExpenseRed else if (bill.isAutoPay) AccentGreenLight else MaterialTheme.colorScheme.onSurfaceVariant
-
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(iconBgColor),
+                .background(statusColor.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = if (isUrgent) Icons.Default.Warning else if (bill.isAutoPay) Icons.Default.CheckCircle else Icons.Default.CheckCircle, 
+                imageVector = iconImage, 
                 contentDescription = null, 
-                tint = iconTint
+                tint = statusColor,
+                modifier = Modifier.size(24.dp)
             )
         }
 
@@ -468,24 +532,32 @@ fun BillItem(
 
         Column(modifier = Modifier.weight(1f)) {
             Text(text = bill.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-            if (isUrgent) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "Paybill ${bill.payee}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.width(8.dp))
                 Box(
                     modifier = Modifier
-                        .padding(top = 4.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(ExpenseRed.copy(alpha = 0.1f))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
-                    Text("Urgent", style = MaterialTheme.typography.labelSmall, color = ExpenseRed, fontWeight = FontWeight.Bold)
+                    Text(text = bill.cycle.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                 }
-            } else {
-                Text(text = bill.payee, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
         Column(horizontalAlignment = Alignment.End) {
-            Text(text = "KES ${formatCurrency(bill.amount)}", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = if (isUrgent) ExpenseRed else MaterialTheme.colorScheme.onSurface)
-            Text(text = dueDateStr, style = MaterialTheme.typography.bodySmall, color = if (isUrgent) ExpenseRed else if (bill.isAutoPay) AccentGreenLight else WarningOrange)
+            Text(text = "KES ${formatCurrency(bill.amount)}", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(statusColor.copy(alpha = 0.15f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(text = dueDateStr, style = MaterialTheme.typography.labelSmall, color = statusColor, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }

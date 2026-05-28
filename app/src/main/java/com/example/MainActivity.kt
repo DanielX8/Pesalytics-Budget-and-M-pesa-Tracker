@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -86,7 +88,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as PesaSenseApplication
-            val factory = remember { PesaViewModelFactory(app.repository) }
+            val notificationHelper = remember { com.example.notifications.NotificationHelper(app) }
+            val factory = remember { PesaViewModelFactory(app.repository, notificationHelper) }
             val viewModel: PesaViewModel = viewModel(factory = factory)
             
             val themeMode by viewModel.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
@@ -161,7 +164,7 @@ fun PesaSenseApp(viewModel: PesaViewModel) {
                         icon = { 
                             val isSelected = currentDestination?.hierarchy?.any { it.route == Analytics::class.qualifiedName } == true
                             Icon(
-                                painter = androidx.compose.ui.res.painterResource(id = if (isSelected) R.drawable.ic_analytics_active else R.drawable.ic_analytics_inactive), 
+                                imageVector = if (isSelected) Icons.Filled.Analytics else Icons.Outlined.Analytics, 
                                 contentDescription = "Analytics",
                                 modifier = Modifier.size(24.dp)
                             ) 
@@ -302,7 +305,8 @@ fun PesaSenseApp(viewModel: PesaViewModel) {
                         onNavigateBack = { navController.popBackStack() },
                         onNavigateToSubscription = { navController.navigate(Subscription) },
                         onNavigateToBudgetPlanner = { navController.navigate(BudgetPlanner) },
-                        onNavigateToFinancialGoals = { navController.navigate(FinancialGoals) }
+                        onNavigateToFinancialGoals = { navController.navigate(FinancialGoals) },
+                        onNavigateToFaq = { navController.navigate(Faq) }
                     )
                 }
                 composable<BudgetPlanner> {
@@ -323,6 +327,11 @@ fun PesaSenseApp(viewModel: PesaViewModel) {
                 composable<FinancialGoals> {
                     FinancialGoalsScreen(
                         viewModel = viewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable<Faq> {
+                    com.example.ui.screens.FaqScreen(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }

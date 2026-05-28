@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,14 +17,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.example.ui.theme.AccentGreenDark
+import com.example.ui.theme.AccentGreenLight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -80,7 +86,7 @@ fun FinancialGoalsScreen(
                                     .padding(end = 16.dp)
                                     .size(32.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF0F5B1A)) // Deep Emerald
+                                    .background(AccentGreenDark) // Deep Emerald
                                     .clickable { showCreateGoalSheet = true },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -141,7 +147,7 @@ fun FinancialGoalsScreen(
                                 Icons.Default.TrackChanges,
                                 contentDescription = null,
                                 modifier = Modifier.size(40.dp),
-                                tint = Color(0xFF0F5B1A) // Deep Emerald green
+                                tint = AccentGreenDark // Deep Emerald green
                             )
                         }
                         
@@ -167,7 +173,7 @@ fun FinancialGoalsScreen(
                         
                         Button(
                             onClick = { showCreateGoalSheet = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F5B1A)),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Create Goal", maxLines = 1, color = Color.White)
@@ -177,17 +183,8 @@ fun FinancialGoalsScreen(
             } else {
                 // Populated State
                 goals.forEach { goal ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(goal.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                            Text("Target: KES ${goal.targetAmount}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            // More details based on actual progress
-                        }
-                    }
+                    GoalCard(goal = goal)
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
@@ -217,6 +214,12 @@ fun CreateGoalBottomSheet(
     var targetAmount by remember { mutableStateOf("") }
     var targetDate by remember { mutableStateOf<Long?>(null) }
     var monthlyContribution by remember { mutableStateOf("") }
+
+    val colors = listOf(Color(0xFF00C853), Color(0xFF2962FF), Color(0xFFFFAB00), Color(0xFFD50000), Color(0xFFAA00FF), Color(0xFFC51162), Color(0xFF00BFA5), Color(0xFFFF6D00))
+    var selectedColor by remember { mutableStateOf(colors[0]) }
+
+    val icons = listOf("🎯", "🏠", "✈️", "🎓", "🚗", "💍", "💻", "📱", "🏋️", "💰", "🌍", "⛵")
+    var selectedIcon by remember { mutableStateOf(icons[0]) }
     
     val context = LocalContext.current
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
@@ -246,7 +249,7 @@ fun CreateGoalBottomSheet(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Create Goal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color(0xFF0F5B1A))
+                    Text("Create Goal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = AccentGreenLight)
                     IconButton(onClick = onDismiss, modifier = Modifier.background(Color.LightGray.copy(alpha=0.3f), CircleShape)) {
                         Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
                     }
@@ -272,30 +275,36 @@ fun CreateGoalBottomSheet(
                     val savingsSelected = selectedType == GoalType.SAVINGS
                     val debtSelected = selectedType == GoalType.DEBT
                     
-                    Box(
+                    Row(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(24.dp))
                             .clickable { selectedType = GoalType.SAVINGS }
-                            .background(if (savingsSelected) Color(0xFF0F5B1A).copy(alpha = 0.1f) else Color.Transparent)
-                            .border(1.dp, if (savingsSelected) Color(0xFF0F5B1A) else Color.LightGray, RoundedCornerShape(8.dp))
+                            .background(if (savingsSelected) AccentGreenLight.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface)
+                            .border(1.dp, if (savingsSelected) AccentGreenLight else MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
                             .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Savings Goal", color = if (savingsSelected) Color(0xFF0F5B1A) else MaterialTheme.colorScheme.onSurface)
+                        Icon(androidx.compose.material.icons.Icons.Default.TrackChanges, contentDescription = null, tint = if (savingsSelected) AccentGreenLight else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Savings Goal", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = if (savingsSelected) AccentGreenLight else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     
-                    Box(
+                    Row(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(24.dp))
                             .clickable { selectedType = GoalType.DEBT }
-                            .background(if (debtSelected) ExpenseRed.copy(alpha = 0.1f) else Color.Transparent)
-                            .border(1.dp, if (debtSelected) ExpenseRed else Color.LightGray, RoundedCornerShape(8.dp))
+                            .background(if (debtSelected) ExpenseRed.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface)
+                            .border(1.dp, if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
                             .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Paying Off Debt", color = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurface)
+                        Icon(Icons.Default.TrendingDown, contentDescription = null, tint = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Paying Off Debt", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -306,6 +315,7 @@ fun CreateGoalBottomSheet(
                 OutlinedTextField(
                     value = targetAmount,
                     onValueChange = { targetAmount = it },
+                    placeholder = { Text("e.g. 100000") },
                     leadingIcon = { Text("KES") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
@@ -359,14 +369,15 @@ fun CreateGoalBottomSheet(
                             val months = if (diffMonth > 0) diffMonth else 1
                             monthlyContribution = "%.0f".format(amount / months)
                         }
-                    }.padding(horizontal = 8.dp, vertical = 4.dp)) {
-                        Text("Smart Rec", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                        Text("Smart Recommendation", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
                     value = monthlyContribution,
                     onValueChange = { monthlyContribution = it },
+                    placeholder = { Text("How much can you set aside monthly?") },
                     leadingIcon = { Text("KES") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
@@ -375,49 +386,66 @@ fun CreateGoalBottomSheet(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val monthlyValue = monthlyContribution.toDoubleOrNull() ?: 0.0
-                val targetValue = targetAmount.toDoubleOrNull() ?: 0.0
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("COLOR", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    colors.forEach { color ->
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .border(if (selectedColor == color) 3.dp else 0.dp, if (selectedColor == color) Color.Gray else Color.Transparent, CircleShape)
+                                .clickable { selectedColor = color }
+                        )
+                    }
+                }
                 
-                if (monthlyValue > 0 && targetValue > 0 && targetDate != null) {
-                    val cal1 = Calendar.getInstance()
-                    val cal2 = Calendar.getInstance()
-                    cal2.timeInMillis = targetDate!!
-                    
-                    val diffYear = cal2.get(Calendar.YEAR) - cal1.get(Calendar.YEAR)
-                    val diffMonth = diffYear * 12 + cal2.get(Calendar.MONTH) - cal1.get(Calendar.MONTH)
-                    val monthsRemaining = if (diffMonth > 0) diffMonth else 1
-                    
-                    val requiredMonthly = targetValue / monthsRemaining
-                    
-                    val isOnTrackOrAhead = monthlyValue >= requiredMonthly
-                    
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = if(isOnTrackOrAhead) IncomeGreen.copy(alpha=0.1f) else ExpenseRed.copy(alpha=0.1f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.TrackChanges, contentDescription = null, tint = if(isOnTrackOrAhead) IncomeGreen else ExpenseRed, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("PesaSense Insight", fontWeight = FontWeight.Bold, color = if(isOnTrackOrAhead) IncomeGreen else ExpenseRed, style = MaterialTheme.typography.labelMedium)
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            if (isOnTrackOrAhead) {
-                                val remainingMonths = Math.ceil(targetValue / monthlyValue).toInt()
-                                val earlier = monthsRemaining - remainingMonths
-                                val earlierText = if (earlier > 0) "you will reach your goal $earlier months earlier than your target date!" else "you are exactly on track to meet your target date."
-                                Text("At KES $monthlyValue monthly, $earlierText", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-                            } else {
-                                val newAmount = "%.0f".format(targetValue / monthsRemaining)
-                                Text("At KES $monthlyValue monthly, you will fall short. Consider increasing to KES $newAmount or extending your target date.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            LinearProgressIndicator(
-                                progress = { if (isOnTrackOrAhead) 1f else (monthlyValue / requiredMonthly).toFloat() },
-                                modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
-                                color = if(isOnTrackOrAhead) IncomeGreen else ExpenseRed,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("ICON", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    icons.forEach { iconStr ->
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(if (selectedIcon == iconStr) selectedColor.copy(alpha=0.2f) else Color.Transparent)
+                                .clickable { selectedIcon = iconStr },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(iconStr, fontSize = 24.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Preview Card
+                val previewAmount = targetAmount.ifBlank { "0" }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = selectedColor.copy(alpha=0.1f)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, selectedColor.copy(alpha=0.3f))
+                ) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(selectedColor.copy(alpha=0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(selectedIcon, fontSize = 24.sp)
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(if (goalName.isBlank()) "Goal Name" else goalName, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("KES $previewAmount target", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -438,10 +466,10 @@ fun CreateGoalBottomSheet(
                         val amount = targetAmount.toDoubleOrNull()
                         val monthly = monthlyContribution.toDoubleOrNull()
                         if (goalName.isNotBlank() && amount != null && targetDate != null && monthly != null) {
-                            onSave(Goal(name = goalName, type = selectedType, targetAmount = amount, targetDate = targetDate!!, monthlyContribution = monthly))
+                            onSave(Goal(name = goalName, type = selectedType, targetAmount = amount, targetDate = targetDate!!, monthlyContribution = monthly, color = selectedColor.value.toLong()))
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F5B1A)),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark),
                     modifier = Modifier.fillMaxWidth(),
                     enabled = goalName.isNotBlank() && targetAmount.isNotBlank() && targetDate != null && monthlyContribution.isNotBlank()
                 ) {
@@ -454,3 +482,76 @@ fun CreateGoalBottomSheet(
         }
     }
 }
+
+@Composable
+fun GoalCard(goal: Goal) {
+    val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+    val formattedDate = dateFormat.format(java.util.Date(goal.targetDate))
+    
+    val tagText = if (goal.type == GoalType.SAVINGS) "SAVINGS" else "DEBT"
+    val subtitleText = if (goal.type == GoalType.SAVINGS) "Savings Goal" else "Paying Off Debt"
+    val savedAmount = 0.0 // Placeholder for saved amount
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, Color(value = goal.color.toULong()))
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Header Row
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column {
+                    Text(goal.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(subtitleText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                val typeColor = if (goal.type == GoalType.SAVINGS) IncomeGreen else ExpenseRed
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(typeColor.copy(alpha = 0.1f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(tagText, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = typeColor, letterSpacing = 1.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            val typeColor = if (goal.type == GoalType.SAVINGS) IncomeGreen else ExpenseRed
+
+            // Progress Bar
+            val progress = if (goal.targetAmount > 0) (savedAmount / goal.targetAmount).toFloat() else 0f
+            LinearProgressIndicator(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
+                color = typeColor,
+                trackColor = MaterialTheme.colorScheme.surface
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Amounts Row
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Saved: KES 0.00", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Target: KES ${"%,.2f".format(goal.targetAmount)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Footer Row
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.DateRange, contentDescription = "Deadline", tint = typeColor, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Deadline: $formattedDate", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text("KES ${"%,.2f".format(goal.monthlyContribution)}/month", style = MaterialTheme.typography.bodySmall, color = typeColor, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+

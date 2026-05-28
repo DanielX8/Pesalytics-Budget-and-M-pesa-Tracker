@@ -11,7 +11,7 @@ import com.example.model.Transaction
 
 import com.example.model.Goal
 
-@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class], version = 7, exportSchema = false)
+@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class], version = 8, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun billDao(): BillDao

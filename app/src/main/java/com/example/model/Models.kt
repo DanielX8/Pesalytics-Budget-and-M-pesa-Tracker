@@ -89,5 +89,6 @@ data class Goal(
     val type: GoalType,
     val targetAmount: Double,
     val targetDate: Long,
-    val monthlyContribution: Double
+    val monthlyContribution: Double,
+    val color: Long = 0xFF4CAF50
 )

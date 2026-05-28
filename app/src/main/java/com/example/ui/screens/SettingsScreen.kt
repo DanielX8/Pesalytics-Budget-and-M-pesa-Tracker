@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.unit.sp
 
 import androidx.compose.foundation.Image
@@ -51,7 +52,8 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToSubscription: () -> Unit,
     onNavigateToBudgetPlanner: () -> Unit,
-    onNavigateToFinancialGoals: () -> Unit
+    onNavigateToFinancialGoals: () -> Unit,
+    onNavigateToFaq: () -> Unit
 ) {
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
     var notificationsExpanded by remember { mutableStateOf(false) }
@@ -68,6 +70,10 @@ fun SettingsScreen(
     val frequencyOptions = listOf("Daily", "Weekly", "Monthly")
 
     val userName by viewModel.userName.collectAsStateWithLifecycle()
+    val userAvatarIndex by viewModel.userAvatar.collectAsStateWithLifecycle()
+    val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val goals by viewModel.goals.collectAsStateWithLifecycle()
     var showEditNameDialog by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -147,7 +153,7 @@ fun SettingsScreen(
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
                 )
-                Text("SETTINGS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
+
             }
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -160,6 +166,28 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Settings",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Manage your preferences and profile.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
             // 1. Profile Card
             item {
                 if (showEditNameDialog) {
@@ -197,11 +225,21 @@ fun SettingsScreen(
                     )
                 }
 
+                val avatarIcons = listOf(
+                    Icons.Rounded.Person,
+                    Icons.Rounded.Face,
+                    Icons.Rounded.SentimentSatisfied,
+                    Icons.Rounded.CrueltyFree,
+                    Icons.Rounded.Pets
+                )
+                val currentAvatar = avatarIcons.getOrNull(userAvatarIndex) ?: Icons.Rounded.Person
+                
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -209,25 +247,107 @@ fun SettingsScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(60.dp)
+                                .size(50.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                .background(AccentGreenLight.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
+                            Icon(currentAvatar, contentDescription = null, modifier = Modifier.size(30.dp), tint = AccentGreenDark)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(userName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text("Tap to link Google Account", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            Text(
+                                text = "FINANCIAL IDENTITY", 
+                                style = MaterialTheme.typography.labelSmall, 
+                                color = AccentGreenDark,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = userName, 
+                                style = MaterialTheme.typography.titleLarge, 
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
-                        IconButton(
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
                             onClick = { showEditNameDialog = true },
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(AccentGreenLight)
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit Profile", tint = MaterialTheme.colorScheme.onPrimary)
+                            Text("Edit Profile", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
+
+            item {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val sharedPrefs = context.getSharedPreferences("PesaSensePrefs", android.content.Context.MODE_PRIVATE)
+                var installDate = sharedPrefs.getLong("install_date", 0L)
+                if (installDate == 0L) {
+                    installDate = System.currentTimeMillis()
+                    sharedPrefs.edit().putLong("install_date", installDate).apply()
+                }
+                val diffMs = System.currentTimeMillis() - installDate
+                val daysPassed = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(diffMs)
+                val daysRemaining = maxOf(0L, 45L - daysPassed)
+
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)) {
+                    Text(
+                        text = "PLAN", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = AccentGreenDark,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { onNavigateToSubscription() },
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(8.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFF4CAF50)).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                                        Text("PREMIUM TRIAL", style = MaterialTheme.typography.labelSmall, color = Color(0xFF0F5B1A), fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(if (daysRemaining > 0) "Expires in $daysRemaining days" else "Trial Expired", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(verticalAlignment = Alignment.Bottom) {
+                                    Text("Free Trial", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = { onNavigateToSubscription() },
+                                        modifier = Modifier.weight(1f).height(40.dp),
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF0F5B1A)),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0F5B1A)),
+                                        contentPadding = PaddingValues(0.dp)
+                                    ) {
+                                        Text("Manage Plan", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+                                    Button(
+                                        onClick = { onNavigateToSubscription() },
+                                        modifier = Modifier.weight(1f).height(40.dp),
+                                        shape = RoundedCornerShape(4.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F5B1A), contentColor = Color.White),
+                                        contentPadding = PaddingValues(0.dp)
+                                    ) {
+                                        Text("Compare plans", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -266,83 +386,117 @@ fun SettingsScreen(
                     }
                 }
             }
-            // 2. Subscription Plan
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToSubscription() },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Column {
-                                Text("Free Plan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text("Essential tracking", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Box(modifier = Modifier.background(AccentGreenLight.copy(alpha = 0.2f), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
-                                Text("ACTIVE", style = MaterialTheme.typography.labelSmall, color = AccentGreenLight, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Text("CURRENT PRICE: KES 0", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                        }
-                    }
-                }
-            }
+
 
             item {
-                Text("Plan & Goals", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
-            }
-
-            // 3. Plan & Goals
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
-                        Text("Budget Planner", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("CURRENT LIMIT", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("KES 45,000", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Text("Smart Alerts Enabled", style = MaterialTheme.typography.bodyMedium)
-                            Switch(checked = smartAlertsEnabled, onCheckedChange = { smartAlertsEnabled = it }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { onNavigateToBudgetPlanner() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight), shape = RoundedCornerShape(8.dp)) {
-                            Text("Configure Limits")
-                        }
-                    }
-                }
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToFinancialGoals() },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
-                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)) {
+                    Text(
+                        text = "FINANCIAL FRAMEWORK", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = AccentGreenDark,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Goals Card
+                        Card(
+                            modifier = Modifier.weight(1f).clickable { onNavigateToFinancialGoals() },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.TrackChanges,
+                                        contentDescription = "Goals",
+                                        tint = AccentGreenDark,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    val activeGoalsCount = goals.size
+                                    val goalsText = if (activeGoalsCount == 0) "Set up" else "$activeGoalsCount Active"
+                                    val goalsBgColor = if (activeGoalsCount == 0) Color(0xFFF1F5F9) else Color(0xFFE0E7FF)
+                                    val goalsTextColor = if (activeGoalsCount == 0) Color(0xFF64748B) else Color(0xFF3730A3)
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(goalsBgColor)
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(goalsText, style = MaterialTheme.typography.labelSmall, color = goalsTextColor, fontWeight = FontWeight.SemiBold, fontSize = 10.sp)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
                                 Text("Goals", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text("SAVINGS GOAL AND DEBT PAYOFF TRACKER", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("Strategy & Tracking", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Bolt, contentDescription = null, tint = AccentGreenLight)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("View all active trackers", style = MaterialTheme.typography.bodyMedium, color = AccentGreenLight, fontWeight = FontWeight.SemiBold)
+
+                        // Budget Card
+                        Card(
+                            modifier = Modifier.weight(1f).clickable { onNavigateToBudgetPlanner() },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.AccountBalanceWallet,
+                                        contentDescription = "Budget",
+                                        tint = AccentGreenDark,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    val budgetPct = if (uiState.currentBudgetLimit > 0) uiState.monthlyExpense / uiState.currentBudgetLimit else 0.0
+                                    val budgetText = when {
+                                        !uiState.hasBudget -> "Not Set"
+                                        budgetPct >= 0.9 -> "Critical"
+                                        budgetPct >= 0.75 -> "Warning"
+                                        else -> "On Track"
+                                    }
+                                    val budgetBgColor = when {
+                                        !uiState.hasBudget -> Color(0xFFF1F5F9)
+                                        budgetPct >= 0.9 -> Color(0xFFFFE4E6)
+                                        budgetPct >= 0.75 -> Color(0xFFFEF3C7)
+                                        else -> Color(0xFFDCFCE7)
+                                    }
+                                    val budgetTextColor = when {
+                                        !uiState.hasBudget -> Color(0xFF64748B)
+                                        budgetPct >= 0.9 -> Color(0xFFBE123C)
+                                        budgetPct >= 0.75 -> Color(0xFFB45309)
+                                        else -> Color(0xFF166534)
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(budgetBgColor)
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(budgetText, style = MaterialTheme.typography.labelSmall, color = budgetTextColor, fontWeight = FontWeight.SemiBold, fontSize = 10.sp)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text("Budget", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("Monthly Allocation", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -352,23 +506,22 @@ fun SettingsScreen(
             item {
                 val currentTheme by viewModel.themeMode.collectAsStateWithLifecycle()
                 
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "APPEARANCE",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 12.dp)
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)) {
+                    Text(
+                        text = "APPEARANCE", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = AccentGreenDark,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -410,56 +563,56 @@ fun SettingsScreen(
                     }
                 }
             }
-            item {
-                Text("Data Export", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
-            }
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(onClick = {}, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface), shape = RoundedCornerShape(8.dp)) {
-                        Text("Export as CSV")
-                    }
-                    Button(onClick = {}, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface), shape = RoundedCornerShape(8.dp)) {
-                        Text("Export as PDF")
-                    }
-                }
-            }
-
             // 5. Notifications
             item {
-                Text("Notifications", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
-            }
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                            Text("Upcoming Bill Alerts", style = MaterialTheme.typography.bodyMedium)
-                            Switch(checked = upcomingBillAlerts, onCheckedChange = { upcomingBillAlerts = it }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
-                        }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                            Text("Budget Alerts (nearing limits)", style = MaterialTheme.typography.bodyMedium)
-                            Switch(checked = budgetAlerts, onCheckedChange = { budgetAlerts = it }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
-                        }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                            Text("Goal Reminders", style = MaterialTheme.typography.bodyMedium)
-                            Switch(checked = goalReminders, onCheckedChange = { goalReminders = it }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)) {
+                    Text(
+                        text = "NOTIFICATIONS", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = AccentGreenDark,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Text("Upcoming Bill Alerts", style = MaterialTheme.typography.bodyMedium)
+                                Switch(checked = upcomingBillAlerts, onCheckedChange = { upcomingBillAlerts = it }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Text("Budget Threshold Alerts", style = MaterialTheme.typography.bodyMedium)
+                                Switch(checked = budgetAlerts, onCheckedChange = { budgetAlerts = it }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Text("Goal Reminders", style = MaterialTheme.typography.bodyMedium)
+                                Switch(checked = goalReminders, onCheckedChange = { goalReminders = it }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Text("High Spending Alerts", style = MaterialTheme.typography.bodyMedium)
+                                Switch(checked = true, onCheckedChange = { }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
+                            }
                         }
                     }
                 }
             }
 
             item {
-                Text("Summary Notifications", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+                Text("Report Frequency", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp, start = 4.dp))
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    frequencyOptions.forEach { option ->
+                    val reports = listOf("Daily", "Weekly", "Monthly")
+                    reports.forEach { option ->
                         val isSelected = notificationFrequency == option
                         Box(
                             modifier = Modifier
@@ -476,56 +629,167 @@ fun SettingsScreen(
                 }
             }
 
-            // 6. About & Support
+            // 6. Data Portability
             item {
-                Text("About & Support", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 8.dp)) {
+                    Text(
+                        text = "DATA EXPORT", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = AccentGreenDark,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFE0E7FF)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.Upload, contentDescription = null, tint = Color(0xFF166534)) // green icon
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Data Portability", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                                Text("Export transaction history", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color(0xFFE0E7FF)).clickable {
+                                    val file = com.example.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
+                                    viewModel.addNotification(if (file != null) "CSV saved to Downloads" else "Export failed")
+                                    if (file != null) android.widget.Toast.makeText(context, "CSV exported successfully", android.widget.Toast.LENGTH_SHORT).show()
+                                }.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                    Text(".CSV", style = MaterialTheme.typography.labelSmall, color = Color(0xFF1E293B), fontWeight = FontWeight.SemiBold)
+                                }
+                                Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color(0xFFE0E7FF)).clickable {
+                                    com.example.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
+                                        viewModel.addNotification("Print dialog opened for PDF generation.")
+                                        android.widget.Toast.makeText(context, "PDF generated successfully", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                    Text(".PDF", style = MaterialTheme.typography.labelSmall, color = Color(0xFF1E293B), fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+            // 7. Support
+            item {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)) {
+                    Text(
+                        text = "SUPPORT", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = AccentGreenDark,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            SupportListItem(Icons.Rounded.VolunteerActivism, "Support the Developer", "Tip jar") {}
+                        }
+                    }
+                }
+            }
+
+            // 8. About & Help Centre
+            item {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)) {
+                    Text(
+                        text = "ABOUT & HELP CENTRE", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = AccentGreenDark,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            SupportListItem(Icons.Rounded.Star, "Rate App and Review", null) {}
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+                            SupportListItem(Icons.Rounded.People, "Refer a Friend", null) {}
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+                            SupportListItem(Icons.Rounded.Share, "Share App", null) {}
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+                            SupportListItem(Icons.Rounded.Description, "Privacy Policy", null) {}
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+                            SupportListItem(Icons.Rounded.Description, "Terms of Service", null) {}
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+                            SupportListItem(Icons.Rounded.Info, "FAQ", null) { onNavigateToFaq() }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), modifier = Modifier.padding(horizontal = 16.dp))
+                            SupportListItem(Icons.Rounded.ChatBubbleOutline, "Live Support Chat with AI", "Coming Soon") {}
+                        }
+                    }
+                }
+            }
+
+            // 9. Footer Banner
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        SupportListItem(Icons.Default.VolunteerActivism, "Support the Developer", "Tip jar & 0719713362")
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), modifier = Modifier.padding(horizontal = 16.dp))
-                        SupportListItem(Icons.Default.People, "Refer a Friend", "Get 1 month Premium")
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), modifier = Modifier.padding(horizontal = 16.dp))
-                        SupportListItem(Icons.Default.Star, "App Rating & Review", null)
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), modifier = Modifier.padding(horizontal = 16.dp))
-                        SupportListItem(Icons.Default.Description, "Privacy Policy & Terms", null)
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), modifier = Modifier.padding(horizontal = 16.dp))
-                        SupportListItem(Icons.Default.ContactSupport, "Contact Support", null)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                    0.0f to Color(0xFF031006),
+                                    0.35f to Color(0xFF082612),
+                                    0.47f to Color(0xFF135224),
+                                    0.5f to Color(0xFF39FF14), // bright neon glow
+                                    0.53f to Color(0xFF135224),
+                                    0.65f to Color(0xFF082612),
+                                    1.0f to Color(0xFF031006),
+                                    start = androidx.compose.ui.geometry.Offset(0f, Float.POSITIVE_INFINITY),
+                                    end = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, 0f)
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Image(
+                                painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Financial Discretion", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Your privacy is our ultimate premium feature.", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFE5E7EB))
+                        }
                     }
                 }
             }
             
-            // 7. Footer Banner
             item {
-                Card(
+                Text(
+                    text = "Version 1.0.0", 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(AccentGreenLight.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.Lock, contentDescription = null, tint = AccentGreenLight)
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Financial Discretion", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            Text("Your privacy is our ultimate premium feature.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
 
             item {
@@ -536,11 +800,11 @@ fun SettingsScreen(
 }
 
 @Composable
-fun SupportListItem(icon: ImageVector, title: String, subtitle: String?) {
+fun SupportListItem(icon: ImageVector, title: String, subtitle: String?, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .clickable { onClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -555,3 +819,4 @@ fun SupportListItem(icon: ImageVector, title: String, subtitle: String?) {
         Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
     }
 }
+

@@ -31,3 +31,6 @@ object AllTransactions
 
 @Serializable
 object FinancialGoals
+
+@Serializable
+object Faq
