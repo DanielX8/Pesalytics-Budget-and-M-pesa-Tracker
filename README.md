@@ -13,7 +13,7 @@ Turn your M-PESA SMS messages into a clean, searchable, and highly visual financ
 [![Share](https://img.shields.io/badge/share-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/sharing/share-offsite/?url=https://github.com/DanielX8/PesaSense-Budget-and-M-pesa-Tracker)
 
 <div align="center">
-  <img src="app/src/main/res/drawable/header_logo.png" alt="PesaSense Logo" width="150" />
+  <img src="banner.png" alt="PesaSense Banner" width="100%" />
 </div>
 
 ## Overview
