@@ -1,4 +1,4 @@
-package com.example.ui.navigation
+package com.pesasense.ui.navigation
 
 import kotlinx.serialization.Serializable
 
@@ -34,3 +34,6 @@ object FinancialGoals
 
 @Serializable
 object Faq
+
+@Serializable
+object Report

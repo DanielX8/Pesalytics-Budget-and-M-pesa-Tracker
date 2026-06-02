@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.pesasense.ui.screens
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.horizontalScroll
@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.TrendingDown
@@ -28,18 +29,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.example.ui.theme.AccentGreenDark
-import com.example.ui.theme.AccentGreenLight
+import com.pesasense.ui.theme.AccentGreenDark
+import com.pesasense.ui.theme.AccentGreenLight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
-import com.example.model.Goal
-import com.example.model.GoalType
-import com.example.ui.theme.ExpenseRed
-import com.example.ui.theme.IncomeGreen
+import com.pesasense.R
+import com.pesasense.model.Goal
+import com.pesasense.model.GoalType
+import com.pesasense.ui.theme.ExpenseRed
+import com.pesasense.ui.theme.IncomeGreen
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -182,9 +183,76 @@ fun FinancialGoalsScreen(
                 }
             } else {
                 // Populated State
+                var goalForContribution by remember { mutableStateOf<Goal?>(null) }
+                var goalForDelete by remember { mutableStateOf<Goal?>(null) }
+
                 goals.forEach { goal ->
-                    GoalCard(goal = goal)
+                    GoalCard(
+                        goal = goal,
+                        onAddContribution = { goalForContribution = goal },
+                        onDelete = { goalForDelete = goal }
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // Contribution dialog
+                goalForContribution?.let { goal ->
+                    var contributionAmount by remember { mutableStateOf("") }
+                    AlertDialog(
+                        onDismissRequest = { goalForContribution = null; contributionAmount = "" },
+                        title = { Text("Add Contribution") },
+                        text = {
+                            Column {
+                                Text("Recording towards: ${goal.name}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedTextField(
+                                    value = contributionAmount,
+                                    onValueChange = { contributionAmount = it.filter { c -> c.isDigit() || c == '.' } },
+                                    label = { Text("Amount (KES)") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                val remaining = goal.targetAmount - goal.savedAmount
+                                if (remaining > 0) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("KES ${"%,.0f".format(remaining)} remaining to goal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                val amount = contributionAmount.toDoubleOrNull()
+                                if (amount != null && amount > 0) {
+                                    viewModel.addGoalContribution(goal.id, amount)
+                                    goalForContribution = null
+                                    contributionAmount = ""
+                                }
+                            }, enabled = contributionAmount.toDoubleOrNull() != null) {
+                                Text("Save", color = AccentGreenDark)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { goalForContribution = null; contributionAmount = "" }) { Text("Cancel") }
+                        }
+                    )
+                }
+
+                // Delete confirmation dialog
+                goalForDelete?.let { goal ->
+                    AlertDialog(
+                        onDismissRequest = { goalForDelete = null },
+                        title = { Text("Delete Goal") },
+                        text = { Text("Delete \"${goal.name}\"? This cannot be undone.") },
+                        confirmButton = {
+                            TextButton(onClick = { viewModel.deleteGoal(goal.id); goalForDelete = null }) {
+                                Text("Delete", color = ExpenseRed)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { goalForDelete = null }) { Text("Cancel") }
+                        }
+                    )
                 }
             }
         }
@@ -484,13 +552,13 @@ fun CreateGoalBottomSheet(
 }
 
 @Composable
-fun GoalCard(goal: Goal) {
-    val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+fun GoalCard(goal: Goal, onAddContribution: () -> Unit = {}, onDelete: () -> Unit = {}) {
+    val dateFormat = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
     val formattedDate = dateFormat.format(java.util.Date(goal.targetDate))
-    
+
     val tagText = if (goal.type == GoalType.SAVINGS) "SAVINGS" else "DEBT"
     val subtitleText = if (goal.type == GoalType.SAVINGS) "Savings Goal" else "Paying Off Debt"
-    val savedAmount = 0.0 // Placeholder for saved amount
+    val savedAmount = goal.savedAmount
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -534,7 +602,7 @@ fun GoalCard(goal: Goal) {
 
             // Amounts Row
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Saved: KES 0.00", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Saved: KES ${"%,.2f".format(savedAmount)}", style = MaterialTheme.typography.bodySmall, color = typeColor, fontWeight = FontWeight.SemiBold)
                 Text("Target: KES ${"%,.2f".format(goal.targetAmount)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
             }
 
@@ -550,6 +618,25 @@ fun GoalCard(goal: Goal) {
                     Text("Deadline: $formattedDate", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text("KES ${"%,.2f".format(goal.monthlyContribution)}/month", style = MaterialTheme.typography.bodySmall, color = typeColor, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Action buttons
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onAddContribution,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentGreenDark),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AccentGreenDark)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Contribute", style = MaterialTheme.typography.labelMedium)
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete goal", tint = ExpenseRed, modifier = Modifier.size(20.dp))
+                }
             }
         }
     }

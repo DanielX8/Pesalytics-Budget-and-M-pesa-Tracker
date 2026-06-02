@@ -1,4 +1,4 @@
-package com.example.model
+package com.pesasense.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -33,7 +33,9 @@ data class Transaction(
     val balanceAfter: Double = 0.0,
     val isFeeTransaction: Boolean = false, // If this is a split off fee
     val usedFulizaAmount: Double = 0.0, // Tracks overdraft debt components locally
-    val originalSms: String? = null
+    val originalSms: String? = null,
+    val fulizaOutstandingBalance: Double = 0.0,
+    val fulizaDueDate: String? = null
 )
 
 @Entity(tableName = "custom_rules")
@@ -63,7 +65,9 @@ data class Bill(
     val payee: String,
     val cycle: BillCycle,
     val nextDueDate: Long,
-    val isAutoPay: Boolean = false
+    val isAutoPay: Boolean = false,
+    val isPaid: Boolean = false,
+    val lastPaidDate: Long? = null
 )
 
 @Entity(tableName = "budgets")
@@ -90,5 +94,6 @@ data class Goal(
     val targetAmount: Double,
     val targetDate: Long,
     val monthlyContribution: Double,
-    val color: Long = 0xFF4CAF50
+    val color: Long = 0xFF4CAF50,
+    val savedAmount: Double = 0.0
 )

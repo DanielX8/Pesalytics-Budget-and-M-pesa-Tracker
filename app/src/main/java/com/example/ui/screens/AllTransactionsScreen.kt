@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.pesasense.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,7 +30,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.R
+import com.pesasense.R
 
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.ui.draw.clip
@@ -40,7 +42,7 @@ import androidx.compose.foundation.clickable
 @Composable
 fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedTransaction by remember { mutableStateOf<com.example.model.Transaction?>(null) }
+    var selectedTransaction by remember { mutableStateOf<com.pesasense.model.Transaction?>(null) }
     var showTransactionDetails by remember { mutableStateOf(false) }
     var showCategoryEdit by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -48,6 +50,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
     // Supported filter chips
     val filterOptions = listOf("All", "Send Money", "Received", "Paybill", "Buy Goods", "Withdraw", "Airtime", "Fuliza")
     var selectedFilter by remember { mutableStateOf(filterOptions[0]) }
+    var searchQuery by remember { mutableStateOf("") }
 
     val monthFormat = remember { java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault()) }
     val currentMonth = remember { monthFormat.format(java.util.Date()) }
@@ -73,12 +76,12 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                     if (transaction.isFeeTransaction) return@count false
                     when (filter) {
                         "All" -> true
-                        "Send Money" -> transaction.type == com.example.model.TransactionType.SEND_MONEY
-                        "Received" -> transaction.type == com.example.model.TransactionType.RECEIVE_MONEY || transaction.type == com.example.model.TransactionType.MANUAL_INCOME
-                        "Paybill" -> transaction.type == com.example.model.TransactionType.PAYBILL
-                        "Buy Goods" -> transaction.type == com.example.model.TransactionType.BUY_GOODS
-                        "Withdraw" -> transaction.type == com.example.model.TransactionType.WITHDRAW
-                        "Airtime" -> transaction.type == com.example.model.TransactionType.AIRTIME
+                        "Send Money" -> transaction.type == com.pesasense.model.TransactionType.SEND_MONEY
+                        "Received" -> transaction.type == com.pesasense.model.TransactionType.RECEIVE_MONEY || transaction.type == com.pesasense.model.TransactionType.MANUAL_INCOME
+                        "Paybill" -> transaction.type == com.pesasense.model.TransactionType.PAYBILL
+                        "Buy Goods" -> transaction.type == com.pesasense.model.TransactionType.BUY_GOODS
+                        "Withdraw" -> transaction.type == com.pesasense.model.TransactionType.WITHDRAW
+                        "Airtime" -> transaction.type == com.pesasense.model.TransactionType.AIRTIME
                         "Fuliza" -> transaction.category.equals("Fuliza", ignoreCase = true)
                         else -> true
                     }
@@ -87,29 +90,36 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
         }
     }
 
-    val filteredTransactions by remember(uiState.transactions, selectedFilter, selectedMonth) {
+    val filteredTransactions by remember(uiState.transactions, selectedFilter, selectedMonth, searchQuery) {
         derivedStateOf {
             uiState.transactions.filter { transaction ->
                 if (transaction.isFeeTransaction) return@filter false
                 if (monthFormat.format(java.util.Date(transaction.timestamp)) != selectedMonth) return@filter false
-                
-                when (selectedFilter) {
+
+                val matchesFilter = when (selectedFilter) {
                     "All" -> true
-                    "Send Money" -> transaction.type == com.example.model.TransactionType.SEND_MONEY
-                    "Received" -> transaction.type == com.example.model.TransactionType.RECEIVE_MONEY || transaction.type == com.example.model.TransactionType.MANUAL_INCOME
-                    "Paybill" -> transaction.type == com.example.model.TransactionType.PAYBILL
-                    "Buy Goods" -> transaction.type == com.example.model.TransactionType.BUY_GOODS
-                    "Withdraw" -> transaction.type == com.example.model.TransactionType.WITHDRAW
-                    "Airtime" -> transaction.type == com.example.model.TransactionType.AIRTIME
+                    "Send Money" -> transaction.type == com.pesasense.model.TransactionType.SEND_MONEY
+                    "Received" -> transaction.type == com.pesasense.model.TransactionType.RECEIVE_MONEY || transaction.type == com.pesasense.model.TransactionType.MANUAL_INCOME
+                    "Paybill" -> transaction.type == com.pesasense.model.TransactionType.PAYBILL
+                    "Buy Goods" -> transaction.type == com.pesasense.model.TransactionType.BUY_GOODS
+                    "Withdraw" -> transaction.type == com.pesasense.model.TransactionType.WITHDRAW
+                    "Airtime" -> transaction.type == com.pesasense.model.TransactionType.AIRTIME
                     "Fuliza" -> transaction.category.equals("Fuliza", ignoreCase = true)
                     else -> true
                 }
+                val matchesSearch = searchQuery.isEmpty() ||
+                    transaction.payee.contains(searchQuery, ignoreCase = true) ||
+                    transaction.remoteRef.contains(searchQuery, ignoreCase = true) ||
+                    (transaction.accountRef?.contains(searchQuery, ignoreCase = true) == true)
+
+                matchesFilter && matchesSearch
             }
         }
     }
 
     if (showCategoryEdit && selectedTransaction != null) {
         var newCategoryName by remember { mutableStateOf(selectedTransaction!!.category) }
+        val predefinedCategories = listOf("Groceries", "Utilities", "Food & Dining", "Transport", "Shopping", "Entertainment", "Health", "Airtime", "Other")
         AlertDialog(
             onDismissRequest = { showCategoryEdit = false },
             title = { Text("Edit Category") },
@@ -117,11 +127,26 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                 Column {
                     Text("Change category for all past and future transactions from:", style = MaterialTheme.typography.bodySmall)
                     Text(selectedTransaction!!.payee, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                    FlowRow(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        predefinedCategories.forEach { category ->
+                            FilterChip(
+                                selected = newCategoryName.equals(category, ignoreCase = true),
+                                onClick = { newCategoryName = category },
+                                label = { Text(category) }
+                            )
+                        }
+                    }
                     OutlinedTextField(
                         value = newCategoryName,
                         onValueChange = { newCategoryName = it },
-                        label = { Text("New Category") },
-                        singleLine = true
+                        label = { Text("Custom Category") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
@@ -191,7 +216,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                                     .padding(12.dp)
                                     .size(10.dp)
                                     .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(com.example.ui.theme.ExpenseRed)
+                                    .background(com.pesasense.ui.theme.ExpenseRed)
                             )
                         }
                     },
@@ -208,9 +233,9 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                 .padding(padding)
         ) {
             val filteredAmount = filteredTransactions.sumOf { 
-                if (it.type == com.example.model.TransactionType.RECEIVE_MONEY || it.type == com.example.model.TransactionType.MANUAL_INCOME) it.amount else -it.amount 
+                if (it.type == com.pesasense.model.TransactionType.RECEIVE_MONEY || it.type == com.pesasense.model.TransactionType.MANUAL_INCOME) it.amount else -it.amount 
             }
-            val amtColor = if (filteredAmount >= 0) com.example.ui.theme.AccentGreenLight else com.example.ui.theme.ExpenseRed
+            val amtColor = if (filteredAmount >= 0) com.pesasense.ui.theme.AccentGreenLight else com.pesasense.ui.theme.ExpenseRed
             val amtPrefix = if (filteredAmount >= 0) "+KES " else "-KES "
             
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -248,6 +273,26 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                     )
                 }
             }
+
+            // Search bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search payee, ref, account…", style = MaterialTheme.typography.bodySmall) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                singleLine = true,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+            )
 
             // Filter Chips
             androidx.compose.foundation.lazy.LazyRow(

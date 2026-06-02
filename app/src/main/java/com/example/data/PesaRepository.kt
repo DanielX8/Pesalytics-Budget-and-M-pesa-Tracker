@@ -1,10 +1,10 @@
-package com.example.data
+package com.pesasense.data
 
-import com.example.model.Bill
-import com.example.model.Budget
-import com.example.model.CustomRule
-import com.example.model.Transaction
-import com.example.model.Goal
+import com.pesasense.model.Bill
+import com.pesasense.model.Budget
+import com.pesasense.model.CustomRule
+import com.pesasense.model.Transaction
+import com.pesasense.model.Goal
 import kotlinx.coroutines.flow.Flow
 
 class PesaRepository(
@@ -55,6 +55,14 @@ class PesaRepository(
         goalDao.insertGoal(goal)
     }
 
+    suspend fun addGoalContribution(goalId: Int, amount: Double) {
+        goalDao.addGoalContribution(goalId, amount)
+    }
+
+    suspend fun deleteGoal(goalId: Int) {
+        goalDao.deleteGoal(goalId)
+    }
+
     suspend fun updateTransactionCategoryAndRetrain(transactionId: Int, payee: String, newCategory: String) {
         // 1. Update this specific transaction
         transactionDao.updateTransactionCategory(transactionId, newCategory)
@@ -70,5 +78,17 @@ class PesaRepository(
 
     suspend fun deleteTransaction(id: Int) {
         transactionDao.deleteTransaction(id)
+    }
+
+    suspend fun enrichFulizaTransaction(ref: String, outstandingBalance: Double, dueDate: String?) {
+        transactionDao.enrichFulizaTransaction(ref, outstandingBalance, dueDate)
+    }
+
+    suspend fun getDailyExpense(startOfDay: Long, endOfDay: Long): Double? {
+        return transactionDao.getDailyExpense(startOfDay, endOfDay)
+    }
+
+    suspend fun updateBill(bill: Bill) {
+        billDao.updateBill(bill)
     }
 }

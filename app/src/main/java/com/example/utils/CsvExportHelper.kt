@@ -1,10 +1,12 @@
-package com.example.utils
+package com.pesasense.utils
 
+import android.content.ContentValues
 import android.content.Context
+import android.os.Build
 import android.os.Environment
-import com.example.model.Transaction
+import android.provider.MediaStore
+import com.pesasense.model.Transaction
 import java.io.File
-import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -12,54 +14,59 @@ import java.util.Locale
 object CsvExportHelper {
 
     fun exportToCsv(context: Context, transactions: List<Transaction>): File? {
-        if (!isExternalStorageWritable()) {
-            return null
-        }
+        if (transactions.isEmpty()) return null
 
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val fileName = "PesaSense_Export_${System.currentTimeMillis()}.csv"
-        val file = File(downloadsDir, fileName)
+        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val fileName = "PesaSense_$stamp.csv"
+        val csvContent = buildCsvContent(transactions)
 
-        try {
-            val writer = FileWriter(file)
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-
-            // Write CSV Header matching the requested screenshot format
-            writer.append("Date,Category,Merchant,Amount (KSh),Transaction Count\n")
-
-            // Group by date, category, merchant if needed, or just list transactions
-            // The screenshot shows unique transactions grouped or listed with count
-            val groupedTransactions = transactions.groupBy { 
-                "${dateFormat.format(Date(it.timestamp))}_${it.category}_${it.payee}" 
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "text/csv")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: return null
+                resolver.openOutputStream(uri)?.use { it.write(csvContent.toByteArray(Charsets.UTF_8)) }
+                values.clear()
+                values.put(MediaStore.Downloads.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+                File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName)
+            } else {
+                @Suppress("DEPRECATION")
+                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(dir, fileName)
+                file.writeText(csvContent, Charsets.UTF_8)
+                file
             }
-
-            for ((_, group) in groupedTransactions) {
-                val first = group.first()
-                val dateStr = dateFormat.format(Date(first.timestamp))
-                val category = first.category ?: "Uncategorized"
-                val merchant = first.payee
-                val totalAmount = group.sumOf { it.amount }
-                val count = group.size
-
-                writer.append("$dateStr,$category,\"$merchant\",$totalAmount,$count\n")
-            }
-
-            // Append Total Row
-            val grandTotal = transactions.sumOf { it.amount }
-            val totalCount = transactions.size
-            writer.append("TOTAL,-,-,$grandTotal,$totalCount\n")
-
-            writer.flush()
-            writer.close()
-            return file
         } catch (e: Exception) {
             e.printStackTrace()
-            return null
+            null
         }
     }
 
-    private fun isExternalStorageWritable(): Boolean {
-        val state = Environment.getExternalStorageState()
-        return Environment.MEDIA_MOUNTED == state
+    private fun buildCsvContent(transactions: List<Transaction>): String {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        val sb = StringBuilder()
+        sb.appendLine("Date,Type,Category,Payee,Amount (KES),Fee (KES),Balance After,M-PESA Ref")
+        transactions
+            .filter { !it.isFeeTransaction }
+            .sortedByDescending { it.timestamp }
+            .forEach { t ->
+                val date = dateFormat.format(Date(t.timestamp))
+                val type = t.type.name.replace("_", " ")
+                val payee = "\"${t.payee.replace("\"", "\"\"")}\""
+                sb.appendLine(
+                    "$date,$type,${t.category},$payee," +
+                    "${"%.2f".format(t.amount)},${"%.2f".format(t.fee)}," +
+                    "${"%.2f".format(t.balanceAfter)},${t.remoteRef}"
+                )
+            }
+        val grandTotal = transactions.filter { !it.isFeeTransaction }.sumOf { it.amount }
+        sb.appendLine("TOTAL,,,,${String.format("%.2f", grandTotal)},,,")
+        return sb.toString()
     }
 }

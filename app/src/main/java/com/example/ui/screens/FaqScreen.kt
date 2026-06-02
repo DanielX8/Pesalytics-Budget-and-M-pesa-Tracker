@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.pesasense.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -18,8 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.ui.theme.AccentGreenDark
-import com.example.ui.theme.AccentGreenLight
+import com.pesasense.ui.theme.AccentGreenDark
+import com.pesasense.ui.theme.AccentGreenLight
 
 data class FaqItem(val question: String, val answer: String)
 

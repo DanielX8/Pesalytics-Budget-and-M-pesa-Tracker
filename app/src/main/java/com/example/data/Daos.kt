@@ -1,14 +1,15 @@
-package com.example.data
+package com.pesasense.data
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Delete
-import com.example.model.Bill
-import com.example.model.Budget
-import com.example.model.CustomRule
-import com.example.model.Transaction
+import androidx.room.Update
+import com.pesasense.model.Bill
+import com.pesasense.model.Budget
+import com.pesasense.model.CustomRule
+import com.pesasense.model.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -39,6 +40,12 @@ interface TransactionDao {
 
     @Query("UPDATE transactions SET category = :newCategory WHERE LOWER(payee) = LOWER(:payee)")
     suspend fun updateCategoryForPayee(payee: String, newCategory: String)
+
+    @Query("UPDATE transactions SET fulizaOutstandingBalance = :outstandingBalance, fulizaDueDate = :dueDate WHERE remoteRef = :ref")
+    suspend fun enrichFulizaTransaction(ref: String, outstandingBalance: Double, dueDate: String?)
+
+    @Query("SELECT SUM(amount) FROM transactions WHERE type NOT IN ('RECEIVE_MONEY', 'MANUAL_INCOME', 'MANUAL_TRANSFER') AND timestamp >= :startOfDay AND timestamp <= :endOfDay")
+    suspend fun getDailyExpense(startOfDay: Long, endOfDay: Long): Double?
 }
 
 @Dao
@@ -60,6 +67,9 @@ interface BillDao {
 
     @Query("DELETE FROM bills WHERE id = :id")
     suspend fun deleteBill(id: Int)
+
+    @Update
+    suspend fun updateBill(bill: Bill)
 }
 
 @Dao
@@ -77,8 +87,14 @@ interface BudgetDao {
 @Dao
 interface GoalDao {
     @Query("SELECT * FROM goals ORDER BY targetDate ASC")
-    fun getAllGoals(): Flow<List<com.example.model.Goal>>
+    fun getAllGoals(): Flow<List<com.pesasense.model.Goal>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertGoal(goal: com.example.model.Goal)
+    suspend fun insertGoal(goal: com.pesasense.model.Goal)
+
+    @Query("UPDATE goals SET savedAmount = savedAmount + :amount WHERE id = :id")
+    suspend fun addGoalContribution(id: Int, amount: Double)
+
+    @Query("DELETE FROM goals WHERE id = :id")
+    suspend fun deleteGoal(id: Int)
 }
