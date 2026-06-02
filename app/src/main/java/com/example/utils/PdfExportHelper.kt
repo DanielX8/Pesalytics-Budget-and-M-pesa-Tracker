@@ -1,4 +1,4 @@
-package com.example.utils
+package com.pesasense.utils
 
 import android.content.Context
 import android.os.Environment
@@ -6,7 +6,7 @@ import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.example.model.Transaction
+import com.pesasense.model.Transaction
 import java.io.File
 
 object PdfExportHelper {
@@ -28,7 +28,7 @@ object PdfExportHelper {
     }
 
     private fun generateHtmlReport(transactions: List<Transaction>): String {
-        val expenses = transactions.filter { it.type != com.example.model.TransactionType.RECEIVE_MONEY && it.type != com.example.model.TransactionType.MANUAL_INCOME }
+        val expenses = transactions.filter { it.type != com.pesasense.model.TransactionType.RECEIVE_MONEY && it.type != com.pesasense.model.TransactionType.MANUAL_INCOME }
         val totalExpenses = expenses.sumOf { it.amount }
         val transactionCount = expenses.size
         

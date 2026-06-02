@@ -1,16 +1,20 @@
-package com.example.ui.screens
+package com.pesasense.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.data.PesaRepository
-import com.example.model.Bill
-import com.example.model.Transaction
-import com.example.model.TransactionType
-import com.example.model.BillCycle
-import com.example.model.Budget
-import com.example.model.Goal
-import com.example.model.GoalType
+import com.pesasense.data.PesaRepository
+import com.pesasense.model.Bill
+import com.pesasense.model.Transaction
+import com.pesasense.model.TransactionType
+import com.pesasense.model.BillCycle
+import com.pesasense.model.Budget
+import com.pesasense.model.Goal
+import com.pesasense.model.GoalType
+import com.pesasense.model.ThemeMode
+import com.pesasense.patterns.PatternEngine
+import com.pesasense.patterns.PatternResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +26,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import com.example.model.ThemeMode
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -35,22 +38,23 @@ data class AppNotification(
 )
 
 data class HomeUiState(
-    val transactions: List<Transaction> = emptyList(), // Current month transactions
-    val recentTransactions: List<Transaction> = emptyList(), // Last 5 transactions overall
+    val transactions: List<Transaction> = emptyList(),
+    val recentTransactions: List<Transaction> = emptyList(),
     val monthlyIncome: Double = 0.0,
     val monthlyExpense: Double = 0.0,
     val currentBalance: Double = 0.0,
     val isBalanceVisible: Boolean = true,
     val currentBudgetLimit: Double = 0.0,
     val hasBudget: Boolean = false,
-    val budgets: List<com.example.model.Budget> = emptyList()
+    val budgets: List<com.pesasense.model.Budget> = emptyList()
 )
 
 class PesaViewModel(
     private val repository: PesaRepository,
-    private val notificationHelper: com.example.notifications.NotificationHelper? = null
+    private val notificationHelper: com.pesasense.notifications.NotificationHelper? = null
 ) : ViewModel() {
 
+    // ── Month selection ──────────────────────────────────────────────────────
     private val _selectedMonthIndex = MutableStateFlow(Calendar.getInstance().get(Calendar.MONTH))
     val selectedMonthIndex = _selectedMonthIndex.asStateFlow()
 
@@ -60,6 +64,11 @@ class PesaViewModel(
 
     val currentMonthStart: StateFlow<Long> = _selectedMonthIndex.map { monthIndex ->
         val calendar = Calendar.getInstance()
+        val currentMonth = calendar.get(Calendar.MONTH)
+        val currentYear = calendar.get(Calendar.YEAR)
+        // If the selected month is ahead of today's month it belongs to the previous year
+        val targetYear = if (monthIndex > currentMonth) currentYear - 1 else currentYear
+        calendar.set(Calendar.YEAR, targetYear)
         calendar.set(Calendar.MONTH, monthIndex)
         calendar.set(Calendar.DAY_OF_MONTH, 1)
         calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -68,12 +77,13 @@ class PesaViewModel(
         calendar.set(Calendar.MILLISECOND, 0)
         calendar.timeInMillis
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), 0L)
-    
+
     val currentMonthYearString: StateFlow<String> = currentMonthStart.map { start ->
         val format = SimpleDateFormat("MM/yyyy", Locale.getDefault())
         format.format(Date(start))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), "")
 
+    // ── General state ────────────────────────────────────────────────────────
     val isBalanceVisible = MutableStateFlow(true)
     val themeMode = MutableStateFlow(ThemeMode.SYSTEM)
     private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
@@ -84,6 +94,25 @@ class PesaViewModel(
     val isFirstLaunch = MutableStateFlow(true)
     val isPremium = MutableStateFlow(false)
 
+    // ── Notification preferences ─────────────────────────────────────────────
+    val billAlertsEnabled = MutableStateFlow(true)
+    val budgetAlertsEnabled = MutableStateFlow(true)
+    val goalRemindersEnabled = MutableStateFlow(false)
+    val highSpendingAlertsEnabled = MutableStateFlow(true)
+    val smartAlertsEnabled = MutableStateFlow(false)
+
+    // ── Pattern analysis ─────────────────────────────────────────────────────
+    private val _patternResult = MutableStateFlow<PatternResult?>(null)
+    val patternResult = _patternResult.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            repository.allTransactions.first { it.isNotEmpty() }
+            refreshPatterns()
+        }
+    }
+
+    // ── Profile / prefs ──────────────────────────────────────────────────────
     fun setProfileInfo(name: String, avatarIndex: Int, context: android.content.Context) {
         userName.value = name
         userAvatar.value = avatarIndex
@@ -106,6 +135,8 @@ class PesaViewModel(
         userAvatar.value = prefs.getInt("user_avatar", 0)
         isFirstLaunch.value = !prefs.getBoolean("has_completed_onboarding", false)
         isPremium.value = prefs.getBoolean("is_premium", false)
+        loadThemeMode(context)
+        loadNotificationPrefs(context)
     }
 
     fun upgradeToPremium(context: android.content.Context) {
@@ -118,13 +149,75 @@ class PesaViewModel(
     fun completeOnboarding(name: String, avatarIndex: Int, context: android.content.Context) {
         setProfileInfo(name, avatarIndex, context)
         isFirstLaunch.value = false
-        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit().putBoolean("has_completed_onboarding", true).apply()
+        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
+            .putBoolean("has_completed_onboarding", true)
+            .apply()
     }
 
+    // ── Theme ────────────────────────────────────────────────────────────────
+    fun setThemeMode(mode: ThemeMode, context: android.content.Context) {
+        themeMode.value = mode
+        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
+            .putString("theme_mode", mode.name)
+            .apply()
+    }
+
+    private fun loadThemeMode(context: android.content.Context) {
+        val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+        themeMode.value = try {
+            ThemeMode.valueOf(prefs.getString("theme_mode", ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name)
+        } catch (e: IllegalArgumentException) {
+            ThemeMode.SYSTEM
+        }
+    }
+
+    // ── Notification preferences ─────────────────────────────────────────────
+    fun setNotificationPref(key: String, enabled: Boolean, context: android.content.Context) {
+        when (key) {
+            "bill_alerts" -> billAlertsEnabled.value = enabled
+            "budget_alerts" -> budgetAlertsEnabled.value = enabled
+            "goal_reminders" -> goalRemindersEnabled.value = enabled
+            "high_spending" -> highSpendingAlertsEnabled.value = enabled
+            "smart_alerts" -> smartAlertsEnabled.value = enabled
+        }
+        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
+            .putBoolean("notif_$key", enabled)
+            .apply()
+    }
+
+    private fun loadNotificationPrefs(context: android.content.Context) {
+        val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+        billAlertsEnabled.value = prefs.getBoolean("notif_bill_alerts", true)
+        budgetAlertsEnabled.value = prefs.getBoolean("notif_budget_alerts", true)
+        goalRemindersEnabled.value = prefs.getBoolean("notif_goal_reminders", false)
+        highSpendingAlertsEnabled.value = prefs.getBoolean("notif_high_spending", true)
+        smartAlertsEnabled.value = prefs.getBoolean("notif_smart_alerts", false)
+    }
+
+    // ── Notifications (in-app) ───────────────────────────────────────────────
     fun addNotification(message: String) {
         _notifications.value = listOf(AppNotification(message = message)) + _notifications.value
     }
 
+    fun dismissNotification(id: String) {
+        _notifications.value = _notifications.value.filter { it.id != id }
+    }
+
+    fun clearNotifications() {
+        _notifications.value = emptyList()
+    }
+
+    // ── Pattern refresh ──────────────────────────────────────────────────────
+    fun refreshPatterns() {
+        viewModelScope.launch(Dispatchers.Default) {
+            val transactions = repository.allTransactions.first()
+            if (transactions.isNotEmpty()) {
+                _patternResult.value = PatternEngine().compute(transactions)
+            }
+        }
+    }
+
+    // ── SMS sync ─────────────────────────────────────────────────────────────
     fun syncMpesaSms(context: android.content.Context) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val transactionsList = mutableListOf<Transaction>()
@@ -132,7 +225,7 @@ class PesaViewModel(
                 val existingTransactions = repository.allTransactions.first()
                 val existingRefs = existingTransactions.map { "${it.remoteRef}_${it.isFeeTransaction}" }.toSet()
                 val customRules = repository.allCustomRules.first()
-                
+
                 val cursor = context.contentResolver.query(
                     android.net.Uri.parse("content://sms/inbox"),
                     null,
@@ -150,12 +243,10 @@ class PesaViewModel(
                         val body = cursor.getString(bodyIndex)
                         val timestamp = cursor.getLong(dateIndex)
                         val extractedTransactions = parseMpesaSms(body, timestamp, customRules)
-                        
+
                         for (transaction in extractedTransactions) {
                             val uniqueKey = "${transaction.remoteRef}_${transaction.isFeeTransaction}"
-                            if (existingRefs.contains(uniqueKey)) {
-                                continue 
-                            }
+                            if (existingRefs.contains(uniqueKey)) continue
                             if (!transactionsList.any { "${it.remoteRef}_${it.isFeeTransaction}" == uniqueKey }) {
                                 transactionsList.add(transaction)
                             }
@@ -166,8 +257,29 @@ class PesaViewModel(
 
                 if (transactionsList.isNotEmpty()) {
                     repository.insertTransactions(transactionsList)
+
+                    // Auto-match newly synced transactions against tracked bills
+                    val currentBills = repository.allBills.first()
+                    for (transaction in transactionsList) {
+                        val match = currentBills.find { bill ->
+                            bill.payee.isNotBlank() &&
+                            !bill.isPaid &&
+                            transaction.payee.contains(bill.payee, ignoreCase = true)
+                        }
+                        if (match != null) {
+                            val now = System.currentTimeMillis()
+                            val updated = if (match.isAutoPay) {
+                                match.copy(isPaid = true, lastPaidDate = now, nextDueDate = calculateNextDueDate(match.cycle, match.nextDueDate))
+                            } else {
+                                match.copy(isPaid = true, lastPaidDate = now)
+                            }
+                            repository.updateBill(updated)
+                        }
+                    }
+
                     _notifications.value = listOf(AppNotification(message = "Synced ${transactionsList.size} new MPESA records.")) + _notifications.value
                     checkBudgetThresholds()
+                    refreshPatterns()
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         android.widget.Toast.makeText(context, "M-Pesa messages synced successfully", android.widget.Toast.LENGTH_SHORT).show()
                     }
@@ -187,7 +299,6 @@ class PesaViewModel(
         }
     }
 
-    // Data class to hold extracted fields from any matched SMS regex
     private data class SmsFields(
         val receipt: String,
         val amount: Double,
@@ -197,44 +308,50 @@ class PesaViewModel(
         val accountRef: String?
     )
 
-    private fun parseMpesaSms(body: String, timestamp: Long, customRules: List<com.example.model.CustomRule>): List<Transaction> {
+    private suspend fun parseMpesaSms(body: String, timestamp: Long, customRules: List<com.pesasense.model.CustomRule>): List<Transaction> {
         val results = mutableListOf<Transaction>()
-        
+
+        // Two-pass Fuliza enrichment: detect outstanding-balance SMS and enrich the original transaction
+        if (body.contains("Total Fuliza M-PESA outstanding amount is", ignoreCase = true)) {
+            val outstandingRegex = Regex(
+                """([A-Z0-9]+).*?Total Fuliza M-PESA outstanding amount is Ksh([\d,]+\.\d{2}).*?Due on (\d{1,2}/\d{1,2}/\d{4})""",
+                setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+            )
+            outstandingRegex.find(body)?.let { match ->
+                val ref = match.groupValues[1]
+                val outstandingBalance = match.groupValues[2].replace(",", "").toDoubleOrNull() ?: 0.0
+                val dueDate = match.groupValues[3]
+                repository.enrichFulizaTransaction(ref, outstandingBalance, dueDate)
+            }
+            return results // empty — don't create a duplicate transaction
+        }
+
         // Secondary Fuliza Overdraft Match
         val fulizaRegex = Regex("Fuliza M-Pesa amount is Ksh([\\d,]+\\.\\d{2})", RegexOption.IGNORE_CASE)
         val fulizaMatch = fulizaRegex.find(body)
         val usedFulizaAmount = fulizaMatch?.groupValues?.getOrNull(1)?.replace(",", "")?.toDoubleOrNull() ?: 0.0
 
-        // All regexes use positional groups (no named groups — API 24 safe)
-        // Relaxed with \\s+ for whitespace and optional punctuation
         data class RuleEntry(val type: TransactionType, val regex: Regex, val extract: (MatchResult) -> SmsFields?)
 
         val rules = listOf(
-            // BUY_GOODS: receipt, amount, payee, date, time, balance, fee?
             RuleEntry(TransactionType.BUY_GOODS, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*Ksh([\\d,]+\\.\\d{2})\\s+paid to\\s+(.+?)\\s+on\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+at\\s+(\\d{1,2}:\\d{2}\\s*[APM]{2})\\.?\\s*New M-PESA balance is Ksh([\\d,]+\\.\\d{2})\\.(?:\\s*Transaction cost,?\\s*Ksh([\\d,]+\\.\\d{2})\\.?)?", RegexOption.IGNORE_CASE)) { m ->
                 SmsFields(m.groupValues[1], m.groupValues[2].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues[3].trim().trimEnd('.'), m.groupValues[6].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues.getOrNull(7)?.replace(",","")?.toDoubleOrNull() ?: 0.0, null)
             },
-            // PAYBILL: receipt, amount, payee, account, date, time, balance, fee?
             RuleEntry(TransactionType.PAYBILL, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*Ksh([\\d,]+\\.\\d{2})\\s+(?:sent to|paid to)\\s+(.+?)\\.?\\s*(?:for account|Account Number)\\s+(.+?)\\s+on\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+at\\s+(\\d{1,2}:\\d{2}\\s*[APM]{2})\\.?\\s*New M-PESA balance is Ksh([\\d,]+\\.\\d{2})\\.(?:\\s*Transaction cost,?\\s*Ksh([\\d,]+\\.\\d{2})\\.?)?", RegexOption.IGNORE_CASE)) { m ->
                 SmsFields(m.groupValues[1], m.groupValues[2].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues[3].trim().trimEnd('.'), m.groupValues[7].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues.getOrNull(8)?.replace(",","")?.toDoubleOrNull() ?: 0.0, m.groupValues[4].trim())
             },
-            // SEND_MONEY: receipt, amount, payee, phone, date, time, balance, fee?
             RuleEntry(TransactionType.SEND_MONEY, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*Ksh([\\d,]+\\.\\d{2})\\s+sent to\\s+(.+?)\\s+(\\d{7,15})\\s+on\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+at\\s+(\\d{1,2}:\\d{2}\\s*[APM]{2})\\.?\\s*New M-PESA balance is Ksh([\\d,]+\\.\\d{2})\\.(?:\\s*Transaction cost,?\\s*Ksh([\\d,]+\\.\\d{2})\\.?)?", RegexOption.IGNORE_CASE)) { m ->
                 SmsFields(m.groupValues[1], m.groupValues[2].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues[3].trim(), m.groupValues[7].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues.getOrNull(8)?.replace(",","")?.toDoubleOrNull() ?: 0.0, null)
             },
-            // RECEIVE_MONEY: receipt, amount, payee, phone, date, time, balance
             RuleEntry(TransactionType.RECEIVE_MONEY, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*You have received Ksh([\\d,]+\\.\\d{2})\\s+from\\s+(.+?)\\s+(\\d{7,15})\\s+on\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+at\\s+(\\d{1,2}:\\d{2}\\s*[APM]{2})\\.?\\s*New M-PESA balance is Ksh([\\d,]+\\.\\d{2})", RegexOption.IGNORE_CASE)) { m ->
                 SmsFields(m.groupValues[1], m.groupValues[2].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues[3].trim(), m.groupValues[7].replace(",","").toDoubleOrNull() ?: 0.0, 0.0, null)
             },
-            // WITHDRAW: receipt, date, time, amount, payee, balance, fee?
             RuleEntry(TransactionType.WITHDRAW, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*on\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+at\\s+(\\d{1,2}:\\d{2}\\s*[APM]{2})\\s+Withdraw Ksh([\\d,]+\\.\\d{2})\\s+from\\s+(.+?)\\.?\\s*New M-PESA balance is Ksh([\\d,]+\\.\\d{2})\\.(?:\\s*Transaction cost,?\\s*Ksh([\\d,]+\\.\\d{2})\\.?)?", RegexOption.IGNORE_CASE)) { m ->
                 SmsFields(m.groupValues[1], m.groupValues[4].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues[5].trim().trimEnd('.'), m.groupValues[6].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues.getOrNull(7)?.replace(",","")?.toDoubleOrNull() ?: 0.0, null)
             },
-            // AIRTIME: receipt, amount, date, time, balance, fee?
             RuleEntry(TransactionType.AIRTIME, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*You bought Ksh([\\d,]+\\.\\d{2})\\s+of airtime on\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+at\\s+(\\d{1,2}:\\d{2}\\s*[APM]{2})\\.?\\s*New M-PESA balance is Ksh([\\d,]+\\.\\d{2})\\.(?:\\s*Transaction cost,?\\s*Ksh([\\d,]+\\.\\d{2})\\.?)?", RegexOption.IGNORE_CASE)) { m ->
                 SmsFields(m.groupValues[1], m.groupValues[2].replace(",","").toDoubleOrNull() ?: 0.0, "Safaricom", m.groupValues[5].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues.getOrNull(6)?.replace(",","")?.toDoubleOrNull() ?: 0.0, null)
             },
-            // FULIZA DEDUCT: receipt, amount
             RuleEntry(TransactionType.MANUAL_EXPENSE, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*Ksh([\\d,]+\\.\\d{2})\\s+deducted.*?settle your Fuliza", RegexOption.IGNORE_CASE)) { m ->
                 SmsFields(m.groupValues[1], m.groupValues[2].replace(",","").toDoubleOrNull() ?: 0.0, "Fuliza", 0.0, 0.0, null)
             }
@@ -252,7 +369,6 @@ class PesaViewModel(
             }
         }
 
-        // Fallback: keyword-based parsing for non-standard SMS formats
         if (fields == null) {
             fields = fallbackParseSms(body, timestamp)
             if (fields != null) {
@@ -272,7 +388,6 @@ class PesaViewModel(
         if (fields != null && matchedType != null && fields.amount > 0.0) {
             val payeeRaw = fields.payee.replace(Regex("\\s+\\d{4,}$"), "").trim()
 
-            // Tier 2 Custom Checking
             var category = customRules.find { payeeRaw.contains(it.payeePattern, ignoreCase = true) }?.mappedCategory
             if (category == null) {
                 category = when (matchedType) {
@@ -287,33 +402,30 @@ class PesaViewModel(
                 }
             }
 
-            // For Fuliza deductions, set the usedFulizaAmount to the transaction amount itself
             val effectiveFuliza = if (matchedType == TransactionType.MANUAL_EXPENSE && body.contains("Fuliza", ignoreCase = true)) {
                 if (usedFulizaAmount > 0.0) usedFulizaAmount else fields.amount
             } else {
                 usedFulizaAmount
             }
 
-            val mainTransaction = Transaction(
-                amount = fields.amount,
-                payee = payeeRaw,
-                timestamp = timestamp,
-                type = matchedType,
-                remoteRef = fields.receipt,
-                category = category,
-                fee = fields.fee,
-                balanceAfter = fields.balance,
-                accountRef = fields.accountRef,
-                isFeeTransaction = false,
-                usedFulizaAmount = effectiveFuliza,
-                originalSms = body
+            results.add(
+                Transaction(
+                    amount = fields.amount,
+                    payee = payeeRaw,
+                    timestamp = timestamp,
+                    type = matchedType,
+                    remoteRef = fields.receipt,
+                    category = category,
+                    fee = fields.fee,
+                    balanceAfter = fields.balance,
+                    accountRef = fields.accountRef,
+                    isFeeTransaction = false,
+                    usedFulizaAmount = effectiveFuliza,
+                    originalSms = body
+                )
             )
-            results.add(mainTransaction)
-
-            // NO MORE separate fee transaction splitting.
-            // Fees are stored on the main transaction's `fee` field and displayed inline.
         }
-        
+
         return results
     }
 
@@ -339,40 +451,25 @@ class PesaViewModel(
 
         var fee = 0.0
         val feeRegex = Regex("Transaction cost[s]?[^\\d]*([\\d,]+\\.\\d{2})", RegexOption.IGNORE_CASE)
-        val feeMatch = feeRegex.find(body)
-        if (feeMatch != null) {
-            fee = feeMatch.groupValues[1].replace(",", "").toDoubleOrNull() ?: 0.0
-        }
+        feeRegex.find(body)?.let { fee = it.groupValues[1].replace(",", "").toDoubleOrNull() ?: 0.0 }
 
         var balanceAfter = 0.0
         val balanceRegex = Regex("balance is Ksh([\\d,]+\\.\\d{2})", RegexOption.IGNORE_CASE)
-        val balanceMatch = balanceRegex.find(body)
-        if (balanceMatch != null) {
-            balanceAfter = balanceMatch.groupValues[1].replace(",", "").toDoubleOrNull() ?: 0.0
-        }
+        balanceRegex.find(body)?.let { balanceAfter = it.groupValues[1].replace(",", "").toDoubleOrNull() ?: 0.0 }
 
         var accountRef: String? = null
         val accountRegex = Regex("Account Number (.+?) on", RegexOption.IGNORE_CASE)
-        val accountMatch = accountRegex.find(body)
-        if (accountMatch != null) {
-            accountRef = accountMatch.groupValues[1].trim()
-        }
+        accountRegex.find(body)?.let { accountRef = it.groupValues[1].trim() }
 
         return SmsFields(ref, amount, payee, balanceAfter, fee, accountRef)
     }
 
-    fun dismissNotification(id: String) {
-        _notifications.value = _notifications.value.filter { it.id != id }
-    }
-    
-    fun clearNotifications() {
-        _notifications.value = emptyList()
-    }
-
+    // ── Balance visibility ───────────────────────────────────────────────────
     fun toggleBalanceVisibility() {
         isBalanceVisible.value = !isBalanceVisible.value
     }
 
+    // ── DB-backed state ──────────────────────────────────────────────────────
     val bills = repository.allBills.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
     val goals = repository.allGoals.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
 
@@ -399,36 +496,84 @@ class PesaViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
+    // ── Bills ────────────────────────────────────────────────────────────────
     fun addBill(bill: Bill) {
-        viewModelScope.launch {
-            repository.insertBill(bill)
-        }
+        viewModelScope.launch { repository.insertBill(bill) }
     }
 
     fun updateBill(bill: Bill) {
-        viewModelScope.launch {
-            repository.insertBill(bill) // Room REPLACE will update it
-        }
+        viewModelScope.launch { repository.insertBill(bill) }
     }
 
     fun deleteBill(bill: Bill) {
+        viewModelScope.launch { repository.deleteBill(bill) }
+    }
+
+    fun markBillAsPaid(bill: Bill) {
         viewModelScope.launch {
-            repository.deleteBill(bill)
+            val now = System.currentTimeMillis()
+            val updated = if (bill.isAutoPay) {
+                bill.copy(isPaid = true, lastPaidDate = now, nextDueDate = calculateNextDueDate(bill.cycle, bill.nextDueDate))
+            } else {
+                bill.copy(isPaid = true, lastPaidDate = now)
+            }
+            repository.updateBill(updated)
         }
     }
 
+    private fun calculateNextDueDate(cycle: BillCycle, currentDueDate: Long): Long {
+        val cal = Calendar.getInstance().apply { timeInMillis = currentDueDate }
+        when (cycle) {
+            BillCycle.DAILY -> cal.add(Calendar.DAY_OF_YEAR, 1)
+            BillCycle.WEEKLY -> cal.add(Calendar.WEEK_OF_YEAR, 1)
+            BillCycle.MONTHLY -> cal.add(Calendar.MONTH, 1)
+            BillCycle.YEARLY -> cal.add(Calendar.YEAR, 1)
+        }
+        return cal.timeInMillis
+    }
+
+    // ── Goals ────────────────────────────────────────────────────────────────
     fun addGoal(goal: Goal) {
-        viewModelScope.launch {
-            repository.insertGoal(goal)
-        }
+        viewModelScope.launch { repository.insertGoal(goal) }
     }
 
+    fun addGoalContribution(goalId: Int, amount: Double) {
+        viewModelScope.launch { repository.addGoalContribution(goalId, amount) }
+    }
+
+    fun deleteGoal(goalId: Int) {
+        viewModelScope.launch { repository.deleteGoal(goalId) }
+    }
+
+    // ── Transactions ─────────────────────────────────────────────────────────
     fun deleteTransaction(id: Int) {
+        viewModelScope.launch { repository.deleteTransaction(id) }
+    }
+
+    fun insertManualTransaction(amount: Double, payee: String, isIncome: Boolean) {
         viewModelScope.launch {
-            repository.deleteTransaction(id)
+            val type = if (isIncome) TransactionType.MANUAL_INCOME else TransactionType.MANUAL_EXPENSE
+            val category = if (isIncome) "Income" else "Other"
+            repository.insertTransaction(
+                Transaction(
+                    remoteRef = "MANUAL_${System.currentTimeMillis()}",
+                    amount = amount,
+                    type = type,
+                    payee = payee.trim(),
+                    category = category,
+                    timestamp = System.currentTimeMillis()
+                )
+            )
         }
     }
 
+    fun updateTransactionCategory(transaction: Transaction, newCategory: String) {
+        viewModelScope.launch {
+            repository.updateTransactionCategoryAndRetrain(transaction.id, transaction.payee, newCategory)
+        }
+    }
+
+    // ── Budgets ──────────────────────────────────────────────────────────────
     fun setBudget(category: String, limit: Double) {
         viewModelScope.launch {
             val monthYear = currentMonthYearString.value
@@ -456,12 +601,7 @@ class PesaViewModel(
         }
     }
 
-    fun updateTransactionCategory(transaction: Transaction, newCategory: String) {
-        viewModelScope.launch {
-            repository.updateTransactionCategoryAndRetrain(transaction.id, transaction.payee, newCategory)
-        }
-    }
-
+    // ── Budget threshold check ───────────────────────────────────────────────
     private fun checkBudgetThresholds() {
         if (notificationHelper == null) return
         viewModelScope.launch {
@@ -469,8 +609,8 @@ class PesaViewModel(
             val currentMonthStartMs = currentMonthStart.value
             val budgets = repository.getBudgetsForMonth(monthYear).firstOrNull() ?: emptyList()
             val expenses = repository.getMonthlyExpense(currentMonthStartMs).firstOrNull() ?: 0.0
-            
-            val globalBudget = budgets.find { it.category == "GLOBAL" }
+
+            val globalBudget = budgets.find { it.category == "Overall" }
             if (globalBudget != null && globalBudget.limitAmount > 0) {
                 val percentage = expenses / globalBudget.limitAmount
                 if (percentage >= 1.0) {
@@ -485,7 +625,7 @@ class PesaViewModel(
 
 class PesaViewModelFactory(
     private val repository: PesaRepository,
-    private val notificationHelper: com.example.notifications.NotificationHelper? = null
+    private val notificationHelper: com.pesasense.notifications.NotificationHelper? = null
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PesaViewModel::class.java)) {
