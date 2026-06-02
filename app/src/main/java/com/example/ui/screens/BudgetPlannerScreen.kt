@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.pesasense.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -34,11 +34,11 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.foundation.border
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.R
-import com.example.model.Budget
-import com.example.ui.theme.AccentGreenDark
-import com.example.ui.theme.AccentGreenLight
-import com.example.ui.theme.ExpenseRed
+import com.pesasense.R
+import com.pesasense.model.Budget
+import com.pesasense.ui.theme.AccentGreenDark
+import com.pesasense.ui.theme.AccentGreenLight
+import com.pesasense.ui.theme.ExpenseRed
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

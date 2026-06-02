@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.pesasense.ui.screens
 
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.unit.sp
@@ -36,13 +36,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.R
-import com.example.ui.theme.AccentGreenLight
-import com.example.ui.theme.AccentGreenDark
-import com.example.ui.theme.WarningOrange
+import com.pesasense.R
+import com.pesasense.ui.theme.AccentGreenLight
+import com.pesasense.ui.theme.AccentGreenDark
+import com.pesasense.ui.theme.WarningOrange
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.model.ThemeMode
-import com.example.ui.theme.ExpenseRed
+import com.pesasense.model.ThemeMode
+import com.pesasense.ui.theme.ExpenseRed
 import androidx.compose.foundation.border
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,10 +58,11 @@ fun SettingsScreen(
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
     var notificationsExpanded by remember { mutableStateOf(false) }
 
-    var smartAlertsEnabled by remember { mutableStateOf(true) }
-    var upcomingBillAlerts by remember { mutableStateOf(true) }
-    var budgetAlerts by remember { mutableStateOf(true) }
-    var goalReminders by remember { mutableStateOf(false) }
+    val billAlertsEnabled by viewModel.billAlertsEnabled.collectAsStateWithLifecycle()
+    val budgetAlertsEnabled by viewModel.budgetAlertsEnabled.collectAsStateWithLifecycle()
+    val goalRemindersEnabled by viewModel.goalRemindersEnabled.collectAsStateWithLifecycle()
+    val highSpendingAlertsEnabled by viewModel.highSpendingAlertsEnabled.collectAsStateWithLifecycle()
+    val smartAlertsEnabled by viewModel.smartAlertsEnabled.collectAsStateWithLifecycle()
 
     var themeSelection by remember { mutableStateOf("System") }
     val themeOptions = listOf("Light", "Dark", "System")
@@ -77,9 +78,6 @@ fun SettingsScreen(
     var showEditNameDialog by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(Unit) {
-        viewModel.loadUserNameAndFirstLaunch(context)
-    }
 
     Scaffold(
         topBar = {
@@ -548,7 +546,7 @@ fun SettingsScreen(
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(containerColor)
                                         .border(1.dp, borderColor, RoundedCornerShape(12.dp))
-                                        .clickable { viewModel.themeMode.value = mode }
+                                        .clickable { viewModel.setThemeMode(mode, context) }
                                         .padding(vertical = 16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -584,22 +582,27 @@ fun SettingsScreen(
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                                 Text("Upcoming Bill Alerts", style = MaterialTheme.typography.bodyMedium)
-                                Switch(checked = upcomingBillAlerts, onCheckedChange = { upcomingBillAlerts = it }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
+                                Switch(checked = billAlertsEnabled, onCheckedChange = { viewModel.setNotificationPref("bill_alerts", it, context) }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                                 Text("Budget Threshold Alerts", style = MaterialTheme.typography.bodyMedium)
-                                Switch(checked = budgetAlerts, onCheckedChange = { budgetAlerts = it }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
+                                Switch(checked = budgetAlertsEnabled, onCheckedChange = { viewModel.setNotificationPref("budget_alerts", it, context) }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                                 Text("Goal Reminders", style = MaterialTheme.typography.bodyMedium)
-                                Switch(checked = goalReminders, onCheckedChange = { goalReminders = it }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
+                                Switch(checked = goalRemindersEnabled, onCheckedChange = { viewModel.setNotificationPref("goal_reminders", it, context) }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                                 Text("High Spending Alerts", style = MaterialTheme.typography.bodyMedium)
-                                Switch(checked = true, onCheckedChange = { }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
+                                Switch(checked = highSpendingAlertsEnabled, onCheckedChange = { viewModel.setNotificationPref("high_spending", it, context) }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Text("Smart Alerts", style = MaterialTheme.typography.bodyMedium)
+                                Switch(checked = smartAlertsEnabled, onCheckedChange = { viewModel.setNotificationPref("smart_alerts", it, context) }, colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha=0.5f)))
                             }
                         }
                     }
@@ -658,14 +661,14 @@ fun SettingsScreen(
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color(0xFFE0E7FF)).clickable {
-                                    val file = com.example.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
+                                    val file = com.pesasense.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
                                     viewModel.addNotification(if (file != null) "CSV saved to Downloads" else "Export failed")
                                     if (file != null) android.widget.Toast.makeText(context, "CSV exported successfully", android.widget.Toast.LENGTH_SHORT).show()
                                 }.padding(horizontal = 8.dp, vertical = 4.dp)) {
                                     Text(".CSV", style = MaterialTheme.typography.labelSmall, color = Color(0xFF1E293B), fontWeight = FontWeight.SemiBold)
                                 }
                                 Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color(0xFFE0E7FF)).clickable {
-                                    com.example.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
+                                    com.pesasense.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
                                         viewModel.addNotification("Print dialog opened for PDF generation.")
                                         android.widget.Toast.makeText(context, "PDF generated successfully", android.widget.Toast.LENGTH_SHORT).show()
                                     }

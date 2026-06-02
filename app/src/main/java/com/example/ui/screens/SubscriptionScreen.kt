@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.pesasense.ui.screens
 
 import androidx.compose.ui.unit.sp
 
@@ -11,9 +11,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,15 +26,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
-import com.example.ui.theme.AccentGreenLight
-import com.example.ui.theme.WarningOrange
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pesasense.R
+import com.pesasense.model.BillCycle
+import com.pesasense.ui.theme.AccentGreenLight
+import com.pesasense.ui.theme.ExpenseRed
+import com.pesasense.ui.theme.WarningOrange
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscriptionScreen(
+    viewModel: PesaViewModel,
     onNavigateBack: () -> Unit
 ) {
+    val allBills by viewModel.bills.collectAsStateWithLifecycle()
+    val monthlyBills = allBills.filter { it.cycle == BillCycle.MONTHLY }
     var selectedPlan by remember { mutableStateOf("Yearly") }
     var promoCode by remember { mutableStateOf("") }
 
@@ -51,7 +58,7 @@ fun SubscriptionScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
@@ -238,6 +245,66 @@ fun SubscriptionScreen(
                         ComparisonRow("Bill Tracker", "—", "Unlimited")
                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                         ComparisonRow("Data Export", "—", "CSV & PDF")
+                    }
+                }
+            }
+
+            // My Subscriptions (monthly bills)
+            item {
+                Text(
+                    "My Subscriptions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                )
+                Text(
+                    "Monthly recurring bills tracked in the Bills screen",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            item {
+                if (monthlyBills.isEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                            Text("No monthly subscriptions tracked yet.\nAdd them in the Bills tab.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                        }
+                    }
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            monthlyBills.forEachIndexed { index, bill ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(bill.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                        Text(bill.payee, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Text("KES ${formatCurrency(bill.amount)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = AccentGreenLight)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(onClick = { viewModel.deleteBill(bill) }, modifier = Modifier.size(32.dp)) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Remove", tint = ExpenseRed, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                                if (index < monthlyBills.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                            }
+                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Total / month", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                Text("KES ${formatCurrency(monthlyBills.sumOf { it.amount })}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = AccentGreenLight)
+                            }
+                        }
                     }
                 }
             }
