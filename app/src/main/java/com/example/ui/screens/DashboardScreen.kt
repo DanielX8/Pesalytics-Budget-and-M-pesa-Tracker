@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.pesasense.ui.screens
 
 import androidx.compose.ui.graphics.luminance
 
@@ -26,8 +26,11 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Payment
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -47,18 +50,18 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.model.Transaction
-import com.example.model.TransactionType
+import com.pesasense.model.Transaction
+import com.pesasense.model.TransactionType
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.launch
-import com.example.ui.theme.AccentGreenDark
-import com.example.ui.theme.AccentGreenLight
-import com.example.ui.theme.ExpenseRed
-import com.example.ui.theme.IncomeGreen
-import com.example.ui.theme.HeroGradientEnd
-import com.example.ui.theme.TransferBlue
-import com.example.ui.theme.WarningOrange
+import com.pesasense.ui.theme.AccentGreenDark
+import com.pesasense.ui.theme.AccentGreenLight
+import com.pesasense.ui.theme.ExpenseRed
+import com.pesasense.ui.theme.IncomeGreen
+import com.pesasense.ui.theme.HeroGradientEnd
+import com.pesasense.ui.theme.TransferBlue
+import com.pesasense.ui.theme.WarningOrange
 import androidx.compose.ui.unit.sp
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -91,7 +94,6 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.loadUserNameAndFirstLaunch(context)
         if (!hasRequestedSmsPermission) {
             val permission = android.Manifest.permission.READ_SMS
             if (androidx.core.content.ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -109,30 +111,81 @@ fun DashboardScreen(
     var showCategoryEdit by remember { mutableStateOf(false) }
 
     if (showAddManualDialog) {
-        val addManualSheetState = rememberModalBottomSheetState(
-            skipPartiallyExpanded = true,
-            confirmValueChange = { true }
-        )
+        val addManualSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val coroutineScope = rememberCoroutineScope()
+        var manualAmount by remember { mutableStateOf("") }
+        var manualPayee by remember { mutableStateOf("") }
+        var isManualIncome by remember { mutableStateOf(false) }
+
         ModalBottomSheet(
             onDismissRequest = { showAddManualDialog = false },
             sheetState = addManualSheetState,
             dragHandle = { BottomSheetDefaults.DragHandle() }
         ) {
             Column(modifier = Modifier.padding(16.dp).padding(bottom = 32.dp)) {
-                Text("Add Manual Transaction", style = MaterialTheme.typography.titleLarge)
+                Text("Add Manual Transaction", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
-                // Just placeholder fields for visual completion requested by user
-                OutlinedTextField(value = "", onValueChange = {}, label = { Text("Amount") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = "", onValueChange = {}, label = { Text("Payee/Description") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { 
-                    coroutineScope.launch {
-                        addManualSheetState.hide()
-                        showAddManualDialog = false 
+
+                // Type selector
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    listOf("Expense" to false, "Income" to true).forEach { (label, isIncome) ->
+                        val isSelected = isManualIncome == isIncome
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) AccentGreenDark else androidx.compose.ui.graphics.Color.Transparent)
+                                .clickable { isManualIncome = isIncome }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                label,
+                                color = if (isSelected) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                     }
-                }, modifier = Modifier.fillMaxWidth()) {
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = manualAmount,
+                    onValueChange = { manualAmount = it.filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text("Amount (KES)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = manualPayee,
+                    onValueChange = { manualPayee = it },
+                    label = { Text("Payee / Description") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val amount = manualAmount.toDoubleOrNull()
+                        if (amount != null && amount > 0 && manualPayee.isNotBlank()) {
+                            viewModel.insertManualTransaction(amount, manualPayee, isManualIncome)
+                            coroutineScope.launch {
+                                addManualSheetState.hide()
+                                showAddManualDialog = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = manualAmount.toDoubleOrNull() != null && manualPayee.isNotBlank()
+                ) {
                     Text("Save Transaction")
                 }
             }
@@ -271,14 +324,31 @@ fun DashboardScreen(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddManualDialog = true },
-                containerColor = AccentGreenDark,
-                contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier.padding(16.dp).size(64.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Transaction", modifier = Modifier.size(32.dp))
+            if (uiState.recentTransactions.isEmpty()) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        val permission = android.Manifest.permission.READ_SMS
+                        if (androidx.core.content.ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                            viewModel.syncMpesaSms(context)
+                        } else {
+                            permissionLauncher.launch(permission)
+                        }
+                    },
+                    icon = { Icon(Icons.Default.Sync, contentDescription = null) },
+                    text = { Text("Sync M-PESA") },
+                    containerColor = AccentGreenDark,
+                    contentColor = Color.White
+                )
+            } else {
+                FloatingActionButton(
+                    onClick = { showAddManualDialog = true },
+                    containerColor = AccentGreenDark,
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Transaction", modifier = Modifier.size(32.dp))
+                }
             }
         },
         containerColor = MaterialTheme.colorScheme.background

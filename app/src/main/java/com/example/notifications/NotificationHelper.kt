@@ -1,4 +1,4 @@
-package com.example.notifications
+package com.pesasense.notifications
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,7 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.example.MainActivity
+import com.pesasense.MainActivity
+import com.pesasense.R
 
 class NotificationHelper(private val context: Context) {
 
@@ -40,26 +41,32 @@ class NotificationHelper(private val context: Context) {
 
             val notificationManager: NotificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            
+
             notificationManager.createNotificationChannel(alertsChannel)
             notificationManager.createNotificationChannel(reportsChannel)
         }
     }
 
+    private fun isPrefEnabled(key: String, default: Boolean = true): Boolean =
+        context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
+            .getBoolean("notif_$key", default)
+
     fun showBudgetAlert(title: String, message: String) {
+        if (!isPrefEnabled("budget_alerts")) return
         showNotification(ALERTS_CHANNEL_ID, 1001, title, message)
     }
 
     fun showBillAlert(title: String, message: String) {
+        if (!isPrefEnabled("bill_alerts")) return
         showNotification(ALERTS_CHANNEL_ID, 1002, title, message)
     }
-    
+
     fun showGoalReminder(title: String, message: String) {
+        if (!isPrefEnabled("goal_reminders", default = false)) return
         showNotification(ALERTS_CHANNEL_ID, 1003, title, message)
     }
 
     fun showReportNotification(title: String, message: String) {
-        // Here we could add a specific PendingIntent to open the ReportScreen
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("navigate_to", "report")
@@ -69,7 +76,7 @@ class NotificationHelper(private val context: Context) {
         )
 
         val builder = NotificationCompat.Builder(context, REPORTS_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Replace with app logo
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -89,7 +96,7 @@ class NotificationHelper(private val context: Context) {
         )
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert) // Replace with app logo
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
