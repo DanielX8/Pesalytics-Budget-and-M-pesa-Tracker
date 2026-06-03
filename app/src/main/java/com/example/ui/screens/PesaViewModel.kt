@@ -108,9 +108,16 @@ class PesaViewModel(
     val patternResult = _patternResult.asStateFlow()
 
     init {
+        // Collect transactions and refresh patterns as soon as any data arrives.
+        // Using collect instead of `first { isNotEmpty() }` prevents hanging forever
+        // on a fresh install with an empty database.
         viewModelScope.launch {
-            repository.allTransactions.first { it.isNotEmpty() }
-            refreshPatterns()
+            repository.allTransactions.collect { txns ->
+                if (txns.isNotEmpty()) {
+                    refreshPatterns()
+                    return@collect
+                }
+            }
         }
     }
 
@@ -506,7 +513,10 @@ class PesaViewModel(
     }
 
     fun updateBill(bill: Bill) {
-        viewModelScope.launch { repository.insertBill(bill) }
+        // Use updateBill (not insertBill) to preserve the existing row ID.
+        // insertBill with REPLACE strategy would create a new row with a new ID,
+        // silently resetting lastPaidDate and breaking any future ID-based lookups.
+        viewModelScope.launch { repository.updateBill(bill) }
     }
 
     fun deleteBill(bill: Bill) {
