@@ -12,6 +12,7 @@ import com.pesasense.model.Budget
 import com.pesasense.model.Goal
 import com.pesasense.model.GoalType
 import com.pesasense.model.ThemeMode
+import androidx.compose.ui.geometry.Offset
 import com.pesasense.patterns.PatternEngine
 import com.pesasense.patterns.PatternResult
 import kotlinx.coroutines.Dispatchers
@@ -86,6 +87,7 @@ class PesaViewModel(
     // ── General state ────────────────────────────────────────────────────────
     val isBalanceVisible = MutableStateFlow(true)
     val themeMode = MutableStateFlow(ThemeMode.SYSTEM)
+    val revealOrigin = MutableStateFlow(Offset.Zero)
     private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
     val notifications = _notifications.asStateFlow()
 
@@ -137,6 +139,7 @@ class PesaViewModel(
         isPremium.value = prefs.getBoolean("is_premium", false)
         loadThemeMode(context)
         loadNotificationPrefs(context)
+        checkUpcomingBills()
     }
 
     fun upgradeToPremium(context: android.content.Context) {
@@ -155,7 +158,8 @@ class PesaViewModel(
     }
 
     // ── Theme ────────────────────────────────────────────────────────────────
-    fun setThemeMode(mode: ThemeMode, context: android.content.Context) {
+    fun setThemeMode(mode: ThemeMode, context: android.content.Context, origin: Offset = Offset.Zero) {
+        revealOrigin.value = origin
         themeMode.value = mode
         context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
             .putString("theme_mode", mode.name)
@@ -537,6 +541,26 @@ class PesaViewModel(
         viewModelScope.launch { repository.insertGoal(goal) }
     }
 
+    fun checkUpcomingBills() {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val threeDaysMs = 3L * 24 * 60 * 60 * 1000
+            val dueSoon = repository.allBills.first()
+                .filter { !it.isPaid && it.nextDueDate in now..(now + threeDaysMs) }
+            dueSoon.forEach { bill ->
+                val daysUntil = ((bill.nextDueDate - now) / (1000 * 60 * 60 * 24)).toInt()
+                val timeLabel = when (daysUntil) {
+                    0 -> "TODAY"
+                    1 -> "TOMORROW"
+                    else -> "in $daysUntil days"
+                }
+                val msg = "${bill.name} is due $timeLabel — KES ${"%.2f".format(bill.amount)}"
+                addNotification(msg)
+                notificationHelper?.showBillAlert("Upcoming Bill", msg)
+            }
+        }
+    }
+
     fun addGoalContribution(goalId: Int, amount: Double) {
         viewModelScope.launch { repository.addGoalContribution(goalId, amount) }
     }
@@ -613,10 +637,17 @@ class PesaViewModel(
             val globalBudget = budgets.find { it.category == "Overall" }
             if (globalBudget != null && globalBudget.limitAmount > 0) {
                 val percentage = expenses / globalBudget.limitAmount
-                if (percentage >= 1.0) {
-                    notificationHelper.showBudgetAlert("Budget Exceeded", "You have exceeded your global budget!")
-                } else if (percentage >= 0.8) {
-                    notificationHelper.showBudgetAlert("Budget Warning", "You've used ${"%.0f".format(percentage * 100)}% of your global budget.")
+                when {
+                    percentage >= 1.0 -> {
+                        val msg = "You have exceeded your monthly budget!"
+                        notificationHelper.showBudgetAlert("Budget Exceeded", msg)
+                        addNotification(msg)
+                    }
+                    percentage >= 0.8 -> {
+                        val msg = "You've used ${"%.0f".format(percentage * 100)}% of your monthly budget."
+                        notificationHelper.showBudgetAlert("Budget Warning", msg)
+                        addNotification(msg)
+                    }
                 }
             }
         }
