@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
             
             val themeMode by viewModel.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
             
-            val darkTheme = when (themeMode) {
+            val targetDarkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
@@ -100,27 +100,31 @@ class MainActivity : ComponentActivity() {
 
             // ── Circular reveal on theme change ─────────────────────────────
             val revealOrigin by viewModel.revealOrigin.collectAsState()
-            var previousDark by remember { mutableStateOf(darkTheme) }
+            var previousDark by remember { mutableStateOf(targetDarkTheme) }
+            var currentRenderDark by remember { mutableStateOf(targetDarkTheme) }
             var overlayColor by remember { mutableStateOf(Color.Transparent) }
             var animOrigin by remember { mutableStateOf(Offset.Zero) }
             val revealAnim = remember { Animatable(0f) }
 
-            LaunchedEffect(darkTheme) {
-                if (previousDark != darkTheme) {
+            LaunchedEffect(targetDarkTheme) {
+                if (previousDark != targetDarkTheme) {
                     // Capture old-theme background and tap origin before switching
                     overlayColor = if (previousDark) Color(0xFF000000) else Color(0xFFF8F9FA)
                     animOrigin = revealOrigin
                     revealAnim.snapTo(1f)               // instantly cover the screen
+                    currentRenderDark = targetDarkTheme // Switch the rendering theme NOW that the overlay is up
                     revealAnim.animateTo(               // then contract to the tap point
                         targetValue = 0f,
                         animationSpec = tween(500, easing = FastOutSlowInEasing)
                     )
-                    previousDark = darkTheme
+                    previousDark = targetDarkTheme
+                } else {
+                    currentRenderDark = targetDarkTheme
                 }
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                MyApplicationTheme(darkTheme = darkTheme) {
+                MyApplicationTheme(darkTheme = currentRenderDark) {
                     androidx.compose.material3.ProvideTextStyle(
                         value = androidx.compose.ui.text.TextStyle(fontFamily = com.pesasense.ui.theme.SpaceGroteskFontFamily)
                     ) {
