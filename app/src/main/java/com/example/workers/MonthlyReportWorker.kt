@@ -64,6 +64,33 @@ class MonthlyReportWorker(appContext: Context, workerParams: WorkerParameters) :
             )
         }
 
+        // ── Self-reschedule for the 1st of next month at 9:00 AM ───────────
+        // Using a OneTimeWorkRequest chain instead of a 30-day periodic job
+        // ensures the report always fires on the correct calendar date regardless
+        // of month length (28 / 29 / 30 / 31 days).
+        val nextMonthDelay = delayUntilFirstOfNextMonth(9, 0)
+        androidx.work.WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            "monthly_report",
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            androidx.work.OneTimeWorkRequestBuilder<MonthlyReportWorker>()
+                .setInitialDelay(nextMonthDelay, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .addTag("monthly_report")
+                .build()
+        )
+
         return Result.success()
+    }
+
+    private fun delayUntilFirstOfNextMonth(hour: Int, minute: Int): Long {
+        val now = Calendar.getInstance()
+        val target = Calendar.getInstance().apply {
+            add(Calendar.MONTH, 1)
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        return target.timeInMillis - now.timeInMillis
     }
 }

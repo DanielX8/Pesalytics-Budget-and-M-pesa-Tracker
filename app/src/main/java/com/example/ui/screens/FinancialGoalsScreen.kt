@@ -20,7 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.*
@@ -370,7 +370,7 @@ fun CreateGoalBottomSheet(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.TrendingDown, contentDescription = null, tint = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Filled.TrendingDown, contentDescription = null, tint = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Paying Off Debt", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant)
                     }

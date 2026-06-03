@@ -52,11 +52,16 @@ class PesaSenseApplication : Application() {
                 .build()
         )
 
-        // Monthly on the 1st at 9:00 AM — monthly summary + goal progress
-        wm.enqueueUniquePeriodicWork(
+        // Monthly on the 1st at 9:00 AM — monthly summary + goal progress.
+        // We use a OneTimeWorkRequest (not Periodic) because WorkManager's periodic
+        // scheduler counts elapsed time (30 days) rather than calendar days. Over
+        // several months the report would drift and arrive on the wrong date.
+        // MonthlyReportWorker re-enqueues itself at the end of each run, always
+        // computing the exact delay to the 1st of the next calendar month.
+        wm.enqueueUniqueWork(
             "monthly_report",
-            ExistingPeriodicWorkPolicy.KEEP,
-            PeriodicWorkRequestBuilder<MonthlyReportWorker>(30, TimeUnit.DAYS)
+            androidx.work.ExistingWorkPolicy.KEEP,
+            androidx.work.OneTimeWorkRequestBuilder<MonthlyReportWorker>()
                 .setInitialDelay(delayUntilFirstOfNextMonth(9, 0), TimeUnit.MILLISECONDS)
                 .addTag("monthly_report")
                 .build()

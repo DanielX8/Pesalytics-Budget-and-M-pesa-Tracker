@@ -34,7 +34,7 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -79,7 +79,11 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
     calendar.add(Calendar.DAY_OF_YEAR, 7)
     val endOfWeek = calendar.timeInMillis
 
-    val dueThisWeek = bills.filter { it.nextDueDate in startOfWeek..endOfWeek }.sumOf { it.amount }
+    // Only count bills that are still unpaid — so "Mark as Paid" immediately
+    // deducts from the displayed total, giving the user accurate feedback.
+    val dueThisWeek = bills
+        .filter { !it.isPaid && it.nextDueDate in startOfWeek..endOfWeek }
+        .sumOf { it.amount }
 
     if (showAddBillDialog) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -469,7 +473,7 @@ fun BillItem(bill: Bill, onClick: () -> Unit) {
         bill.name.contains("TV", ignoreCase = true) -> Icons.Default.Tv
         bill.name.contains("Electricity", ignoreCase = true) || bill.name.contains("KPLC", ignoreCase = true) -> Icons.Default.Bolt
         bill.name.contains("Fiber", ignoreCase = true) || bill.name.contains("Internet", ignoreCase = true) || bill.name.contains("Zuku", ignoreCase = true) -> Icons.Default.Wifi
-        else -> Icons.Default.ReceiptLong
+        else -> Icons.AutoMirrored.Filled.ReceiptLong
     }
 
     Row(
