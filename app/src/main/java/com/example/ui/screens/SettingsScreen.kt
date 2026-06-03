@@ -44,6 +44,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesasense.model.ThemeMode
 import com.pesasense.ui.theme.ExpenseRed
 import androidx.compose.foundation.border
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +58,8 @@ fun SettingsScreen(
     onNavigateToFinancialGoals: () -> Unit,
     onNavigateToFaq: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
     var notificationsExpanded by remember { mutableStateOf(false) }
 
@@ -67,7 +72,9 @@ fun SettingsScreen(
     var themeSelection by remember { mutableStateOf("System") }
     val themeOptions = listOf("Light", "Dark", "System")
 
-    var notificationFrequency by remember { mutableStateOf("Weekly") }
+    val savedFrequency = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+        .getString("report_frequency", "Daily") ?: "Daily"
+    var notificationFrequency by remember { mutableStateOf(savedFrequency) }
     val frequencyOptions = listOf("Daily", "Weekly", "Monthly")
 
     val userName by viewModel.userName.collectAsStateWithLifecycle()
@@ -76,8 +83,6 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val goals by viewModel.goals.collectAsStateWithLifecycle()
     var showEditNameDialog by remember { mutableStateOf(false) }
-
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         topBar = {
@@ -529,24 +534,28 @@ fun SettingsScreen(
                             ThemeMode.values().forEach { mode ->
                                 val option = mode.name.lowercase().replaceFirstChar { it.uppercase() }
                                 val isSelected = currentTheme == mode
-                                
+
                                 val icon = when (mode) {
                                     ThemeMode.LIGHT -> Icons.Default.WbSunny
                                     ThemeMode.DARK -> Icons.Default.Nightlight
                                     ThemeMode.SYSTEM -> Icons.Default.DesktopMac
                                 }
-                                
+
                                 val containerColor = if (isSelected) AccentGreenLight.copy(alpha = 0.1f) else Color.Transparent
                                 val contentColor = if (isSelected) AccentGreenDark else MaterialTheme.colorScheme.onSurfaceVariant
                                 val borderColor = if (isSelected) AccentGreenLight.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant
-                                
+                                var buttonCenter by remember(mode) { mutableStateOf(Offset.Zero) }
+
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(containerColor)
                                         .border(1.dp, borderColor, RoundedCornerShape(12.dp))
-                                        .clickable { viewModel.setThemeMode(mode, context) }
+                                        .onGloballyPositioned { coords ->
+                                            buttonCenter = coords.boundsInWindow().center
+                                        }
+                                        .clickable { viewModel.setThemeMode(mode, context, buttonCenter) }
                                         .padding(vertical = 16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -622,7 +631,11 @@ fun SettingsScreen(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (isSelected) AccentGreenLight else Color.Transparent)
-                                .clickable { notificationFrequency = option }
+                                .clickable {
+                                    notificationFrequency = option
+                                    context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+                                        .edit().putString("report_frequency", option).apply()
+                                }
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center
                         ) {
