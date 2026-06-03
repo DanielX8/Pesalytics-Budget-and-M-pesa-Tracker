@@ -35,7 +35,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Insights
-import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.DonutLarge
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Close
@@ -438,7 +438,7 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     QuickNavButton(icon = Icons.Default.Insights, label = "Analytics", color = TransferBlue, onClick = onNavigateToAnalytics)
-                    QuickNavButton(icon = Icons.Default.ReceiptLong, label = "Bills", color = AccentGreenDark, onClick = onNavigateToBills)
+                    QuickNavButton(icon = Icons.AutoMirrored.Filled.ReceiptLong, label = "Bills", color = AccentGreenDark, onClick = onNavigateToBills)
                     QuickNavButton(icon = Icons.Default.DonutLarge, label = "Budget", color = ExpenseRed, onClick = onNavigateToSettings)
                     QuickNavButton(icon = Icons.Default.TrackChanges, label = "Goals", color = IncomeGreen, onClick = onNavigateToGoals)
                 }
@@ -899,13 +899,13 @@ fun MetadataRow(label: String, value: String) {
 
 @Composable
 fun getIconForTransaction(transaction: Transaction): androidx.compose.ui.graphics.vector.ImageVector {
-    if (transaction.isFeeTransaction) return Icons.Default.ReceiptLong
+    if (transaction.isFeeTransaction) return Icons.AutoMirrored.Filled.ReceiptLong
     
     val payee = transaction.payee.lowercase()
     val category = transaction.category?.lowercase() ?: "other"
     
     return when {
-        category == "bank/m-pesa fees" -> Icons.Default.ReceiptLong
+        category == "bank/m-pesa fees" -> Icons.AutoMirrored.Filled.ReceiptLong
         category == "airtime" -> Icons.Default.Phone
         category == "cash" || category == "withdraw" -> Icons.Default.AttachMoney
         category == "transfer" || category == "send money" -> Icons.Default.AttachMoney
