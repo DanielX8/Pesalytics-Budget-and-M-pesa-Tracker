@@ -56,18 +56,22 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
             )
         }
 
-        // ── Budget threshold check (always fires) ──────────────────────────
+        // ── Budget threshold check (only fires when the user has set a budget) ──
         val monthStart = Calendar.getInstance().apply {
             set(Calendar.DAY_OF_MONTH, 1)
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }.timeInMillis
-        val monthExpense = repository.getDailyExpense(monthStart, System.currentTimeMillis()) ?: 0.0
         val monthStr = java.text.SimpleDateFormat("MM/yyyy", java.util.Locale.getDefault())
             .format(java.util.Date(monthStart))
         val budgets = repository.getBudgetsForMonth(monthStr).first()
         val globalBudget = budgets.find { it.category == "Overall" }
+
+        // Only alert if the user has actually configured a budget
         if (globalBudget != null && globalBudget.limitAmount > 0) {
+            // Use getMonthlyExpense() — not getDailyExpense() — to get the full
+            // month's spending so the threshold percentage is calculated correctly.
+            val monthExpense = repository.getMonthlyExpense(monthStart).first() ?: 0.0
             val pct = monthExpense / globalBudget.limitAmount
             when {
                 pct >= 1.0 -> notif.showBudgetAlert("Budget Exceeded",
