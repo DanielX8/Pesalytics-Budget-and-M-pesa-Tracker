@@ -4,38 +4,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Box
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.outlined.Analytics
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Loop
+import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -45,8 +30,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import kotlin.math.sqrt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
 import com.pesasense.model.ThemeMode
@@ -100,19 +95,50 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
             }
 
+            // Hoisted so it survives circular-reveal recompositions
+            val navController = rememberNavController()
 
-            AnimatedContent(
-                targetState = darkTheme,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
-                },
-                label = "ThemeTransition"
-            ) { isDark ->
-                MyApplicationTheme(darkTheme = isDark) {
+            // ── Circular reveal on theme change ─────────────────────────────
+            val revealOrigin by viewModel.revealOrigin.collectAsState()
+            var previousDark by remember { mutableStateOf(darkTheme) }
+            var overlayColor by remember { mutableStateOf(Color.Transparent) }
+            var animOrigin by remember { mutableStateOf(Offset.Zero) }
+            val revealAnim = remember { Animatable(0f) }
+
+            LaunchedEffect(darkTheme) {
+                if (previousDark != darkTheme) {
+                    // Capture old-theme background and tap origin before switching
+                    overlayColor = if (previousDark) Color(0xFF000000) else Color(0xFFF8F9FA)
+                    animOrigin = revealOrigin
+                    revealAnim.snapTo(1f)               // instantly cover the screen
+                    revealAnim.animateTo(               // then contract to the tap point
+                        targetValue = 0f,
+                        animationSpec = tween(500, easing = FastOutSlowInEasing)
+                    )
+                    previousDark = darkTheme
+                }
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                MyApplicationTheme(darkTheme = darkTheme) {
                     androidx.compose.material3.ProvideTextStyle(
                         value = androidx.compose.ui.text.TextStyle(fontFamily = com.pesasense.ui.theme.SpaceGroteskFontFamily)
                     ) {
-                        PesaSenseApp(viewModel = viewModel)
+                        PesaSenseApp(viewModel = viewModel, navController = navController)
+                    }
+                }
+
+                // Contracting overlay — visible only during the reveal animation
+                if (revealAnim.value > 0f) {
+                    val capturedColor = overlayColor
+                    val capturedOrigin = animOrigin
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val maxRadius = sqrt(size.width * size.width + size.height * size.height)
+                        drawCircle(
+                            color = capturedColor,
+                            radius = maxRadius * revealAnim.value,
+                            center = capturedOrigin
+                        )
                     }
                 }
             }
@@ -123,8 +149,7 @@ class MainActivity : ComponentActivity() {
 
 
 @Composable
-fun PesaSenseApp(viewModel: PesaViewModel) {
-    val navController = rememberNavController()
+fun PesaSenseApp(viewModel: PesaViewModel, navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
