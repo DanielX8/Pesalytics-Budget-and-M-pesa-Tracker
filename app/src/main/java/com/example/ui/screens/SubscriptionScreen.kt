@@ -43,8 +43,18 @@ fun SubscriptionScreen(
     val monthlyBills = allBills.filter { it.cycle == BillCycle.MONTHLY }
     var selectedPlan by remember { mutableStateOf("Yearly") }
     var promoCode by remember { mutableStateOf("") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val promoMessage by viewModel.promoMessage.collectAsStateWithLifecycle()
+    LaunchedEffect(promoMessage) {
+        promoMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearPromoMessage()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                 CenterAlignedTopAppBar(
@@ -120,15 +130,15 @@ fun SubscriptionScreen(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         PricingCard(
                             title = "Yearly",
-                            price = "KES 1,499",
-                            badge = "POPULAR",
+                            price = "KES 2,000",
+                            badge = "BEST VALUE",
                             isSelected = selectedPlan == "Yearly",
                             modifier = Modifier.weight(1f),
                             onClick = { selectedPlan = "Yearly" }
                         )
                         PricingCard(
                             title = "Lifetime",
-                            price = "KES 4,999",
+                            price = "KES 9,999",
                             isSelected = selectedPlan == "Lifetime",
                             modifier = Modifier.weight(1f),
                             onClick = { selectedPlan = "Lifetime" }
@@ -148,23 +158,15 @@ fun SubscriptionScreen(
                 )
             }
 
-            // Warning Banner
+            // Promo Code Apply Button
             item {
-                Card(
+                Button(
+                    onClick = { if (promoCode.isNotBlank()) viewModel.redeemPromoCode(promoCode.trim()) },
+                    enabled = promoCode.isNotBlank(),
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = WarningOrange.copy(alpha = 0.1f)),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight)
                 ) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Warning, contentDescription = "Warning", tint = WarningOrange)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Please note: Once Premium is activated, there is no option to downgrade to the Free tier",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = WarningOrange,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
+                    Text("Apply Code", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -208,7 +210,17 @@ fun SubscriptionScreen(
                             FeatureBullet("Cloud sync & backup", color = MaterialTheme.colorScheme.onPrimaryContainer)
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
-                                onClick = { /* Initiate Payment Gateway */ },
+                                onClick = {
+                                val activity = context as? android.app.Activity ?: return@Button
+                                val sku = when (selectedPlan) {
+                                    "Monthly"   -> com.pesasense.data.billing.BillingConfig.SKU_MONTHLY
+                                    "Quarterly" -> com.pesasense.data.billing.BillingConfig.SKU_QUARTERLY
+                                    "Yearly"    -> com.pesasense.data.billing.BillingConfig.SKU_YEARLY
+                                    "Lifetime"  -> com.pesasense.data.billing.BillingConfig.SKU_LIFETIME
+                                    else -> com.pesasense.data.billing.BillingConfig.SKU_YEARLY
+                                }
+                                viewModel.subscriptionManager?.launchBillingFlow(activity, sku)
+                            },
                                 modifier = Modifier.fillMaxWidth().height(48.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight),
                                 shape = RoundedCornerShape(24.dp)

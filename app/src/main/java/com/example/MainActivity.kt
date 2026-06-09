@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as PesaSenseApplication
             val notificationHelper = remember { com.pesasense.notifications.NotificationHelper(app) }
-            val factory = remember { PesaViewModelFactory(app.repository, notificationHelper) }
+            val factory = remember { PesaViewModelFactory(app.repository, notificationHelper, app.subscriptionManager) }
             val viewModel: PesaViewModel = viewModel(factory = factory)
             
             val themeMode by viewModel.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
@@ -147,6 +147,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val app = application as com.pesasense.PesaSenseApplication
+        app.subscriptionManager.connect()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        val app = application as com.pesasense.PesaSenseApplication
+        app.subscriptionManager.disconnect()
     }
 }
 
@@ -327,7 +339,8 @@ fun PesaSenseApp(viewModel: PesaViewModel, navController: NavHostController) {
                 composable<Analytics> {
                     AnalyticsScreen(
                         viewModel = viewModel,
-                        onNavigateBack = { navController.popBackStack() }
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToSubscription = { navController.navigate(Subscription) }
                     )
                 }
                 composable<Bills> {
@@ -373,7 +386,8 @@ fun PesaSenseApp(viewModel: PesaViewModel, navController: NavHostController) {
                 composable<FinancialGoals> {
                     FinancialGoalsScreen(
                         viewModel = viewModel,
-                        onNavigateBack = { navController.popBackStack() }
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToSubscription = { navController.navigate(Subscription) }
                     )
                 }
                 composable<Faq> {
