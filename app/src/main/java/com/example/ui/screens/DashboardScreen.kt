@@ -41,6 +41,12 @@ import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -572,6 +578,7 @@ fun QuickNavButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label:
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
+            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             .clickable { onClick() }
             .padding(8.dp)
     ) {
@@ -656,7 +663,7 @@ fun HeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
                     IconButton(onClick = onToggleVisibility) {
                         Icon(
                             imageVector = if (uiState.isBalanceVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = "Toggle Balance",
+                            contentDescription = if (uiState.isBalanceVisible) "Hide balance" else "Show balance",
                             tint = Color.White.copy(alpha = 0.8f)
                         )
                     }
@@ -686,11 +693,20 @@ fun HeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column {
+                    Column(
+                        modifier = Modifier.semantics {
+                            contentDescription = "Money In, KES ${formatCurrency(uiState.monthlyIncome)}"
+                        }
+                    ) {
                         Text("MONEY IN", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.AutoMirrored.Filled.TrendingDown, contentDescription = null, modifier = Modifier.size(16.dp), tint = AccentGreenLight)
+                            Icon(
+                                imageVector = Icons.Default.ArrowUpward,
+                                contentDescription = null,
+                                tint = AccentGreenLight,
+                                modifier = Modifier.size(16.dp)
+                            )
                             Spacer(modifier = Modifier.width(4.dp))
                             AnimatedContent(
                                 targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.monthlyIncome)}" else "••••",
@@ -702,11 +718,20 @@ fun HeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
                         }
                     }
 
-                    Column {
+                    Column(
+                        modifier = Modifier.semantics {
+                            contentDescription = "Money Out, KES ${formatCurrency(uiState.monthlyExpense)}"
+                        }
+                    ) {
                         Text("MONEY OUT", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, modifier = Modifier.size(16.dp), tint = ExpenseRed)
+                            Icon(
+                                imageVector = Icons.Default.ArrowDownward,
+                                contentDescription = null,
+                                tint = ExpenseRed,
+                                modifier = Modifier.size(16.dp)
+                            )
                             Spacer(modifier = Modifier.width(4.dp))
                             AnimatedContent(
                                 targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.monthlyExpense)}" else "••••",
@@ -723,7 +748,7 @@ fun HeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun TransactionDetailsSheet(
     transaction: Transaction,
@@ -829,23 +854,41 @@ fun TransactionDetailsSheet(
             MetadataRow(label = "Date", value = SimpleDateFormat("EEEE 'at' HH:mm", Locale.getDefault()).format(Date(transaction.timestamp)))
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
             
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("M-PESA Ref", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    text = transaction.remoteRef,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable {
-                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(transaction.remoteRef))
-                    }
-                )
+            run {
+                val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("M-PESA Ref", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = transaction.remoteRef,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .combinedClickable(
+                                onClick = {
+                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(transaction.remoteRef))
+                                },
+                                onLongClick = {
+                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(transaction.remoteRef))
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                }
+                            )
+                            .semantics {
+                                customActions = listOf(
+                                    androidx.compose.ui.semantics.CustomAccessibilityAction("Copy M-PESA reference") {
+                                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(transaction.remoteRef))
+                                        true
+                                    }
+                                )
+                            }
+                    )
+                }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 

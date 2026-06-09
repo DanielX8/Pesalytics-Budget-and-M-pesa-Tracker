@@ -20,7 +20,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.*
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pesasense.R
 import com.pesasense.model.Goal
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesasense.model.GoalType
 import com.pesasense.ui.theme.ExpenseRed
 import com.pesasense.ui.theme.IncomeGreen
@@ -50,10 +52,13 @@ import java.util.Locale
 @Composable
 fun FinancialGoalsScreen(
     viewModel: PesaViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToSubscription: () -> Unit
 ) {
     val goals by viewModel.goals.collectAsState()
+    val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
     var showCreateGoalSheet by remember { mutableStateOf(false) }
+    var showUpgradeDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -88,7 +93,13 @@ fun FinancialGoalsScreen(
                                     .size(32.dp)
                                     .clip(CircleShape)
                                     .background(AccentGreenDark) // Deep Emerald
-                                    .clickable { showCreateGoalSheet = true },
+                                    .clickable {
+                                        if (!isPremium && goals.size >= 1) {
+                                            showUpgradeDialog = true
+                                        } else {
+                                            showCreateGoalSheet = true
+                                        }
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Add Goal", tint = Color.White, modifier = Modifier.size(20.dp))
@@ -258,6 +269,24 @@ fun FinancialGoalsScreen(
         }
     }
 
+    if (showUpgradeDialog) {
+        AlertDialog(
+            onDismissRequest = { showUpgradeDialog = false },
+            title = { Text("Track unlimited goals", fontWeight = FontWeight.Bold) },
+            text = { Text("You've used your 1 free goal. Upgrade to Premium to track all your savings goals — KES 299/month or KES 2,000/year.") },
+            confirmButton = {
+                Button(onClick = { showUpgradeDialog = false; onNavigateToSubscription() }) {
+                    Text("Upgrade to Premium")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUpgradeDialog = false }) {
+                    Text("Remind me later")
+                }
+            }
+        )
+    }
+
     if (showCreateGoalSheet) {
         CreateGoalBottomSheet(
             onDismiss = { showCreateGoalSheet = false },
@@ -370,7 +399,7 @@ fun CreateGoalBottomSheet(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.TrendingDown, contentDescription = null, tint = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.TrendingDown, contentDescription = null, tint = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Paying Off Debt", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -604,6 +633,33 @@ fun GoalCard(goal: Goal, onAddContribution: () -> Unit = {}, onDelete: () -> Uni
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Saved: KES ${"%,.2f".format(savedAmount)}", style = MaterialTheme.typography.bodySmall, color = typeColor, fontWeight = FontWeight.SemiBold)
                 Text("Target: KES ${"%,.2f".format(goal.targetAmount)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // On-track status indicator — icon + text + color (not color alone)
+            val now = System.currentTimeMillis()
+            val totalDuration = (goal.targetDate - 0L).coerceAtLeast(1L)
+            val elapsed = (now - 0L).coerceAtLeast(0L)
+            val expectedProgress = (elapsed.toFloat() / totalDuration).coerceIn(0f, 1f)
+            val actualProgress = (goal.savedAmount / goal.targetAmount).toFloat().coerceIn(0f, 1f)
+            val isOnTrack = actualProgress >= expectedProgress
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = if (isOnTrack) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
+                    contentDescription = if (isOnTrack) "On track" else "Falling behind",
+                    tint = if (isOnTrack) AccentGreenLight else ExpenseRed,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = if (isOnTrack) "On track" else "Falling behind",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isOnTrack) AccentGreenLight else ExpenseRed,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))

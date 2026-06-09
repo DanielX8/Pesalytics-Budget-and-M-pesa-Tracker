@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.ContactSupport
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.People
@@ -83,6 +84,7 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val goals by viewModel.goals.collectAsStateWithLifecycle()
     var showEditNameDialog by remember { mutableStateOf(false) }
+    var showExportGateDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -288,16 +290,8 @@ fun SettingsScreen(
             }
 
             item {
-                val context = androidx.compose.ui.platform.LocalContext.current
-                val sharedPrefs = context.getSharedPreferences("PesaSensePrefs", android.content.Context.MODE_PRIVATE)
-                var installDate = sharedPrefs.getLong("install_date", 0L)
-                if (installDate == 0L) {
-                    installDate = System.currentTimeMillis()
-                    sharedPrefs.edit().putLong("install_date", installDate).apply()
-                }
-                val diffMs = System.currentTimeMillis() - installDate
-                val daysPassed = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(diffMs)
-                val daysRemaining = maxOf(0L, 45L - daysPassed)
+                val subState by viewModel.subscriptionStateFlow.collectAsStateWithLifecycle()
+                val daysRemaining = subState.trialDaysRemaining.toLong()
 
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)) {
                     Text(
@@ -318,15 +312,17 @@ fun SettingsScreen(
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFF4CAF50)).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                                        Text("PREMIUM TRIAL", style = MaterialTheme.typography.labelSmall, color = Color(0xFF0F5B1A), fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                                    }
+                                    SubscriptionTierBadge(
+                                        isPremium = isPremium,
+                                        isTrial = !isPremium && daysRemaining > 0,
+                                        trialDaysLeft = daysRemaining.toInt()
+                                    )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(if (daysRemaining > 0) "Expires in $daysRemaining days" else "Trial Expired", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(verticalAlignment = Alignment.Bottom) {
-                                    Text("Free Trial", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                    Text(if (isPremium) "Premium" else "Free Trial", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -674,21 +670,64 @@ fun SettingsScreen(
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color(0xFFE0E7FF)).clickable {
-                                    val file = com.pesasense.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
-                                    viewModel.addNotification(if (file != null) "CSV saved to Downloads" else "Export failed")
-                                    if (file != null) android.widget.Toast.makeText(context, "CSV exported successfully", android.widget.Toast.LENGTH_SHORT).show()
+                                    if (!isPremium) {
+                                        showExportGateDialog = true
+                                    } else {
+                                        val file = com.pesasense.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
+                                        viewModel.addNotification(if (file != null) "CSV saved to Downloads" else "Export failed")
+                                        if (file != null) android.widget.Toast.makeText(context, "CSV exported successfully", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
                                 }.padding(horizontal = 8.dp, vertical = 4.dp)) {
                                     Text(".CSV", style = MaterialTheme.typography.labelSmall, color = Color(0xFF1E293B), fontWeight = FontWeight.SemiBold)
                                 }
                                 Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color(0xFFE0E7FF)).clickable {
-                                    com.pesasense.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
-                                        viewModel.addNotification("Print dialog opened for PDF generation.")
-                                        android.widget.Toast.makeText(context, "PDF generated successfully", android.widget.Toast.LENGTH_SHORT).show()
+                                    if (!isPremium) {
+                                        showExportGateDialog = true
+                                    } else {
+                                        com.pesasense.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
+                                            viewModel.addNotification("Print dialog opened for PDF generation.")
+                                            android.widget.Toast.makeText(context, "PDF generated successfully", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
                                     }
                                 }.padding(horizontal = 8.dp, vertical = 4.dp)) {
                                     Text(".PDF", style = MaterialTheme.typography.labelSmall, color = Color(0xFF1E293B), fontWeight = FontWeight.SemiBold)
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            // Danger zone section
+            item {
+                Text(
+                    "Danger zone",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = ExpenseRed,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 4.dp, top = 24.dp, bottom = 4.dp)
+                )
+                HorizontalDivider(color = ExpenseRed.copy(alpha = 0.3f))
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ExpenseRed.copy(alpha = 0.3f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { /* TODO: trigger data deletion confirmation dialog */ }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = ExpenseRed)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Delete All Data", style = MaterialTheme.typography.bodyLarge, color = ExpenseRed, fontWeight = FontWeight.SemiBold)
+                            Text("Permanently remove all transactions and settings", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -808,6 +847,25 @@ fun SettingsScreen(
                 )
             }
 
+            // Export gate dialog
+            if (showExportGateDialog) {
+                item {
+                    AlertDialog(
+                        onDismissRequest = { showExportGateDialog = false },
+                        title = { Text("Export to CSV or PDF") },
+                        text = { Text("Export your transactions as CSV or PDF — available with Premium.") },
+                        confirmButton = {
+                            Button(onClick = { showExportGateDialog = false; onNavigateToSubscription() }) {
+                                Text("View Premium")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showExportGateDialog = false }) { Text("Cancel") }
+                        }
+                    )
+                }
+            }
+
             item {
                 Spacer(modifier = Modifier.height(32.dp))
             }
@@ -833,6 +891,27 @@ fun SupportListItem(icon: ImageVector, title: String, subtitle: String?, onClick
             }
         }
         Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+    }
+}
+
+@Composable
+private fun SubscriptionTierBadge(isPremium: Boolean, isTrial: Boolean = false, trialDaysLeft: Int = 0) {
+    val (text, containerColor, contentColor) = when {
+        isPremium  -> Triple("Premium ✓", AccentGreenLight.copy(alpha = 0.15f), AccentGreenLight)
+        isTrial    -> Triple("Trial — $trialDaysLeft days left", WarningOrange.copy(alpha = 0.15f), WarningOrange)
+        else       -> Triple("Free plan", MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Text(
+            text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 

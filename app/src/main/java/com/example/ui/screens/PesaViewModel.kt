@@ -31,6 +31,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import com.pesasense.data.billing.SubscriptionManager
+import com.pesasense.data.billing.PromoResult
 
 data class AppNotification(
     val id: String = java.util.UUID.randomUUID().toString(),
@@ -52,7 +54,8 @@ data class HomeUiState(
 
 class PesaViewModel(
     private val repository: PesaRepository,
-    private val notificationHelper: com.pesasense.notifications.NotificationHelper? = null
+    private val notificationHelper: com.pesasense.notifications.NotificationHelper? = null,
+    val subscriptionManager: SubscriptionManager? = null
 ) : ViewModel() {
 
     // ── Month selection ──────────────────────────────────────────────────────
@@ -94,7 +97,19 @@ class PesaViewModel(
     val userName = MutableStateFlow("User")
     val userAvatar = MutableStateFlow(0)
     val isFirstLaunch = MutableStateFlow(true)
-    val isPremium = MutableStateFlow(false)
+    val isPremium: StateFlow<Boolean> = subscriptionManager?.state
+        ?.map { it.isPremium }
+        ?.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        ?: MutableStateFlow(false)
+
+    // ── Subscription state ────────────────────────────────────────────────────
+    val subscriptionState = subscriptionManager?.state
+    val subscriptionStateFlow: StateFlow<com.pesasense.data.billing.SubscriptionState> =
+        subscriptionManager?.state ?: MutableStateFlow(com.pesasense.data.billing.SubscriptionState())
+    val trialDaysRemaining get() = subscriptionManager?.state?.value?.trialDaysRemaining ?: 0
+
+    private val _promoMessage = MutableStateFlow<String?>(null)
+    val promoMessage = _promoMessage.asStateFlow()
 
     // ── Notification preferences ─────────────────────────────────────────────
     val billAlertsEnabled = MutableStateFlow(true)
@@ -143,17 +158,13 @@ class PesaViewModel(
         userName.value = prefs.getString("user_name", "User") ?: "User"
         userAvatar.value = prefs.getInt("user_avatar", 0)
         isFirstLaunch.value = !prefs.getBoolean("has_completed_onboarding", false)
-        isPremium.value = prefs.getBoolean("is_premium", false)
         loadThemeMode(context)
         loadNotificationPrefs(context)
         checkUpcomingBills()
     }
 
-    fun upgradeToPremium(context: android.content.Context) {
-        isPremium.value = true
-        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
-            .putBoolean("is_premium", true)
-            .apply()
+    fun upgradeToPremium() {
+        subscriptionManager?.grantFromPromo(com.pesasense.data.billing.PromoGrant.Lifetime)
     }
 
     fun completeOnboarding(name: String, avatarIndex: Int, context: android.content.Context) {
@@ -662,16 +673,45 @@ class PesaViewModel(
             }
         }
     }
+
+    fun redeemPromoCode(code: String) {
+        val manager = subscriptionManager ?: return
+        val result = manager.redeemPromoCode(code)
+        val msg = when (result) {
+            is PromoResult.EarlybirdLifetime  -> "🎉 EARLYBIRD accepted! Lifetime Premium unlocked."
+            is PromoResult.EarlybirdSunset    -> "EARLYBIRD has ended — you've been given a 14-day free trial instead."
+            is PromoResult.Success            -> when (result.grant) {
+                is com.pesasense.data.billing.PromoGrant.Lifetime   -> "🎉 Lifetime Premium unlocked!"
+                is com.pesasense.data.billing.PromoGrant.Monthly    -> "✅ 1 month Premium granted!"
+                is com.pesasense.data.billing.PromoGrant.Quarterly  -> "✅ 3 months Premium granted!"
+                is com.pesasense.data.billing.PromoGrant.Yearly     -> "✅ 1 year Premium granted!"
+                is com.pesasense.data.billing.PromoGrant.Trial14Days -> "✅ 14-day trial extended!"
+            }
+            is PromoResult.AlreadyRedeemed    -> "This code has already been used on this device."
+            is PromoResult.Invalid            -> "Invalid promo code. Check and try again."
+            else                              -> "Unknown promo result."
+        }
+        _promoMessage.value = msg
+    }
+
+    fun clearPromoMessage() {
+        _promoMessage.value = null
+    }
+
+    fun startTrial() {
+        subscriptionManager?.startTrialIfNotStarted()
+    }
 }
 
 class PesaViewModelFactory(
     private val repository: PesaRepository,
-    private val notificationHelper: com.pesasense.notifications.NotificationHelper? = null
+    private val notificationHelper: com.pesasense.notifications.NotificationHelper? = null,
+    private val subscriptionManager: com.pesasense.data.billing.SubscriptionManager? = null
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PesaViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return PesaViewModel(repository, notificationHelper) as T
+            return PesaViewModel(repository, notificationHelper, subscriptionManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

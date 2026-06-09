@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material3.*
@@ -48,6 +50,7 @@ fun BudgetPlannerScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
     var showAddBudgetSheet by remember { mutableStateOf(false) }
     var showEditGlobalBudgetDialog by remember { mutableStateOf(false) }
 
@@ -72,7 +75,7 @@ fun BudgetPlannerScreen(
                         }
                     },
                     actions = {
-                        if (globalBudget != null) {
+                        if (globalBudget != null && isPremium) {
                             Box(
                                 modifier = Modifier
                                     .padding(end = 16.dp)
@@ -122,6 +125,7 @@ fun BudgetPlannerScreen(
                     globalBudget = globalBudget,
                     categoryBudgets = categoryBudgets,
                     totalSpentThisMonth = uiState.monthlyExpense,
+                    isPremium = isPremium,
                     onDeleteBudget = { cat -> viewModel.deleteBudget(cat) },
                     onEditBudget = { _ -> showAddBudgetSheet = true },
                     onEditGlobalBudget = { showEditGlobalBudgetDialog = true },
@@ -275,6 +279,28 @@ fun EmptyStateBudget(
 }
 
 @Composable
+private fun OverBudgetLabel(modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = Icons.Default.Warning,
+            contentDescription = "Over budget",
+            tint = ExpenseRed,
+            modifier = Modifier.size(14.dp)
+        )
+        Text(
+            "Over budget",
+            style = MaterialTheme.typography.labelSmall,
+            color = ExpenseRed,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
 fun AnalyticsTeaserCard(title: String, value: String, modifier: Modifier) {
     Card(
         modifier = modifier,
@@ -294,6 +320,7 @@ fun ActiveStateBudget(
     globalBudget: Budget,
     categoryBudgets: List<Budget>,
     totalSpentThisMonth: Double,
+    isPremium: Boolean = false,
     onDeleteBudget: (String) -> Unit,
     onEditBudget: (Budget) -> Unit,
     onEditGlobalBudget: () -> Unit,
@@ -339,6 +366,7 @@ fun ActiveStateBudget(
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    if (isOver) { OverBudgetLabel(modifier = Modifier.padding(bottom = 4.dp)) }
                     Text(
                         text = if (isOver) "Overspent: KES ${formatCurrency(-remaining)}" else "Remaining: KES ${formatCurrency(remaining)}",
                         style = MaterialTheme.typography.bodySmall,
@@ -348,6 +376,23 @@ fun ActiveStateBudget(
             }
         }
 
+        if (!isPremium) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Budget Planner — Premium", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        }
+                        Text("Set per-category budgets and track your 6-month savings trend. Upgrade to unlock.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        } else {
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("My Monthly Budget", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -387,6 +432,7 @@ fun ActiveStateBudget(
                     color = if (isOver) ExpenseRed else AccentGreenLight,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
+                if (isOver) { OverBudgetLabel(modifier = Modifier.padding(top = 4.dp)) }
             }
         }
 
@@ -433,6 +479,7 @@ fun ActiveStateBudget(
         item {
             Spacer(modifier = Modifier.height(32.dp))
         }
+        } // end else (isPremium)
     }
 }
 
