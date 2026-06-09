@@ -23,6 +23,7 @@ class PesaSenseApplication : Application() {
             database.goalDao()
         )
     }
+    val subscriptionManager by lazy { com.pesasense.data.billing.SubscriptionManager(this) }
 
     override fun onCreate() {
         super.onCreate()
