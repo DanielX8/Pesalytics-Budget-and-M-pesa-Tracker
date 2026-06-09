@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.0] — 2026-06-09 · Feature Release 🚀
+
+### Added
+- **Google Play Billing & Subscriptions** — Full in-app purchase infrastructure with `SubscriptionManager`.
+- **Premium Tiers** — Free, Trial, and Premium tiers with Yearly (KES 2,000) and Lifetime (KES 9,999) options.
+- **Promo Codes** — System to redeem promo codes for lifetime access, free trials, or tier extensions.
+- **Data Export** — Export transactions to CSV or PDF (Premium feature).
+- **Data Management** — Added "Delete All Data" option for GDPR compliance.
+- **Budget Deletion** — Users can now delete specific budgets in the Budget Planner.
+
+### Improved
+- **Accessibility** — Replaced `TrendingUp`/`Down` with `ArrowUpward`/`Downward` and added `semantics` modifiers for screen readers on the Dashboard.
+- **Haptic Feedback** — Long-press to copy M-PESA references now triggers a confirming haptic vibration.
+- **Settings UI** — Dynamic badges displaying the user's current subscription tier.
+
+---
+
 ## [1.2.1] — 2026-06-03 · Patch Release 🛠️
 
 ### Bug Fixes
