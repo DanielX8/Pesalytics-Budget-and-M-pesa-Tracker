@@ -3,6 +3,7 @@ package com.pesasense.ui.screens
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,6 +21,8 @@ import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -50,27 +53,28 @@ import kotlin.math.atan2
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalyticsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
+fun AnalyticsScreen(
+    viewModel: PesaViewModel,
+    onNavigateBack: () -> Unit,
+    onNavigateToSubscription: () -> Unit
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
     val patternResult by viewModel.patternResult.collectAsStateWithLifecycle()
     var notificationsExpanded by remember { mutableStateOf(false) }
 
+    val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
     val selectedMonthIndex by viewModel.selectedMonthIndex.collectAsStateWithLifecycle()
     val currentCalendarMonth = Calendar.getInstance().get(Calendar.MONTH)
 
-    val calendar = Calendar.getInstance().apply { set(Calendar.MONTH, selectedMonthIndex) }
-    val displayMonth = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(calendar.time)
-
-    val monthStart = Calendar.getInstance().apply {
-        set(Calendar.MONTH, selectedMonthIndex)
-        set(Calendar.DAY_OF_MONTH, 1)
-        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-    }
-    val startTimestamp = monthStart.timeInMillis
-    monthStart.add(Calendar.MONTH, 1)
-    val endTimestamp = monthStart.timeInMillis
+    // Use the ViewModel's year-aware currentMonthStart so December in January
+    // correctly resolves to the previous year rather than a future month.
+    val startTimestamp by viewModel.currentMonthStart.collectAsStateWithLifecycle()
+    val endTimestamp = Calendar.getInstance().apply {
+        timeInMillis = startTimestamp
+        add(Calendar.MONTH, 1)
+    }.timeInMillis
+    val displayMonth = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date(startTimestamp))
 
     val monthTransactions = uiState.transactions.filter { it.timestamp in startTimestamp until endTimestamp && !it.isFeeTransaction }
 
@@ -129,6 +133,13 @@ fun AnalyticsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
+        if (!isPremium) {
+            AnalyticsLockedPreview(
+                onUpgrade = onNavigateToSubscription,
+                modifier = Modifier.padding(padding)
+            )
+            return@Scaffold
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -162,15 +173,26 @@ fun AnalyticsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
             }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SummaryCard("INCOME", formatCurrency(totalIncome), AccentGreenLight, Modifier.weight(1f))
-                        SummaryCard("EXPENSES", formatCurrency(totalExpense), ExpenseRed, Modifier.weight(1f))
-                        SummaryCard("SAVED", formatCurrency(totalSaved), TransferBlue, Modifier.weight(1f))
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SummaryCard("TOTAL FEES", formatCurrency(totalFeesPaid), WarningOrange, Modifier.weight(1f))
-                        SummaryCard("OVERDRAFT", formatCurrency(totalOverdraftDebt), MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                androidx.compose.animation.AnimatedContent(
+                    targetState = selectedMonthIndex,
+                    transitionSpec = {
+                        (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) +
+                            androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(300))) togetherWith
+                            (androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) +
+                                androidx.compose.animation.slideOutVertically(androidx.compose.animation.core.tween(200)))
+                    },
+                    label = "MonthContentTransition"
+                ) { _ ->
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SummaryCard("INCOME", formatCurrency(totalIncome), AccentGreenLight, Modifier.weight(1f))
+                            SummaryCard("EXPENSES", formatCurrency(totalExpense), ExpenseRed, Modifier.weight(1f))
+                            SummaryCard("SAVED", formatCurrency(totalSaved), TransferBlue, Modifier.weight(1f))
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SummaryCard("TOTAL FEES", formatCurrency(totalFeesPaid), WarningOrange, Modifier.weight(1f))
+                            SummaryCard("OVERDRAFT", formatCurrency(totalOverdraftDebt), MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -340,9 +362,15 @@ fun WhereItGoesChart(transactions: List<com.pesasense.model.Transaction>, catego
         TransactionType.AIRTIME to "Airtime",
         TransactionType.MANUAL_EXPENSE to "Other"
     )
-    val typeTotals = expenses.groupBy { typeLabels[it.type] ?: "Other" }
+    val rawTypeTotals = expenses.groupBy { typeLabels[it.type] ?: "Other" }
         .mapValues { it.value.sumOf { t -> t.amount } }
         .toList().sortedByDescending { it.second }
+    // Cap at 5 categories to keep chart readable (P10 — UX audit)
+    val typeTotals = if (rawTypeTotals.size > 5) {
+        val top4 = rawTypeTotals.take(4)
+        val othersTotal = rawTypeTotals.drop(4).sumOf { it.second }
+        top4 + listOf("Others" to othersTotal)
+    } else rawTypeTotals
 
     val colors = listOf(ExpenseRed, TransferBlue, AccentGreenLight, AccentGreenDark, Color(0xFFFF9800), Color(0xFF9C27B0), Color(0xFF00BCD4))
 
@@ -758,6 +786,43 @@ fun SpendingCalendar(transactions: List<com.pesasense.model.Transaction>, monthS
                         Text("this period", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun AnalyticsLockedPreview(onUpgrade: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "Analytics — Premium Feature",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Text(
+                "Unlock spending breakdowns, fee analysis, spending rhythm, and the monthly heat map with Premium.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Button(onClick = onUpgrade) {
+                Text("View Premium Plans")
             }
         }
     }

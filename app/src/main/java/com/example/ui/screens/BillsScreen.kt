@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -511,6 +512,26 @@ fun BillItem(bill: Bill, onClick: () -> Unit) {
             Spacer(modifier = Modifier.height(6.dp))
             Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(statusColor.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 4.dp)) {
                 Text(text = dueDateStr, style = MaterialTheme.typography.labelSmall, color = statusColor, fontWeight = FontWeight.SemiBold)
+            }
+            // Urgency indicator — icon + text (not color alone)
+            val isOverdue = hoursToDue < 0 && !bill.isPaid
+            val isUrgent = hoursToDue in 0..48 && !bill.isPaid
+            if (isUrgent || isOverdue) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(
+                        imageVector = if (isOverdue) Icons.Default.Error else Icons.Default.Warning,
+                        contentDescription = if (isOverdue) "Overdue" else "Urgent",
+                        tint = if (isOverdue) ExpenseRed else WarningOrange,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = if (isOverdue) "Overdue" else "Due soon",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isOverdue) ExpenseRed else WarningOrange,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
