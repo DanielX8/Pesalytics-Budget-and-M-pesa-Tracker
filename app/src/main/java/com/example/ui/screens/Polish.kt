@@ -24,6 +24,14 @@ import com.pesasense.ui.theme.AccentGreenDark
 import com.pesasense.ui.theme.AccentGreenLight
 
 /**
+ * The hero-card mid-green (present in the Dashboard balance gradient in both light and dark
+ * modes). Readable on both AMOLED black (~5:1) and the light surface (~3.8:1), so it works as
+ * an accent on the Settings/Subscription screens — unlike the deep forest [AccentGreenDark],
+ * which is reserved for the Goals/Budget screens and is near-invisible on dark backgrounds.
+ */
+val HeroGreen = Color(0xFF348C55)
+
+/**
  * Shared visual-polish + motion helpers so secondary screens (Settings, Subscription,
  * Budget) match the premium language established on the Dashboard / Analytics screens:
  * colored glow shadows, the brand hero gradient, and spring press feedback.

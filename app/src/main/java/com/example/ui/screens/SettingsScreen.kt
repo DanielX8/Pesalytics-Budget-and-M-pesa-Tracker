@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import com.pesasense.BuildConfig
 import com.pesasense.R
 import com.pesasense.ui.theme.AccentGreenLight
-import com.pesasense.ui.theme.AccentGreenDark
 import com.pesasense.ui.theme.WarningOrange
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesasense.model.ThemeMode
@@ -251,7 +250,7 @@ fun SettingsScreen(
                 SettingsCard {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(AccentGreenLight.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.Upload, contentDescription = null, tint = AccentGreenDark)
+                            Icon(Icons.Rounded.Upload, contentDescription = null, tint = HeroGreen)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -404,7 +403,7 @@ fun SettingsScreen(
     if (showTipJarDialog) {
         AlertDialog(
             onDismissRequest = { showTipJarDialog = false },
-            icon = { Icon(Icons.Rounded.VolunteerActivism, contentDescription = null, tint = AccentGreenDark) },
+            icon = { Icon(Icons.Rounded.VolunteerActivism, contentDescription = null, tint = HeroGreen) },
             title = { Text("Support the Developer") },
             text = { Text("If PesaSense helps you, you can send a tip via M-PESA to:\n\n${AppLinks.TIP_JAR_MPESA}\n\nThank you! 💚") },
             confirmButton = { Button(onClick = { showTipJarDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight)) { Text("Close", color = Color.White) } }
@@ -417,7 +416,7 @@ fun SettingsScreen(
 @Composable
 private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(title, style = MaterialTheme.typography.labelSmall, color = AccentGreenDark, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
+        Text(title, style = MaterialTheme.typography.labelSmall, color = HeroGreen, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
         content()
     }
 }
@@ -481,7 +480,7 @@ private fun SegmentedRow(options: List<String>, selected: String, onSelect: (Str
 @Composable
 private fun ExportChip(label: String, onClick: () -> Unit) {
     Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(AccentGreenLight.copy(alpha = 0.15f)).clickable { onClick() }.padding(horizontal = 10.dp, vertical = 6.dp)) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = AccentGreenDark, fontWeight = FontWeight.SemiBold)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = HeroGreen, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -494,16 +493,16 @@ private fun ProfileCard(userName: String, avatarIndex: Int, onEdit: () -> Unit) 
     SettingsCard {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(AccentGreenLight.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
-                Icon(currentAvatar, contentDescription = null, modifier = Modifier.size(30.dp), tint = AccentGreenDark)
+                Icon(currentAvatar, contentDescription = null, modifier = Modifier.size(30.dp), tint = HeroGreen)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("FINANCIAL IDENTITY", style = MaterialTheme.typography.labelSmall, color = AccentGreenDark, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("FINANCIAL IDENTITY", style = MaterialTheme.typography.labelSmall, color = HeroGreen, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(userName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = onEdit, colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark), shape = RoundedCornerShape(8.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
+            Button(onClick = onEdit, colors = ButtonDefaults.buttonColors(containerColor = HeroGreen), shape = RoundedCornerShape(8.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
                 Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Edit", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
@@ -557,7 +556,7 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(modifier = Modifier.fillMaxWidth().height(44.dp), contentAlignment = Alignment.Center) {
-                        Text(if (isPremium) "Manage Plan" else "Compare Plans", fontWeight = FontWeight.Bold, color = AccentGreenDark)
+                        Text(if (isPremium) "Manage Plan" else "Compare Plans", fontWeight = FontWeight.Bold, color = HeroGreen)
                     }
                 }
             }
@@ -567,12 +566,15 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
 
 @Composable
 private fun SyncCard(isSyncing: Boolean, syncProgress: Int, onSync: () -> Unit) {
+    // Uses the same brand hero gradient as the Plan card so the green matches the rest of the
+    // app (previously a flat primary that read too light in dark / too dark in light mode).
+    val gradient = rememberBrandGradient()
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .brandGlow(elevation = 14.dp, radius = 16.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.primary)
+            .background(gradient)
             .clickableScale { if (!isSyncing) onSync() }
     ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -582,20 +584,20 @@ private fun SyncCard(isSyncing: Boolean, syncProgress: Int, onSync: () -> Unit) 
                 label = "sync-icon"
             ) { syncing ->
                 if (syncing) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
-                    Icon(Icons.Default.Sync, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                    Icon(Icons.Default.Sync, contentDescription = null, tint = Color.White)
                 }
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(if (isSyncing) "Syncing…" else "Sync MPESA Data", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                Text(if (isSyncing) "Syncing…" else "Sync MPESA Data", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
                 AnimatedContent(
                     targetState = if (isSyncing) "$syncProgress new records found" else "Read SMS to update transactions locally",
                     transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
                     label = "sync-subtitle"
                 ) { subtitle ->
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f))
                 }
             }
         }
@@ -612,7 +614,7 @@ private fun FrameworkCard(title: String, subtitle: String, icon: ImageVector, ba
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = title, tint = AccentGreenDark, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = title, tint = HeroGreen, modifier = Modifier.size(24.dp))
                 Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(badgeColor.copy(alpha = 0.12f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
                     Text(badgeText, style = MaterialTheme.typography.labelSmall, color = badgeColor, fontWeight = FontWeight.SemiBold, fontSize = 10.sp)
                 }
@@ -639,7 +641,7 @@ private fun AppearanceSection(viewModel: PesaViewModel, context: Context) {
                         ThemeMode.DARK -> Icons.Default.Nightlight
                         ThemeMode.SYSTEM -> Icons.Default.DesktopMac
                     }
-                    val contentColor = if (isSelected) AccentGreenDark else MaterialTheme.colorScheme.onSurfaceVariant
+                    val contentColor = if (isSelected) HeroGreen else MaterialTheme.colorScheme.onSurfaceVariant
                     val borderColor = if (isSelected) AccentGreenLight.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant
                     var buttonCenter by remember(mode) { mutableStateOf(Offset.Zero) }
                     Box(
@@ -676,9 +678,9 @@ private fun FooterBanner() {
                     // Brand-aligned diagonal glow: deep brand green → bright accent → deep green.
                     brush = androidx.compose.ui.graphics.Brush.linearGradient(
                         0.0f to Color(0xFF031006),
-                        0.3f to AccentGreenDark,
+                        0.3f to HeroGreen,
                         0.5f to AccentGreenLight,
-                        0.7f to AccentGreenDark,
+                        0.7f to HeroGreen,
                         1.0f to Color(0xFF031006),
                         start = Offset(0f, Float.POSITIVE_INFINITY),
                         end = Offset(Float.POSITIVE_INFINITY, 0f)
@@ -715,13 +717,15 @@ fun SupportListItem(icon: ImageVector, title: String, subtitle: String?, onClick
 
 @Composable
 private fun SubscriptionTierBadge(isPremium: Boolean, isTrial: Boolean = false, trialDaysLeft: Int = 0) {
-    val (text, containerColor, contentColor) = when {
-        isPremium -> Triple("Premium ✓", AccentGreenLight.copy(alpha = 0.15f), AccentGreenLight)
-        isTrial -> Triple("Trial — $trialDaysLeft days left", WarningOrange.copy(alpha = 0.15f), WarningOrange)
-        else -> Triple("Free plan", MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+    // Rendered on the green gradient hero card, so the chip is an opaque white pill with
+    // strong-colored text for clear contrast in both light and dark mode.
+    val (text, contentColor) = when {
+        isPremium -> "Premium ✓" to HeroGreen
+        isTrial -> "Trial — $trialDaysLeft days left" to WarningOrange
+        else -> "Free plan" to Color(0xFF444444)
     }
-    Surface(color = containerColor, shape = RoundedCornerShape(20.dp)) {
-        Text(text, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium, color = contentColor, fontWeight = FontWeight.SemiBold)
+    Surface(color = Color.White, shape = RoundedCornerShape(20.dp)) {
+        Text(text, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium, color = contentColor, fontWeight = FontWeight.Bold)
     }
 }
 

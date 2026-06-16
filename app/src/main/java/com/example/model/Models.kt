@@ -19,7 +19,10 @@ enum class TransactionType {
     MANUAL_TRANSFER
 }
 
-@Entity(tableName = "transactions")
+@Entity(
+    tableName = "transactions",
+    indices = [Index(value = ["remoteRef", "isFeeTransaction"], unique = true)]
+)
 @Serializable
 data class Transaction(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,

@@ -82,20 +82,30 @@ val avatarIcons = listOf(
     Icons.Rounded.Pets
 )
 
+// Fun finance personas (not real names). Two lists keep the masculine/feminine alternation,
+// but every entry is a playful money-themed nickname.
 val masculineNicknames = listOf(
-    "Champ", "Chief", "Maverick", "Ace", "Hunter", "Duke", "King", "Titan", "Blaze", "Rocky",
-    "Bruno", "Diesel", "Goliath", "Hawk", "Jet", "Knox", "Leo", "Max", "Rex", "Zane",
-    "Bear", "Bolt", "Brick", "Bucky", "Colt", "Dash", "Flash", "Gunner", "Hank", "Jax",
-    "Loki", "Magnus", "Nero", "Onyx", "Phoenix", "Ranger", "Saint", "Steel", "Storm", "Thor",
-    "Tank", "Viper", "Wolf", "Wyatt", "Apollo", "Atlas", "Cyrus", "Drake", "Falcon", "Spike"
+    "Budget Boss", "Ledger Lord", "Coin Master", "Coin King", "Cash Captain", "Money Maverick",
+    "Budget Baron", "Savings Sage", "Finance Ninja", "Wealth Wizard", "Penny Pilot", "Profit Prince",
+    "Cash Commander", "Thrift Titan", "Money Mogul", "Coin Chief", "Fund Father", "Dollar Don",
+    "Saver Supreme", "Cashflow King", "Budget Beast", "Vault Keeper", "Money Master", "Capital Captain",
+    "Shilling Sultan", "Wealth Warrior", "Asset Ace", "Coin Crusader", "Cash Czar", "Mint Master",
+    "Ledger Legend", "Profit Pro", "Savings Samurai", "Budget Bull", "Fiscal Falcon", "Cash Knight",
+    "Coin Conqueror", "Wealth Whiz", "Budget General", "Treasure Tracker", "Money Marshal", "Save Sensei",
+    "Dough Duke", "Bank Baron", "Riches Ranger", "Penny Pharaoh", "Coin Cowboy", "Money Monk",
+    "Stack Sultan", "Grand Saver"
 )
 
 val feminineNicknames = listOf(
-    "Queen", "Bella", "Luna", "Star", "Ruby", "Rosie", "Daisy", "Coco", "Ginger", "Honey",
-    "Ivy", "Jade", "Lily", "Mimi", "Nova", "Pearl", "Pixie", "Sky", "Sunny", "Willow",
-    "Angel", "Aurora", "Blossom", "Breezy", "Cherry", "Cleo", "Diva", "Dove", "Ember", "Fern",
-    "Gem", "Goldie", "Grace", "Hazel", "Iris", "Juno", "Kiki", "Lulu", "Mango", "Misty",
-    "Opal", "Peaches", "Poppy", "Sapphire", "Sienna", "Sparkle", "Tiara", "Velvet", "Vela", "Zara"
+    "Budget Queen", "Coin Countess", "Savings Diva", "Money Maven", "Cash Duchess", "Budget Belle",
+    "Penny Princess", "Wealth Witch", "Finance Fairy", "Coin Goddess", "Thrift Queen", "Savings Star",
+    "Budget Babe", "Cashflow Queen", "Vault Vixen", "Profit Princess", "Frugal Femme", "Capital Cutie",
+    "Shilling Sister", "Wealth Woman", "Asset Angel", "Coin Charm", "Mint Maiden", "Ledger Lady",
+    "Savings Sweetheart", "Money Muse", "Fiscal Fox", "Cash Crown", "Wealth Whisperer", "Treasure Tess",
+    "Save Siren", "Penny Pearl", "Dough Diva", "Budget Bee", "Fortune Femme", "Cash Cherry",
+    "Savings Starlet", "Budget Beauty", "Coin Comet", "Thrift Trinket", "Wealth Wren", "Cash Countess",
+    "Lady Ledger", "Money Mistress", "Riches Rani", "Coin Cherie", "Penny Posh", "Bank Belle",
+    "Glam Saver", "Queen Coin"
 )
 
 /**
