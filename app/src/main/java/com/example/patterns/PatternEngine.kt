@@ -1,7 +1,7 @@
-package com.pesasense.patterns
+package com.pesalytics.patterns
 
-import com.pesasense.model.Transaction
-import com.pesasense.model.TransactionType
+import com.pesalytics.model.Transaction
+import com.pesalytics.model.TransactionType
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date

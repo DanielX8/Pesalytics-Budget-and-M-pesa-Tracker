@@ -1,18 +1,18 @@
-package com.pesasense
+package com.pesalytics
 
 import android.app.Application
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.pesasense.data.AppDatabase
-import com.pesasense.data.PesaRepository
-import com.pesasense.workers.DailySpendWorker
-import com.pesasense.workers.WeeklyReportWorker
-import com.pesasense.workers.MonthlyReportWorker
+import com.pesalytics.data.AppDatabase
+import com.pesalytics.data.PesaRepository
+import com.pesalytics.workers.DailySpendWorker
+import com.pesalytics.workers.WeeklyReportWorker
+import com.pesalytics.workers.MonthlyReportWorker
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
-class PesaSenseApplication : Application() {
+class PesalyticsApplication : Application() {
     val database by lazy { AppDatabase.getDatabase(this) }
     val repository by lazy {
         PesaRepository(
@@ -23,7 +23,7 @@ class PesaSenseApplication : Application() {
             database.goalDao()
         )
     }
-    val subscriptionManager by lazy { com.pesasense.data.billing.SubscriptionManager(this) }
+    val subscriptionManager by lazy { com.pesalytics.data.billing.SubscriptionManager(this) }
 
     override fun onCreate() {
         super.onCreate()

@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -40,13 +40,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.R
-import com.pesasense.model.TransactionType
-import com.pesasense.patterns.CategoryDelta
-import com.pesasense.patterns.FulizaMonthPoint
-import com.pesasense.patterns.MonthComparison
-import com.pesasense.patterns.SpendVelocity
-import com.pesasense.ui.theme.*
+import com.pesalytics.R
+import com.pesalytics.model.TransactionType
+import com.pesalytics.patterns.CategoryDelta
+import com.pesalytics.patterns.FulizaMonthPoint
+import com.pesalytics.patterns.MonthComparison
+import com.pesalytics.patterns.SpendVelocity
+import com.pesalytics.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.atan2
@@ -92,7 +92,7 @@ fun AnalyticsScreen(
                     title = {
                         Image(
                             painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                            contentDescription = "PesaSense",
+                            contentDescription = "Pesalytics",
                             modifier = Modifier.height(32.dp),
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                         )
@@ -351,7 +351,7 @@ fun SummaryCard(title: String, amount: String, color: Color, modifier: Modifier 
 }
 
 @Composable
-fun WhereItGoesChart(transactions: List<com.pesasense.model.Transaction>, categoryDeltas: List<CategoryDelta> = emptyList()) {
+fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categoryDeltas: List<CategoryDelta> = emptyList()) {
     val expenses = transactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME && !it.isFeeTransaction }
     val totalExpense = expenses.sumOf { it.amount }
 
@@ -477,7 +477,7 @@ fun WhereItGoesChart(transactions: List<com.pesasense.model.Transaction>, catego
 }
 
 @Composable
-fun TransactionFeesCard(transactions: List<com.pesasense.model.Transaction>) {
+fun TransactionFeesCard(transactions: List<com.pesalytics.model.Transaction>) {
     val mainTransactions = transactions.filter { !it.isFeeTransaction }
     val feeBreakdown = mainTransactions.filter { it.fee > 0 }.groupBy { it.type }.mapValues { entry -> entry.value.sumOf { it.fee } }
     val totalFees = feeBreakdown.values.sum()
@@ -520,7 +520,7 @@ fun TransactionFeesCard(transactions: List<com.pesasense.model.Transaction>) {
 }
 
 @Composable
-fun SpendingRhythmChart(transactions: List<com.pesasense.model.Transaction>) {
+fun SpendingRhythmChart(transactions: List<com.pesalytics.model.Transaction>) {
     val allowedTypes = listOf(TransactionType.SEND_MONEY, TransactionType.WITHDRAW, TransactionType.PAYBILL, TransactionType.BUY_GOODS)
     val expenses = transactions.filter { it.type in allowedTypes }
 
@@ -626,7 +626,7 @@ fun SpendingRhythmChart(transactions: List<com.pesasense.model.Transaction>) {
 
 @Composable
 fun NeedsVsWantsCard(
-    transactions: List<com.pesasense.model.Transaction>,
+    transactions: List<com.pesalytics.model.Transaction>,
     classification: Map<String, Boolean>
 ) {
     val expenses = transactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
@@ -697,7 +697,7 @@ fun NeedsVsWantsCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpendingCalendar(transactions: List<com.pesasense.model.Transaction>, monthStartTimestamp: Long, displayMonth: String) {
+fun SpendingCalendar(transactions: List<com.pesalytics.model.Transaction>, monthStartTimestamp: Long, displayMonth: String) {
     val expenses = transactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
     val cal = Calendar.getInstance(); cal.timeInMillis = monthStartTimestamp
     val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
