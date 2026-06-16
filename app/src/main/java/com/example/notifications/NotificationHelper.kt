@@ -17,7 +17,10 @@ class NotificationHelper(private val context: Context) {
         const val REPORTS_CHANNEL_ID = "reports_channel"
     }
 
-    init { createNotificationChannels() }
+    // NOTE: channels are created lazily (right before the first notification is posted),
+    // NOT at construction time. Creating them at app launch could surface the system
+    // notification-permission prompt before onboarding. Posting only happens after
+    // onboarding (workers / budget checks), by which point permission has been requested.
 
     private fun isPrefEnabled(key: String, default: Boolean = true): Boolean =
         context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
@@ -78,6 +81,7 @@ class NotificationHelper(private val context: Context) {
     }
 
     fun showReportNotification(title: String, message: String) {
+        createNotificationChannels()
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("navigate_to", "report")
@@ -94,6 +98,7 @@ class NotificationHelper(private val context: Context) {
     }
 
     private fun showNotification(channelId: String, id: Int, title: String, message: String) {
+        createNotificationChannels()
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
