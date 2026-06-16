@@ -51,6 +51,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   badge is now a white pill so it's clearly visible on the gradient.
 - **Onboarding nicknames** are fun finance personas again (Budget Boss, Coin Master, Ledger Lord…),
   still 50/50 with gender alternation + Previous.
+- **Notification permission timing** — notification channels are now created lazily (on first
+  notification) instead of at app launch, so the notification permission prompt no longer fires
+  early during onboarding. Both prompts (SMS + notifications) now appear together after the final
+  onboarding slide.
 
 ---
 
