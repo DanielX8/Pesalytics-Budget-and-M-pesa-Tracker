@@ -69,9 +69,14 @@ import com.pesalytics.ui.theme.HeroGradientEnd
 import com.pesalytics.ui.theme.TransferBlue
 import com.pesalytics.ui.theme.WarningOrange
 import androidx.compose.ui.unit.sp
-import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
+
+private val currencyFormat = java.text.NumberFormat.getInstance().apply {
+    minimumFractionDigits = 2
+    maximumFractionDigits = 2
+}
+private val timeFormat = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -391,7 +396,7 @@ fun DashboardScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
+            item(key = "greeting") {
                 Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
                     Text(
                         text = "${getGreetingMessage()},",
@@ -407,7 +412,7 @@ fun DashboardScreen(
                 }
             }
             
-            item {
+            item(key = "month-selector") {
                 val months = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
                 val selectedMonthIndex by viewModel.selectedMonthIndex.collectAsStateWithLifecycle()
                 val selectedMonth = months.getOrNull(selectedMonthIndex) ?: months.first()
@@ -441,13 +446,13 @@ fun DashboardScreen(
                 }
             }
 
-            item {
+            item(key = "hero-card") {
                 Box(modifier = Modifier.animateItem()) {
                     HeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
                 }
             }
             
-            item {
+            item(key = "quick-nav") {
                 Row(
                     modifier = Modifier.fillMaxWidth().animateItem(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -460,7 +465,7 @@ fun DashboardScreen(
             }
 
             if (uiState.hasBudget) {
-                item {
+                item(key = "budget-progress") {
                     val spent = uiState.monthlyExpense
                     val limit = uiState.currentBudgetLimit
                     val progress = if (limit > 0) (spent / limit).toFloat().coerceIn(0f, 1f) else 0f
@@ -495,7 +500,7 @@ fun DashboardScreen(
                 }
             }
 
-            item {
+            item(key = "recent-header") {
                 Row(
                     modifier = Modifier.fillMaxWidth().animateItem(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -510,7 +515,7 @@ fun DashboardScreen(
             }
 
             // AnimatedContent: smoothly crossfades between empty state and populated list
-            item {
+            item(key = "recent-content") {
                 AnimatedContent(
                     targetState = groupedRecents.isEmpty(),
                     transitionSpec = {
@@ -1000,8 +1005,7 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null) {
         
         Spacer(modifier = Modifier.width(16.dp))
         
-        val format = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val timeStr = format.format(Date(transaction.timestamp))
+        val timeStr = timeFormat.format(Date(transaction.timestamp))
         val typeStr = transaction.type.name.replace("_", " ").lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
         
         val subtitleStr = buildString {
@@ -1046,12 +1050,7 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null) {
     }
 }
 
-fun formatCurrency(amount: Double): String {
-    return NumberFormat.getInstance().apply { 
-        minimumFractionDigits = 2
-        maximumFractionDigits = 2 
-    }.format(amount)
-}
+fun formatCurrency(amount: Double): String = currencyFormat.format(amount)
 
 fun getGreetingMessage(): String {
     val calendar = Calendar.getInstance()
