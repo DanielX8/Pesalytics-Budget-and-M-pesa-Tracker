@@ -41,6 +41,7 @@ android {
     release {
       isCrunchPngs = false
       isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("debug")
     }
@@ -57,6 +58,10 @@ android {
     buildConfig = true
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
+}
+
+composeCompiler {
+    enableStrongSkippingMode = true
 }
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
@@ -105,6 +110,7 @@ dependencies {
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
   implementation("com.android.billingclient:billing-ktx:7.0.0")
+  implementation("androidx.profileinstaller:profileinstaller:1.3.1")
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
