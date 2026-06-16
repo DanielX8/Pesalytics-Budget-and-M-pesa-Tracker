@@ -1,4 +1,4 @@
-package com.pesasense.utils
+package com.pesalytics.utils
 
 import android.content.Context
 import android.os.Environment
@@ -6,7 +6,7 @@ import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.pesasense.model.Transaction
+import com.pesalytics.model.Transaction
 import java.io.File
 
 object PdfExportHelper {
@@ -28,7 +28,7 @@ object PdfExportHelper {
     }
 
     private fun generateHtmlReport(transactions: List<Transaction>): String {
-        val expenses = transactions.filter { it.type != com.pesasense.model.TransactionType.RECEIVE_MONEY && it.type != com.pesasense.model.TransactionType.MANUAL_INCOME }
+        val expenses = transactions.filter { it.type != com.pesalytics.model.TransactionType.RECEIVE_MONEY && it.type != com.pesalytics.model.TransactionType.MANUAL_INCOME }
         val totalExpenses = expenses.sumOf { it.amount }
         val transactionCount = expenses.size
         
@@ -100,7 +100,7 @@ object PdfExportHelper {
                         <div class="logo-area">
                             <div class="logo-icon">P</div>
                             <div>
-                                <div class="logo-text">PesaSense</div>
+                                <div class="logo-text">Pesalytics</div>
                                 <div class="logo-sub">KNOW MORE, GROW MORE</div>
                             </div>
                         </div>
@@ -204,7 +204,7 @@ object PdfExportHelper {
     }
 
     private fun createPdfFile(context: Context, webView: WebView, onComplete: (File?) -> Unit) {
-        val fileName = "PesaSense_Report_${System.currentTimeMillis()}.pdf"
+        val fileName = "pesalytics_Report_${System.currentTimeMillis()}.pdf"
         val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         val file = File(downloadsDir, fileName)
 
@@ -214,7 +214,7 @@ object PdfExportHelper {
         // For a completely silent export, you would use PdfDocument and write the WebView's Picture to it.
         // For now, let's just trigger the Android Print UI, which allows saving as PDF.
         val printManager = context.getSystemService(Context.PRINT_SERVICE) as android.print.PrintManager
-        val printJob = printManager.print("PesaSense Report", printAdapter, PrintAttributes.Builder().build())
+        val printJob = printManager.print("Pesalytics Report", printAdapter, PrintAttributes.Builder().build())
         
         onComplete(null) // Return null as the OS handles the saving via PrintManager
     }

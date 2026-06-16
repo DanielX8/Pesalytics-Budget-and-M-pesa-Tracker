@@ -1,4 +1,4 @@
-package com.pesasense
+package com.pesalytics
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

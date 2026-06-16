@@ -1,11 +1,11 @@
-package com.pesasense.utils
+package com.pesalytics.utils
 
 import android.content.ContentValues
 import android.content.Context
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import com.pesasense.model.Transaction
+import com.pesalytics.model.Transaction
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -17,7 +17,7 @@ object CsvExportHelper {
         if (transactions.isEmpty()) return null
 
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val fileName = "PesaSense_$stamp.csv"
+        val fileName = "pesalytics_$stamp.csv"
         val csvContent = buildCsvContent(transactions)
 
         return try {

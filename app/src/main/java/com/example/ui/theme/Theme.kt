@@ -1,4 +1,4 @@
-package com.pesasense.ui.theme
+package com.pesalytics.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -46,7 +46,7 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun MyApplicationTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
-  // Disabling dynamicColor to enforce PesaSense branding
+  // Disabling dynamicColor to enforce Pesalytics branding
   dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {

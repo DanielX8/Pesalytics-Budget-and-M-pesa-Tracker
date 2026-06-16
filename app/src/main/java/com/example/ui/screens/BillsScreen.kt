@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -47,12 +47,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.R
-import com.pesasense.model.Bill
-import com.pesasense.model.BillCycle
-import com.pesasense.ui.theme.AccentGreenLight
-import com.pesasense.ui.theme.ExpenseRed
-import com.pesasense.ui.theme.WarningOrange
+import com.pesalytics.R
+import com.pesalytics.model.Bill
+import com.pesalytics.model.BillCycle
+import com.pesalytics.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.ExpenseRed
+import com.pesalytics.ui.theme.WarningOrange
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.text.SimpleDateFormat
@@ -211,7 +211,7 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                     title = {
                         Image(
                             painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                            contentDescription = "PesaSense",
+                            contentDescription = "Pesalytics",
                             modifier = Modifier.height(32.dp),
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                         )

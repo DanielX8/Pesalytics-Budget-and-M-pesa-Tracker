@@ -15,7 +15,7 @@
   ~ limitations under the License.
   -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/pesasense_icon_background"/>
-    <foreground android:drawable="@mipmap/pesasense_icon_foreground"/>
-    <monochrome android:drawable="@mipmap/pesasense_icon_foreground"/>
+    <background android:drawable="@color/pesalytics_icon_background"/>
+    <foreground android:drawable="@mipmap/pesalytics_icon_foreground"/>
+    <monochrome android:drawable="@mipmap/pesalytics_icon_foreground"/>
 </adaptive-icon>

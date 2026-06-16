@@ -1,4 +1,4 @@
-package com.pesasense.notifications
+package com.pesalytics.notifications
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,8 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.pesasense.MainActivity
-import com.pesasense.R
+import com.pesalytics.MainActivity
+import com.pesalytics.R
 
 class NotificationHelper(private val context: Context) {
 

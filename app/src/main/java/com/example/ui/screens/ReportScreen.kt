@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,9 +13,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.model.TransactionType
-import com.pesasense.ui.theme.AccentGreenLight
-import com.pesasense.ui.theme.ExpenseRed
+import com.pesalytics.model.TransactionType
+import com.pesalytics.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.ExpenseRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,7 +100,7 @@ fun ReportScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(
                         onClick = {
-                            val file = com.pesasense.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
+                            val file = com.pesalytics.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
                             viewModel.addNotification(if (file != null) "CSV saved to Downloads" else "CSV export failed")
                         },
                         modifier = Modifier.weight(1f),
@@ -110,7 +110,7 @@ fun ReportScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                     }
                     Button(
                         onClick = {
-                            com.pesasense.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
+                            com.pesalytics.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
                                 viewModel.addNotification("PDF print dialog opened.")
                             }
                         },

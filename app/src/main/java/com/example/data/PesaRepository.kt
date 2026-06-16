@@ -1,10 +1,10 @@
-package com.pesasense.data
+package com.pesalytics.data
 
-import com.pesasense.model.Bill
-import com.pesasense.model.Budget
-import com.pesasense.model.CustomRule
-import com.pesasense.model.Transaction
-import com.pesasense.model.Goal
+import com.pesalytics.model.Bill
+import com.pesalytics.model.Budget
+import com.pesalytics.model.CustomRule
+import com.pesalytics.model.Transaction
+import com.pesalytics.model.Goal
 import kotlinx.coroutines.flow.Flow
 
 class PesaRepository(

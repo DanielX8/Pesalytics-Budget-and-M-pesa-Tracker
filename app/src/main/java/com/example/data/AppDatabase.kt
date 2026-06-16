@@ -1,4 +1,4 @@
-package com.pesasense.data
+package com.pesalytics.data
 
 import android.content.Context
 import androidx.room.Database
@@ -6,11 +6,11 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.pesasense.model.Bill
-import com.pesasense.model.Budget
-import com.pesasense.model.CustomRule
-import com.pesasense.model.Transaction
-import com.pesasense.model.Goal
+import com.pesalytics.model.Bill
+import com.pesalytics.model.Budget
+import com.pesalytics.model.CustomRule
+import com.pesalytics.model.Transaction
+import com.pesalytics.model.Goal
 
 val MIGRATION_8_9 = object : Migration(8, 9) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -77,7 +77,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "pesasense_database"
+                    "pesalytics_database"
                 ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12).build()
                 INSTANCE = instance
                 instance

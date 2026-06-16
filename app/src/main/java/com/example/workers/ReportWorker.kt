@@ -1,9 +1,9 @@
-package com.pesasense.workers
+package com.pesalytics.workers
 
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.pesasense.notifications.NotificationHelper
+import com.pesalytics.notifications.NotificationHelper
 
 class ReportWorker(
     appContext: Context,

@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.ui.graphics.luminance
 
@@ -56,18 +56,18 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.model.Transaction
-import com.pesasense.model.TransactionType
+import com.pesalytics.model.Transaction
+import com.pesalytics.model.TransactionType
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.launch
-import com.pesasense.ui.theme.AccentGreenDark
-import com.pesasense.ui.theme.AccentGreenLight
-import com.pesasense.ui.theme.ExpenseRed
-import com.pesasense.ui.theme.IncomeGreen
-import com.pesasense.ui.theme.HeroGradientEnd
-import com.pesasense.ui.theme.TransferBlue
-import com.pesasense.ui.theme.WarningOrange
+import com.pesalytics.ui.theme.AccentGreenDark
+import com.pesalytics.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.ExpenseRed
+import com.pesalytics.ui.theme.IncomeGreen
+import com.pesalytics.ui.theme.HeroGradientEnd
+import com.pesalytics.ui.theme.TransferBlue
+import com.pesalytics.ui.theme.WarningOrange
 import androidx.compose.ui.unit.sp
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -259,7 +259,7 @@ fun DashboardScreen(
             onShare = {
                 val sendIntent: android.content.Intent = android.content.Intent().apply {
                     action = android.content.Intent.ACTION_SEND
-                    putExtra(android.content.Intent.EXTRA_TEXT, "PesaSense Transaction Receipt:\nRef: ${selectedTransaction!!.remoteRef}\nPayee: ${selectedTransaction!!.payee}\nAmount: KES ${formatCurrency(selectedTransaction!!.amount)}")
+                    putExtra(android.content.Intent.EXTRA_TEXT, "Pesalytics Transaction Receipt:\nRef: ${selectedTransaction!!.remoteRef}\nPayee: ${selectedTransaction!!.payee}\nAmount: KES ${formatCurrency(selectedTransaction!!.amount)}")
                     type = "text/plain"
                 }
                 val shareIntent = android.content.Intent.createChooser(sendIntent, null)
@@ -277,7 +277,7 @@ fun DashboardScreen(
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("PesaSense", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
+                Text("Pesalytics", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
                 
                 Box(modifier = Modifier.align(Alignment.CenterEnd)) {
                     Box(

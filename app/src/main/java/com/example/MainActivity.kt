@@ -1,4 +1,4 @@
-package com.pesasense
+package com.pesalytics
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -44,7 +44,7 @@ import androidx.navigation.NavHostController
 import kotlin.math.sqrt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
-import com.pesasense.model.ThemeMode
+import com.pesalytics.model.ThemeMode
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -52,9 +52,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.pesasense.ui.navigation.*
-import com.pesasense.ui.screens.*
-import com.pesasense.ui.theme.MyApplicationTheme
+import com.pesalytics.ui.navigation.*
+import com.pesalytics.ui.screens.*
+import com.pesalytics.ui.theme.MyApplicationTheme
 
 // Shared transition spec used for all nav transitions
 private val NavEnterTransition = slideInHorizontally(
@@ -82,8 +82,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as PesaSenseApplication
-            val notificationHelper = remember { com.pesasense.notifications.NotificationHelper(app) }
+            val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as PesalyticsApplication
+            val notificationHelper = remember { com.pesalytics.notifications.NotificationHelper(app) }
             val factory = remember { PesaViewModelFactory(app.repository, notificationHelper, app.subscriptionManager) }
             val viewModel: PesaViewModel = viewModel(factory = factory)
             
@@ -126,9 +126,9 @@ class MainActivity : ComponentActivity() {
             Box(modifier = Modifier.fillMaxSize()) {
                 MyApplicationTheme(darkTheme = currentRenderDark) {
                     androidx.compose.material3.ProvideTextStyle(
-                        value = androidx.compose.ui.text.TextStyle(fontFamily = com.pesasense.ui.theme.SpaceGroteskFontFamily)
+                        value = androidx.compose.ui.text.TextStyle(fontFamily = com.pesalytics.ui.theme.SpaceGroteskFontFamily)
                     ) {
-                        PesaSenseApp(viewModel = viewModel, navController = navController)
+                        PesalyticsApp(viewModel = viewModel, navController = navController)
                     }
                 }
 
@@ -151,13 +151,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        val app = application as com.pesasense.PesaSenseApplication
+        val app = application as com.pesalytics.PesalyticsApplication
         app.subscriptionManager.connect()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        val app = application as com.pesasense.PesaSenseApplication
+        val app = application as com.pesalytics.PesalyticsApplication
         app.subscriptionManager.disconnect()
     }
 }
@@ -165,7 +165,7 @@ class MainActivity : ComponentActivity() {
 
 
 @Composable
-fun PesaSenseApp(viewModel: PesaViewModel, navController: NavHostController) {
+fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
@@ -195,9 +195,9 @@ fun PesaSenseApp(viewModel: PesaViewModel, navController: NavHostController) {
                         label = { Text("Home") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Home>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                            indicatorColor = com.pesasense.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
-                            selectedIconColor = com.pesasense.ui.theme.AccentGreenDark,
-                            selectedTextColor = com.pesasense.ui.theme.AccentGreenDark
+                            indicatorColor = com.pesalytics.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
+                            selectedIconColor = com.pesalytics.ui.theme.AccentGreenDark,
+                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark
                         ),
                         onClick = {
                             navController.navigate(Home) {
@@ -221,9 +221,9 @@ fun PesaSenseApp(viewModel: PesaViewModel, navController: NavHostController) {
                         label = { Text("Analytics") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Analytics>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                            indicatorColor = com.pesasense.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
-                            selectedIconColor = com.pesasense.ui.theme.AccentGreenDark,
-                            selectedTextColor = com.pesasense.ui.theme.AccentGreenDark
+                            indicatorColor = com.pesalytics.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
+                            selectedIconColor = com.pesalytics.ui.theme.AccentGreenDark,
+                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark
                         ),
                         onClick = {
                             navController.navigate(Analytics) {
@@ -247,9 +247,9 @@ fun PesaSenseApp(viewModel: PesaViewModel, navController: NavHostController) {
                         label = { Text("Bills") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Bills>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                            indicatorColor = com.pesasense.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
-                            selectedIconColor = com.pesasense.ui.theme.AccentGreenDark,
-                            selectedTextColor = com.pesasense.ui.theme.AccentGreenDark
+                            indicatorColor = com.pesalytics.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
+                            selectedIconColor = com.pesalytics.ui.theme.AccentGreenDark,
+                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark
                         ),
                         onClick = {
                             navController.navigate(Bills) {
@@ -273,9 +273,9 @@ fun PesaSenseApp(viewModel: PesaViewModel, navController: NavHostController) {
                         label = { Text("Settings") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Settings>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                            indicatorColor = com.pesasense.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
-                            selectedIconColor = com.pesasense.ui.theme.AccentGreenDark,
-                            selectedTextColor = com.pesasense.ui.theme.AccentGreenDark
+                            indicatorColor = com.pesalytics.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
+                            selectedIconColor = com.pesalytics.ui.theme.AccentGreenDark,
+                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark
                         ),
                         onClick = {
                             navController.navigate(Settings) {
@@ -398,7 +398,7 @@ fun PesaSenseApp(viewModel: PesaViewModel, navController: NavHostController) {
                     )
                 }
                 composable<Faq> {
-                    com.pesasense.ui.screens.FaqScreen(
+                    com.pesalytics.ui.screens.FaqScreen(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }

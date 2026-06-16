@@ -1,11 +1,11 @@
-package com.pesasense.workers
+package com.pesalytics.workers
 
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.pesasense.PesaSenseApplication
-import com.pesasense.notifications.NotificationHelper
-import com.pesasense.model.TransactionType
+import com.pesalytics.PesalyticsApplication
+import com.pesalytics.notifications.NotificationHelper
+import com.pesalytics.model.TransactionType
 import kotlinx.coroutines.flow.first
 import java.util.Calendar
 
@@ -16,7 +16,7 @@ class WeeklyReportWorker(appContext: Context, workerParams: WorkerParameters) :
         val prefs = applicationContext.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
         if (prefs.getString("report_frequency", "Daily") == "Monthly") return Result.success()
 
-        val repository = (applicationContext as PesaSenseApplication).repository
+        val repository = (applicationContext as PesalyticsApplication).repository
         val notif = NotificationHelper(applicationContext)
 
         // ── This week's spending (Mon 00:00 → now) ──────────────────────────

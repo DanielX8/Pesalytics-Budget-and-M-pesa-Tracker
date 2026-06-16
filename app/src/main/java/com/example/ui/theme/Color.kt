@@ -1,4 +1,4 @@
-package com.pesasense.ui.theme
+package com.pesalytics.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -10,7 +10,7 @@ val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
-// PesaSense Colors
+// Pesalytics Colors
 val AmoledBlack = Color(0xFF000000)
 val DarkSurface1 = Color(0xFF151515)
 val DarkSurface2 = Color(0xFF232323)

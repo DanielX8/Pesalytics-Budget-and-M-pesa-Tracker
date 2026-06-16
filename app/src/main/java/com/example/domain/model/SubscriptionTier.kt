@@ -1,4 +1,4 @@
-package com.pesasense.domain.model
+package com.pesalytics.domain.model
 
 enum class SubscriptionTier {
     FREE,

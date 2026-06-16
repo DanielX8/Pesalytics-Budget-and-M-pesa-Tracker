@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -22,11 +22,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.R
-import com.pesasense.model.BillCycle
-import com.pesasense.ui.theme.AccentGreenDark
-import com.pesasense.ui.theme.AccentGreenLight
-import com.pesasense.ui.theme.ExpenseRed
+import com.pesalytics.R
+import com.pesalytics.model.BillCycle
+import com.pesalytics.ui.theme.AccentGreenDark
+import com.pesalytics.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.ExpenseRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +56,7 @@ fun SubscriptionScreen(
                 title = {
                     Image(
                         painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                        contentDescription = "PesaSense",
+                        contentDescription = "Pesalytics",
                         modifier = Modifier.height(32.dp),
                         contentScale = androidx.compose.ui.layout.ContentScale.Fit
                     )
@@ -83,7 +83,7 @@ fun SubscriptionScreen(
                 Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        if (isPremium) "You're Premium" else "PesaSense Premium",
+                        if (isPremium) "You're Premium" else "Pesalytics Premium",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -179,7 +179,7 @@ fun SubscriptionScreen(
                                 )
                         )
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("PesaSense Premium", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Pesalytics Premium", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
                             Spacer(modifier = Modifier.height(16.dp))
                             FeatureBullet("Full Analytics suite (donut, calendar, rhythm)", color = Color.White, iconTint = Color.White)
                             FeatureBullet("Per-category Budget Planner + trends", color = Color.White, iconTint = Color.White)
@@ -197,11 +197,11 @@ fun SubscriptionScreen(
                                         .clickableScale {
                                             val activity = context as? android.app.Activity ?: return@clickableScale
                                             val sku = when (selectedPlan) {
-                                                "Monthly" -> com.pesasense.data.billing.BillingConfig.SKU_MONTHLY
-                                                "Quarterly" -> com.pesasense.data.billing.BillingConfig.SKU_QUARTERLY
-                                                "Yearly" -> com.pesasense.data.billing.BillingConfig.SKU_YEARLY
-                                                "Lifetime" -> com.pesasense.data.billing.BillingConfig.SKU_LIFETIME
-                                                else -> com.pesasense.data.billing.BillingConfig.SKU_YEARLY
+                                                "Monthly" -> com.pesalytics.data.billing.BillingConfig.SKU_MONTHLY
+                                                "Quarterly" -> com.pesalytics.data.billing.BillingConfig.SKU_QUARTERLY
+                                                "Yearly" -> com.pesalytics.data.billing.BillingConfig.SKU_YEARLY
+                                                "Lifetime" -> com.pesalytics.data.billing.BillingConfig.SKU_LIFETIME
+                                                else -> com.pesalytics.data.billing.BillingConfig.SKU_YEARLY
                                             }
                                             viewModel.subscriptionManager?.launchBillingFlow(activity, sku)
                                         }
