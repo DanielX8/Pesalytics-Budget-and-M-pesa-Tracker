@@ -76,9 +76,9 @@
 -keep class * extends androidx.navigation.Navigator { *; }
 
 # App-specific: keep all data models, DAOs, workers, and the Application class
--keep class com.pesasense.model.** { *; }
--keep class com.pesasense.data.** { *; }
--keep class com.pesasense.workers.** { *; }
--keep class com.pesasense.PesaSenseApplication { *; }
--keep class com.pesasense.notifications.** { *; }
--keep class com.pesasense.patterns.** { *; }
+-keep class com.pesalytics.model.** { *; }
+-keep class com.pesalytics.data.** { *; }
+-keep class com.pesalytics.workers.** { *; }
+-keep class com.pesalytics.PesalyticsApplication { *; }
+-keep class com.pesalytics.notifications.** { *; }
+-keep class com.pesalytics.patterns.** { *; }
