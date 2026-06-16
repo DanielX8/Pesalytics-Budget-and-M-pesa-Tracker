@@ -33,6 +33,7 @@ import java.util.Date
 import java.util.Locale
 import com.pesalytics.data.billing.SubscriptionManager
 import com.pesalytics.data.billing.PromoResult
+import androidx.compose.runtime.Immutable
 
 data class AppNotification(
     val id: String = java.util.UUID.randomUUID().toString(),
@@ -40,6 +41,7 @@ data class AppNotification(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+@Immutable
 data class HomeUiState(
     val transactions: List<Transaction> = emptyList(),
     val recentTransactions: List<Transaction> = emptyList(),
