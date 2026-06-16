@@ -5,23 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Rebrand] — 2026-06-16 · PesaSense → Pesalytics
+## [1.4.0] — 2026-06-16 · PesaSense → Pesalytics Rebrand & Redesign 🚀
 
-The app has been renamed from **PesaSense** to **Pesalytics**. The original name was already taken.
+The app has been fully rebranded from **PesaSense** to **Pesalytics** and includes massive UI/UX improvements.
 
-### What changed
+### Brand & Package Changes
 - App display name: `PesaSense` → `Pesalytics`
-- Package namespace: `com.pesasense` → `com.pesalytics`
-- Application ID: `com.pesasense.xmqs` → `com.pesalytics`
+- Package namespace: `com.pesasense` → `com.pesalytics.xmqs`
+- Application ID: `com.pesasense.xmqs` → `com.pesalytics.xmqs`
 - All internal identifiers updated: database name, SKU IDs, ProGuard keep rules, icon resources
 - `AppLinks` placeholder URLs updated to `pesalytics.app`
-- No functional changes — purely a branding and package rename
+- **Git History Rewrite:** The repository's git history has been scrubbed to reflect the new brand name.
+- **Release Build Support:** Clean, minified `pesalytics-release.apk` builds using R8.
 
 > **Note for existing installs:** because the application ID changed, Android treats Pesalytics as a new app. A fresh install is required; data from the old PesaSense debug builds will not carry over.
-
----
-
-## [1.4.0] — 2026-06-16 · Fixes, Settings/Subscription Redesign & Polish 🎨
 
 ### Fixed
 - **Budget limit could not be edited** — editing the overall/category limit silently created
