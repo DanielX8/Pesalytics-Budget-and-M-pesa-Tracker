@@ -1,9 +1,9 @@
-package com.pesasense.data.billing
+package com.pesalytics.data.billing
 
 import android.app.Activity
 import android.content.Context
 import com.android.billingclient.api.*
-import com.pesasense.domain.model.SubscriptionTier
+import com.pesalytics.domain.model.SubscriptionTier
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

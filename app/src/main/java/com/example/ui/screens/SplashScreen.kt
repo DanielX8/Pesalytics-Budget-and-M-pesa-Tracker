@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -17,14 +17,14 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import com.pesasense.R
+import com.pesalytics.R
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import com.pesasense.model.ThemeMode
+import com.pesalytics.model.ThemeMode
 
 @Composable
 fun SplashScreen(viewModel: PesaViewModel, onSplashComplete: (Boolean) -> Unit) {
@@ -88,7 +88,7 @@ fun SplashScreen(viewModel: PesaViewModel, onSplashComplete: (Boolean) -> Unit) 
     ) {
         Image(
             painter = painterResource(id = if (isDarkTheme) R.drawable.splash_screen_darkmode else R.drawable.splash_screen_img),
-            contentDescription = "PesaSense - Know More, Grow More",
+            contentDescription = "Pesalytics - Know More, Grow More",
             modifier = Modifier
                 .fillMaxSize()
                 .alpha(alpha.value)

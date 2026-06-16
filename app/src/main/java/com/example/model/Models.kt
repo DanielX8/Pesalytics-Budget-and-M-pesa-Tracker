@@ -1,4 +1,4 @@
-package com.pesasense.model
+package com.pesalytics.model
 
 import androidx.room.Entity
 import androidx.room.Index

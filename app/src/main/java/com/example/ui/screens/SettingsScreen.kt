@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import android.content.Context
 import android.content.Intent
@@ -41,14 +41,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.pesasense.BuildConfig
-import com.pesasense.R
-import com.pesasense.ui.theme.AccentGreenLight
-import com.pesasense.ui.theme.WarningOrange
+import com.pesalytics.BuildConfig
+import com.pesalytics.R
+import com.pesalytics.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.WarningOrange
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.model.ThemeMode
-import com.pesasense.ui.theme.ExpenseRed
-import com.pesasense.util.AppLinks
+import com.pesalytics.model.ThemeMode
+import com.pesalytics.ui.theme.ExpenseRed
+import com.pesalytics.util.AppLinks
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -97,7 +97,7 @@ fun SettingsScreen(
                 title = {
                     Image(
                         painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                        contentDescription = "PesaSense",
+                        contentDescription = "Pesalytics",
                         modifier = Modifier.height(32.dp),
                         contentScale = androidx.compose.ui.layout.ContentScale.Fit
                     )
@@ -261,14 +261,14 @@ fun SettingsScreen(
                             ExportChip(".CSV") {
                                 if (!isPremium) showExportGateDialog = true
                                 else {
-                                    val file = com.pesasense.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
+                                    val file = com.pesalytics.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
                                     viewModel.addNotification(if (file != null) "CSV saved to Downloads" else "Export failed")
                                     if (file != null) android.widget.Toast.makeText(context, "CSV exported successfully", android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             }
                             ExportChip(".PDF") {
                                 if (!isPremium) showExportGateDialog = true
-                                else com.pesasense.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
+                                else com.pesalytics.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
                                     viewModel.addNotification("Print dialog opened for PDF generation.")
                                     android.widget.Toast.makeText(context, "PDF generated successfully", android.widget.Toast.LENGTH_SHORT).show()
                                 }
@@ -405,7 +405,7 @@ fun SettingsScreen(
             onDismissRequest = { showTipJarDialog = false },
             icon = { Icon(Icons.Rounded.VolunteerActivism, contentDescription = null, tint = HeroGreen) },
             title = { Text("Support the Developer") },
-            text = { Text("If PesaSense helps you, you can send a tip via M-PESA to:\n\n${AppLinks.TIP_JAR_MPESA}\n\nThank you! 💚") },
+            text = { Text("If Pesalytics helps you, you can send a tip via M-PESA to:\n\n${AppLinks.TIP_JAR_MPESA}\n\nThank you! 💚") },
             confirmButton = { Button(onClick = { showTipJarDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight)) { Text("Close", color = Color.White) } }
         )
     }
@@ -740,7 +740,7 @@ private fun shareText(context: Context, text: String) {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)
     }
-    runCatching { context.startActivity(Intent.createChooser(intent, "Share PesaSense")) }
+    runCatching { context.startActivity(Intent.createChooser(intent, "Share Pesalytics")) }
 }
 
 private fun rateApp(context: Context) {

@@ -1,9 +1,9 @@
-package com.pesasense
+package com.pesalytics
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.pesasense.data.billing.SubscriptionManager
-import com.pesasense.domain.model.SubscriptionTier
+import com.pesalytics.data.billing.SubscriptionManager
+import com.pesalytics.domain.model.SubscriptionTier
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test

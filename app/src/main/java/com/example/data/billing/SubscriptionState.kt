@@ -1,6 +1,6 @@
-package com.pesasense.data.billing
+package com.pesalytics.data.billing
 
-import com.pesasense.domain.model.SubscriptionTier
+import com.pesalytics.domain.model.SubscriptionTier
 
 data class SubscriptionState(
     val tier: SubscriptionTier = SubscriptionTier.FREE,

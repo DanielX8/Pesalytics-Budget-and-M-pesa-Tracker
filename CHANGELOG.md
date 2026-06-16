@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to PesaSense are documented here.
+All notable changes to Pesalytics are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
@@ -148,7 +148,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   and average daily/monthly spend.
 - **Bills Tracker** — Add recurring bills with due-date reminders and "Mark as Paid" workflow.
 - **Analytics Screen** — Visualise income vs expense with bar charts and category breakdowns.
-- **Package rename** — Application ID changed to `com.pesasense.xmqs`.
+- **Package rename** — Application ID changed to `com.Pesalytics.xmqs`.
 - Room database migrated to v9 with Fuliza columns; v10 adds `savedAmount` to goals.
 
 ### Fixed
