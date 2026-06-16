@@ -91,4 +91,13 @@ class PesaRepository(
     suspend fun updateBill(bill: Bill) {
         billDao.updateBill(bill)
     }
+
+    /** Wipes every table — used by the "Delete All Data" action. */
+    suspend fun deleteAllData() {
+        transactionDao.deleteAllTransactions()
+        billDao.deleteAllBills()
+        budgetDao.deleteAllBudgets()
+        goalDao.deleteAllGoals()
+        customRuleDao.deleteAllRules()
+    }
 }
