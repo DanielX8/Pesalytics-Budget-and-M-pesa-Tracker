@@ -46,6 +46,9 @@ interface TransactionDao {
 
     @Query("SELECT SUM(amount) FROM transactions WHERE type NOT IN ('RECEIVE_MONEY', 'MANUAL_INCOME', 'MANUAL_TRANSFER') AND timestamp >= :startOfDay AND timestamp <= :endOfDay")
     suspend fun getDailyExpense(startOfDay: Long, endOfDay: Long): Double?
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAllTransactions()
 }
 
 @Dao
@@ -55,6 +58,9 @@ interface CustomRuleDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRule(rule: CustomRule)
+
+    @Query("DELETE FROM custom_rules")
+    suspend fun deleteAllRules()
 }
 
 @Dao
@@ -70,6 +76,9 @@ interface BillDao {
 
     @Update
     suspend fun updateBill(bill: Bill)
+
+    @Query("DELETE FROM bills")
+    suspend fun deleteAllBills()
 }
 
 @Dao
@@ -82,6 +91,9 @@ interface BudgetDao {
 
     @Delete
     suspend fun deleteBudget(budget: Budget)
+
+    @Query("DELETE FROM budgets")
+    suspend fun deleteAllBudgets()
 }
 
 @Dao
@@ -97,4 +109,7 @@ interface GoalDao {
 
     @Query("DELETE FROM goals WHERE id = :id")
     suspend fun deleteGoal(id: Int)
+
+    @Query("DELETE FROM goals")
+    suspend fun deleteAllGoals()
 }

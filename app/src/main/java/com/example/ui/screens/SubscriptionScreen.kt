@@ -1,21 +1,16 @@
 package com.pesasense.ui.screens
 
-import androidx.compose.ui.unit.sp
-
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,9 +24,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesasense.R
 import com.pesasense.model.BillCycle
+import com.pesasense.ui.theme.AccentGreenDark
 import com.pesasense.ui.theme.AccentGreenLight
 import com.pesasense.ui.theme.ExpenseRed
-import com.pesasense.ui.theme.WarningOrange
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +36,7 @@ fun SubscriptionScreen(
 ) {
     val allBills by viewModel.bills.collectAsStateWithLifecycle()
     val monthlyBills = allBills.filter { it.cycle == BillCycle.MONTHLY }
+    val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
     var selectedPlan by remember { mutableStateOf("Yearly") }
     var promoCode by remember { mutableStateOf("") }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -56,25 +52,22 @@ fun SubscriptionScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
-                CenterAlignedTopAppBar(
-                    title = { 
-                        Image(
-                            painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                            contentDescription = "PesaSense",
-                            modifier = Modifier.height(32.dp),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
-                )
-
-            }
+            CenterAlignedTopAppBar(
+                title = {
+                    Image(
+                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
+                        contentDescription = "PesaSense",
+                        modifier = Modifier.height(32.dp),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
@@ -87,20 +80,18 @@ fun SubscriptionScreen(
         ) {
             // Header
             item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Subscription",
+                        if (isPremium) "You're Premium" else "PesaSense Premium",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Unlock your full financial potential with PesaSense Premium.",
+                        if (isPremium) "Thanks for supporting an ad-free, private finance app."
+                        else "Unlock deep analytics, unlimited budgets and bills — no ads, ever.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -108,72 +99,45 @@ fun SubscriptionScreen(
                 }
             }
 
-            // Pricing Grid
-            item {
-                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        PricingCard(
-                            title = "Monthly",
-                            price = "KES 299",
-                            isSelected = selectedPlan == "Monthly",
-                            modifier = Modifier.weight(1f),
-                            onClick = { selectedPlan = "Monthly" }
-                        )
-                        PricingCard(
-                            title = "Quarterly",
-                            price = "KES 699",
-                            isSelected = selectedPlan == "Quarterly",
-                            modifier = Modifier.weight(1f),
-                            onClick = { selectedPlan = "Quarterly" }
-                        )
+            // Pricing grid (hidden once premium)
+            if (!isPremium) {
+                item {
+                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            PricingCard("Monthly", "KES 299", isSelected = selectedPlan == "Monthly", modifier = Modifier.weight(1f)) { selectedPlan = "Monthly" }
+                            PricingCard("Quarterly", "KES 699", isSelected = selectedPlan == "Quarterly", modifier = Modifier.weight(1f)) { selectedPlan = "Quarterly" }
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            PricingCard("Yearly", "KES 2,000", badge = "BEST VALUE", isSelected = selectedPlan == "Yearly", modifier = Modifier.weight(1f)) { selectedPlan = "Yearly" }
+                            PricingCard("Lifetime", "KES 9,999", isSelected = selectedPlan == "Lifetime", modifier = Modifier.weight(1f)) { selectedPlan = "Lifetime" }
+                        }
                     }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        PricingCard(
-                            title = "Yearly",
-                            price = "KES 2,000",
-                            badge = "BEST VALUE",
-                            isSelected = selectedPlan == "Yearly",
-                            modifier = Modifier.weight(1f),
-                            onClick = { selectedPlan = "Yearly" }
+                }
+
+                // Promo code
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = promoCode,
+                            onValueChange = { promoCode = it },
+                            label = { Text("Have a promo code?") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
                         )
-                        PricingCard(
-                            title = "Lifetime",
-                            price = "KES 9,999",
-                            isSelected = selectedPlan == "Lifetime",
-                            modifier = Modifier.weight(1f),
-                            onClick = { selectedPlan = "Lifetime" }
-                        )
+                        Button(
+                            onClick = { if (promoCode.isNotBlank()) viewModel.redeemPromoCode(promoCode.trim()) },
+                            enabled = promoCode.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight)
+                        ) { Text("Apply Code", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
                 }
             }
 
-            // Promo Code
-            item {
-                OutlinedTextField(
-                    value = promoCode,
-                    onValueChange = { promoCode = it },
-                    label = { Text("Have a promo code?") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
-
-            // Promo Code Apply Button
-            item {
-                Button(
-                    onClick = { if (promoCode.isNotBlank()) viewModel.redeemPromoCode(promoCode.trim()) },
-                    enabled = promoCode.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight)
-                ) {
-                    Text("Apply Code", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            // Tier Comparison
+            // Tier comparison cards
             item {
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Free Tier Card
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -182,64 +146,79 @@ fun SubscriptionScreen(
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("Free Plan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(16.dp))
-                            FeatureBullet("Basic transaction tracking")
-                            FeatureBullet("Limited standard budgets")
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = {},
-                                enabled = false,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant, disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant)
-                            ) {
-                                Text("CURRENTLY ACTIVE")
+                            FeatureBullet("Automated M-PESA SMS parsing")
+                            FeatureBullet("Manual cash & non-M-PESA entry")
+                            FeatureBullet("Spending Cap (global monthly limit)")
+                            FeatureBullet("1 financial goal")
+                            if (!isPremium) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant, disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                                ) { Text("CURRENTLY ACTIVE") }
                             }
                         }
                     }
 
-                    // Premium Tier
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                        elevation = CardDefaults.cardElevation(2.dp)
+                    val gradient = rememberBrandGradient()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .brandGlow(elevation = 18.dp, radius = 20.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(gradient)
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(
+                                    androidx.compose.ui.graphics.Brush.radialGradient(
+                                        colors = listOf(Color.White.copy(alpha = 0.12f), Color.Transparent),
+                                        radius = 700f
+                                    )
+                                )
+                        )
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("PesaSense Premium", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text("PesaSense Premium", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
                             Spacer(modifier = Modifier.height(16.dp))
-                            FeatureBullet("Unlimited transaction tracking", color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            FeatureBullet("Smart categorization algorithms", color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            FeatureBullet("Cloud sync & backup", color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = {
-                                val activity = context as? android.app.Activity ?: return@Button
-                                val sku = when (selectedPlan) {
-                                    "Monthly"   -> com.pesasense.data.billing.BillingConfig.SKU_MONTHLY
-                                    "Quarterly" -> com.pesasense.data.billing.BillingConfig.SKU_QUARTERLY
-                                    "Yearly"    -> com.pesasense.data.billing.BillingConfig.SKU_YEARLY
-                                    "Lifetime"  -> com.pesasense.data.billing.BillingConfig.SKU_LIFETIME
-                                    else -> com.pesasense.data.billing.BillingConfig.SKU_YEARLY
+                            FeatureBullet("Full Analytics suite (donut, calendar, rhythm)", color = Color.White, iconTint = Color.White)
+                            FeatureBullet("Per-category Budget Planner + trends", color = Color.White, iconTint = Color.White)
+                            FeatureBullet("Unlimited recurring bills + smart alerts", color = Color.White, iconTint = Color.White)
+                            FeatureBullet("Unlimited financial goals", color = Color.White, iconTint = Color.White)
+                            FeatureBullet("Data export (CSV & PDF)", color = Color.White, iconTint = Color.White)
+                            FeatureBullet("100% offline — your data never leaves the phone", color = Color.White, iconTint = Color.White)
+                            if (!isPremium) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Surface(
+                                    color = Color.White,
+                                    shape = RoundedCornerShape(24.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickableScale {
+                                            val activity = context as? android.app.Activity ?: return@clickableScale
+                                            val sku = when (selectedPlan) {
+                                                "Monthly" -> com.pesasense.data.billing.BillingConfig.SKU_MONTHLY
+                                                "Quarterly" -> com.pesasense.data.billing.BillingConfig.SKU_QUARTERLY
+                                                "Yearly" -> com.pesasense.data.billing.BillingConfig.SKU_YEARLY
+                                                "Lifetime" -> com.pesasense.data.billing.BillingConfig.SKU_LIFETIME
+                                                else -> com.pesasense.data.billing.BillingConfig.SKU_YEARLY
+                                            }
+                                            viewModel.subscriptionManager?.launchBillingFlow(activity, sku)
+                                        }
+                                ) {
+                                    Box(modifier = Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
+                                        Text("UPGRADE TO PREMIUM", fontWeight = FontWeight.Bold, color = AccentGreenDark)
+                                    }
                                 }
-                                viewModel.subscriptionManager?.launchBillingFlow(activity, sku)
-                            },
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight),
-                                shape = RoundedCornerShape(24.dp)
-                            ) {
-                                Text("UPGRADE TO PREMIUM", fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
                 }
             }
 
-            // Detailed Comparison Table
+            // Comparison table
             item {
-                Text(
-                    text = "Feature Comparison",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                Text("Feature Comparison", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -252,54 +231,36 @@ fun SubscriptionScreen(
                             Text("FREE", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                             Text("PREMIUM", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                         }
-                        ComparisonRow("Analytics", "Basic (Home only)", "Deep Analytics Suite")
+                        ComparisonRow("Analytics", "Home only", "Full suite")
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                        ComparisonRow("Budget Planner", "Global cap", "Per-category")
                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                         ComparisonRow("Bill Tracker", "—", "Unlimited")
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                        ComparisonRow("Financial Goals", "1", "Unlimited")
                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                         ComparisonRow("Data Export", "—", "CSV & PDF")
                     }
                 }
             }
 
-            // My Subscriptions (monthly bills)
+            // My subscriptions (monthly bills)
             item {
-                Text(
-                    "My Subscriptions",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                )
-                Text(
-                    "Monthly recurring bills tracked in the Bills screen",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("My Subscriptions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp))
+                Text("Monthly recurring bills tracked in the Bills screen", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item {
                 if (monthlyBills.isEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(12.dp)) {
                         Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                             Text("No monthly subscriptions tracked yet.\nAdd them in the Bills tab.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                         }
                     }
                 } else {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = RoundedCornerShape(12.dp),
-                        elevation = CardDefaults.cardElevation(2.dp)
-                    ) {
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             monthlyBills.forEachIndexed { index, bill ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
+                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(bill.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                         Text(bill.payee, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -323,15 +284,12 @@ fun SubscriptionScreen(
 
             // Footer
             item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    TextButton(onClick = { /* Restore Purchases */ }) {
+                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    TextButton(onClick = { viewModel.restorePurchases() }) {
                         Text("Restore Purchases", color = MaterialTheme.colorScheme.primary)
                     }
                     Text(
-                        text = "Subscriptions will automatically renew unless canceled. Manage your subscription through your settings.",
+                        text = "Subscriptions renew automatically unless canceled. Manage or cancel anytime in Google Play.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
@@ -341,9 +299,7 @@ fun SubscriptionScreen(
                 }
             }
 
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
+            item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
 }
@@ -355,30 +311,27 @@ fun PricingCard(title: String, price: String, badge: String? = null, isSelected:
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = if (badge != null) 8.dp else 0.dp)
+                .then(if (isSelected) Modifier.brandGlow(elevation = 12.dp, radius = 12.dp) else Modifier)
                 .border(
                     width = if (isSelected) 2.dp else 1.dp,
                     color = if (isSelected) AccentGreenLight else MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(12.dp)
                 )
-                .clickable { onClick() },
-            colors = CardDefaults.cardColors(containerColor = if (isSelected) AccentGreenLight.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surface)
+                .clickableScale { onClick() },
+            colors = CardDefaults.cardColors(containerColor = if (isSelected) AccentGreenLight.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface)
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(price, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
         }
-
         if (badge != null) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .clip(RoundedCornerShape(50))
-                    .background(AccentGreenLight)
+                    .background(AccentGreenDark)
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(badge, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -388,9 +341,9 @@ fun PricingCard(title: String, price: String, badge: String? = null, isSelected:
 }
 
 @Composable
-fun FeatureBullet(text: String, color: Color = MaterialTheme.colorScheme.onSurface) {
+fun FeatureBullet(text: String, color: Color = MaterialTheme.colorScheme.onSurface, iconTint: Color = AccentGreenLight) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-        Icon(Icons.Default.Check, contentDescription = null, tint = AccentGreenLight, modifier = Modifier.size(16.dp))
+        Icon(Icons.Default.Check, contentDescription = null, tint = iconTint, modifier = Modifier.size(16.dp))
         Spacer(modifier = Modifier.width(8.dp))
         Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
     }

@@ -356,7 +356,14 @@ fun PesaSenseApp(viewModel: PesaViewModel, navController: NavHostController) {
                         onNavigateToSubscription = { navController.navigate(Subscription) },
                         onNavigateToBudgetPlanner = { navController.navigate(BudgetPlanner) },
                         onNavigateToFinancialGoals = { navController.navigate(FinancialGoals) },
-                        onNavigateToFaq = { navController.navigate(Faq) }
+                        onNavigateToFaq = { navController.navigate(Faq) },
+                        onNavigateToNeedsWants = { navController.navigate(NeedsWants) }
+                    )
+                }
+                composable<NeedsWants> {
+                    NeedsWantsScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { navController.popBackStack() }
                     )
                 }
                 composable<BudgetPlanner> {

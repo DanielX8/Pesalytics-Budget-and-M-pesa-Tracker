@@ -49,7 +49,15 @@ data class HomeUiState(
     val isBalanceVisible: Boolean = true,
     val currentBudgetLimit: Double = 0.0,
     val hasBudget: Boolean = false,
-    val budgets: List<com.pesasense.model.Budget> = emptyList()
+    val budgets: List<com.pesasense.model.Budget> = emptyList(),
+    val categorySpent: Map<String, Double> = emptyMap()
+)
+
+data class BudgetInsights(
+    val bestMonthLabel: String? = null,
+    val bestMonthSaved: Double = 0.0,
+    val avgSaved: Double = 0.0,
+    val hasData: Boolean = false
 )
 
 class PesaViewModel(
@@ -118,6 +126,10 @@ class PesaViewModel(
     val highSpendingAlertsEnabled = MutableStateFlow(true)
     val smartAlertsEnabled = MutableStateFlow(false)
 
+    // ── SMS sync progress ────────────────────────────────────────────────────
+    val isSyncing = MutableStateFlow(false)
+    val syncProgress = MutableStateFlow(0)
+
     // ── Pattern analysis ─────────────────────────────────────────────────────
     private val _patternResult = MutableStateFlow<PatternResult?>(null)
     val patternResult = _patternResult.asStateFlow()
@@ -160,6 +172,7 @@ class PesaViewModel(
         isFirstLaunch.value = !prefs.getBoolean("has_completed_onboarding", false)
         loadThemeMode(context)
         loadNotificationPrefs(context)
+        loadNeedsWants(context)
         checkUpcomingBills()
     }
 
@@ -216,6 +229,38 @@ class PesaViewModel(
         smartAlertsEnabled.value = prefs.getBoolean("notif_smart_alerts", false)
     }
 
+    // ── Needs vs Wants classification ─────────────────────────────────────────
+    // category -> true (Need) / false (Want). Unclassified categories fall back to
+    // DEFAULT_NEED_KEYWORDS so existing users see sensible defaults until they customise.
+    val needsWantsClassification = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+
+    val knownCategories: StateFlow<List<String>> = repository.allTransactions.map { txns ->
+        val defaults = listOf(
+            "Groceries", "Transport", "Utilities", "Rent", "Bills", "Health",
+            "Entertainment", "Airtime", "Shopping", "Food", "Savings", "Other"
+        )
+        (txns.map { it.category }.filter { it.isNotBlank() } + defaults).distinct().sorted()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun loadNeedsWants(context: android.content.Context) {
+        val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+        val needs = prefs.getStringSet("nw_needs", emptySet()) ?: emptySet()
+        val wants = prefs.getStringSet("nw_wants", emptySet()) ?: emptySet()
+        needsWantsClassification.value =
+            needs.associateWith { true } + wants.associateWith { false }
+    }
+
+    fun setCategoryClassification(category: String, isNeed: Boolean, context: android.content.Context) {
+        val updated = needsWantsClassification.value.toMutableMap()
+        updated[category] = isNeed
+        needsWantsClassification.value = updated
+        val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit()
+            .putStringSet("nw_needs", updated.filterValues { it }.keys)
+            .putStringSet("nw_wants", updated.filterValues { !it }.keys)
+            .apply()
+    }
+
     // ── Notifications (in-app) ───────────────────────────────────────────────
     fun addNotification(message: String) {
         _notifications.value = listOf(AppNotification(message = message)) + _notifications.value
@@ -243,6 +288,8 @@ class PesaViewModel(
     fun syncMpesaSms(context: android.content.Context) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val transactionsList = mutableListOf<Transaction>()
+            isSyncing.value = true
+            syncProgress.value = 0
             try {
                 val existingTransactions = repository.allTransactions.first()
                 val existingRefs = existingTransactions.map { "${it.remoteRef}_${it.isFeeTransaction}" }.toSet()
@@ -259,9 +306,7 @@ class PesaViewModel(
                 if (cursor != null && cursor.moveToFirst()) {
                     val bodyIndex = cursor.getColumnIndex("body")
                     val dateIndex = cursor.getColumnIndex("date")
-                    var scannedCount = 0
                     do {
-                        scannedCount++
                         val body = cursor.getString(bodyIndex)
                         val timestamp = cursor.getLong(dateIndex)
                         val extractedTransactions = parseMpesaSms(body, timestamp, customRules)
@@ -271,9 +316,10 @@ class PesaViewModel(
                             if (existingRefs.contains(uniqueKey)) continue
                             if (!transactionsList.any { "${it.remoteRef}_${it.isFeeTransaction}" == uniqueKey }) {
                                 transactionsList.add(transaction)
+                                syncProgress.value = transactionsList.size
                             }
                         }
-                    } while (cursor.moveToNext() && transactionsList.size < 500 && scannedCount < 1000)
+                    } while (cursor.moveToNext()) // Parse the entire M-PESA inbox, no cap.
                     cursor.close()
                 }
 
@@ -317,6 +363,8 @@ class PesaViewModel(
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     android.widget.Toast.makeText(context, "Failed to sync messages", android.widget.Toast.LENGTH_SHORT).show()
                 }
+            } finally {
+                isSyncing.value = false
             }
         }
     }
@@ -505,6 +553,24 @@ class PesaViewModel(
     ) { transactions, income, expense, isVisible, budgets ->
         val balance = transactions.maxByOrNull { it.timestamp }?.balanceAfter ?: 0.0
         val globalBudget = budgets.find { it.category == "Overall" }
+
+        // Per-category spend for the selected month (drives real budget progress bars).
+        val monthStart = currentMonthStart.value
+        val monthEnd = Calendar.getInstance().apply {
+            timeInMillis = monthStart
+            add(Calendar.MONTH, 1)
+        }.timeInMillis
+        val categorySpent = transactions
+            .filter {
+                it.timestamp in monthStart until monthEnd &&
+                    it.type != TransactionType.RECEIVE_MONEY &&
+                    it.type != TransactionType.MANUAL_INCOME &&
+                    it.type != TransactionType.MANUAL_TRANSFER &&
+                    !it.isFeeTransaction
+            }
+            .groupBy { it.category }
+            .mapValues { e -> e.value.sumOf { it.amount } }
+
         HomeUiState(
             transactions = transactions,
             recentTransactions = transactions.take(10),
@@ -514,9 +580,51 @@ class PesaViewModel(
             isBalanceVisible = isVisible,
             currentBudgetLimit = globalBudget?.limitAmount ?: 0.0,
             hasBudget = globalBudget != null,
-            budgets = budgets
+            budgets = budgets,
+            categorySpent = categorySpent
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
+
+    // ── Budget insights (real 6-month savings stats) ──────────────────────────
+    val budgetInsights: StateFlow<BudgetInsights> = repository.allTransactions
+        .map { computeBudgetInsights(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BudgetInsights())
+
+    private fun computeBudgetInsights(transactions: List<Transaction>): BudgetInsights {
+        if (transactions.isEmpty()) return BudgetInsights()
+        val labelFmt = SimpleDateFormat("MMM ''yy", Locale.getDefault())
+        val savingsByMonth = mutableListOf<Pair<String, Double>>()
+        for (monthsAgo in 0 until 6) {
+            val cal = Calendar.getInstance().apply {
+                add(Calendar.MONTH, -monthsAgo)
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }
+            val start = cal.timeInMillis
+            val end = Calendar.getInstance().apply { timeInMillis = start; add(Calendar.MONTH, 1) }.timeInMillis
+            val monthTxns = transactions.filter { it.timestamp in start until end && !it.isFeeTransaction }
+            if (monthTxns.isEmpty()) continue
+            val income = monthTxns.filter {
+                it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME
+            }.sumOf { it.amount }
+            val expense = monthTxns.filter {
+                it.type != TransactionType.RECEIVE_MONEY &&
+                    it.type != TransactionType.MANUAL_INCOME &&
+                    it.type != TransactionType.MANUAL_TRANSFER
+            }.sumOf { it.amount }
+            savingsByMonth.add(labelFmt.format(Date(start)) to (income - expense))
+        }
+        if (savingsByMonth.isEmpty()) return BudgetInsights()
+        val best = savingsByMonth.maxByOrNull { it.second }
+        val avg = savingsByMonth.map { it.second }.average()
+        return BudgetInsights(
+            bestMonthLabel = best?.first,
+            bestMonthSaved = best?.second ?: 0.0,
+            avgSaved = avg,
+            hasData = true
+        )
+    }
 
     // ── Bills ────────────────────────────────────────────────────────────────
     fun addBill(bill: Bill) {
@@ -619,20 +727,16 @@ class PesaViewModel(
     }
 
     // ── Budgets ──────────────────────────────────────────────────────────────
-    fun setBudget(category: String, limit: Double) {
-        viewModelScope.launch {
-            val monthYear = currentMonthYearString.value
-            if (monthYear.isNotEmpty()) {
-                repository.insertBudget(Budget(category = category, limitAmount = limit, monthYear = monthYear))
-            }
-        }
-    }
-
     fun addOrUpdateBudget(category: String, limit: Double) {
         viewModelScope.launch {
             val monthYear = currentMonthYearString.value
             if (monthYear.isNotEmpty()) {
-                repository.insertBudget(Budget(category = category, limitAmount = limit, monthYear = monthYear))
+                // Reuse the existing row's id so this is a true update, not a duplicate insert.
+                val existing = repository.getBudgetsForMonth(monthYear).first()
+                    .find { it.category == category }
+                val budget = existing?.copy(limitAmount = limit)
+                    ?: Budget(category = category, limitAmount = limit, monthYear = monthYear)
+                repository.insertBudget(budget)
             }
         }
     }
@@ -670,6 +774,38 @@ class PesaViewModel(
                         addNotification(msg)
                     }
                 }
+            }
+        }
+    }
+
+    // ── Data management ────────────────────────────────────────────────────────
+    fun deleteAllData(context: android.content.Context) {
+        viewModelScope.launch {
+            repository.deleteAllData()
+            clearNotifications()
+            needsWantsClassification.value = emptyMap()
+            context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
+                .remove("nw_needs").remove("nw_wants").apply()
+            _patternResult.value = null
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                android.widget.Toast.makeText(context, "All data deleted", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // ── Restore purchases ──────────────────────────────────────────────────────
+    fun restorePurchases() {
+        val manager = subscriptionManager
+        if (manager == null) {
+            _promoMessage.value = "Billing unavailable"
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                manager.syncPurchases()
+                _promoMessage.value = "Purchases restored"
+            } catch (e: Exception) {
+                _promoMessage.value = "Could not restore purchases"
             }
         }
     }

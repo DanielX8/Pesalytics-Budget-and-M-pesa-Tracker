@@ -85,6 +85,8 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
+    val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+    val syncProgress by viewModel.syncProgress.collectAsStateWithLifecycle()
     var notificationsExpanded by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -268,10 +270,10 @@ fun DashboardScreen(
 
     Scaffold(
         topBar = {
+          Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -328,6 +330,13 @@ fun DashboardScreen(
                     }
                 }
             }
+            if (isSyncing) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
+                    color = AccentGreenLight
+                )
+            }
+          }
         },
         floatingActionButton = {
             if (uiState.recentTransactions.isEmpty()) {

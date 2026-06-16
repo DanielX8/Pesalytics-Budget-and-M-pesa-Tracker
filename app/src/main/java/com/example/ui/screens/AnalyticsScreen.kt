@@ -61,6 +61,7 @@ fun AnalyticsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
     val patternResult by viewModel.patternResult.collectAsStateWithLifecycle()
+    val needsWantsClassification by viewModel.needsWantsClassification.collectAsStateWithLifecycle()
     var notificationsExpanded by remember { mutableStateOf(false) }
 
     val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
@@ -221,7 +222,7 @@ fun AnalyticsScreen(
             }
 
             item { SpendingRhythmChart(monthTransactions) }
-            item { NeedsVsWantsCard(monthTransactions) }
+            item { NeedsVsWantsCard(monthTransactions, needsWantsClassification) }
             item {
                 SpendingCalendar(monthTransactions, startTimestamp, displayMonth)
             }
@@ -624,12 +625,14 @@ fun SpendingRhythmChart(transactions: List<com.pesasense.model.Transaction>) {
 }
 
 @Composable
-fun NeedsVsWantsCard(transactions: List<com.pesasense.model.Transaction>) {
+fun NeedsVsWantsCard(
+    transactions: List<com.pesasense.model.Transaction>,
+    classification: Map<String, Boolean>
+) {
     val expenses = transactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
-    val needsKeywords = listOf("Rent", "Utilities", "Groceries", "Transport", "Bills", "Health", "KPLC", "Water")
     var needsAmount = 0.0; var wantsAmount = 0.0
     expenses.forEach { t ->
-        if (needsKeywords.any { t.category.contains(it, ignoreCase = true) }) needsAmount += t.amount else wantsAmount += t.amount
+        if (isNeedCategory(t.category, classification)) needsAmount += t.amount else wantsAmount += t.amount
     }
     val total = needsAmount + wantsAmount
     val needsPercent = if (total > 0) (needsAmount / total).toFloat() else 0f

@@ -37,3 +37,6 @@ object Faq
 
 @Serializable
 object Report
+
+@Serializable
+object NeedsWants

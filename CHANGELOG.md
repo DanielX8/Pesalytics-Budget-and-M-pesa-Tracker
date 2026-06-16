@@ -5,6 +5,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.0] — 2026-06-16 · Fixes, Settings/Subscription Redesign & Polish 🎨
+
+### Fixed
+- **Budget limit could not be edited** — editing the overall/category limit silently created
+  duplicate `budgets` rows (auto-generated PK + REPLACE), so the displayed value never changed.
+  `addOrUpdateBudget` now reuses the existing row's id (true upsert), and **migration 10→11**
+  de-duplicates existing rows and adds a unique index on `(category, monthYear)`.
+- **SMS parsing was capped** at 500 transactions / 1000 scanned messages. The entire M-PESA
+  inbox is now parsed, with a live sync progress indicator (Dashboard + Settings).
+- **Settings version footer** was hardcoded to "Version 1.0.0" — now reads `BuildConfig.VERSION_NAME`.
+- **"Delete All Data" did nothing** — now wired with a confirmation dialog that clears all tables + prefs.
+- **Inaccurate premium claims** removed from the Subscription screen ("Cloud sync & backup",
+  "Smart categorization") and replaced with the app's real offline feature set.
+- **Per-category budget data was fake** — category "spent" and "Best Month"/"Avg Saved" now
+  use real transaction calculations instead of hardcoded placeholders.
+
+### Added
+- **Needs vs Wants setting** — a new Settings sub-screen lets you classify each spending category
+  as a Need or Want; the Analytics breakdown now respects your choices (keyword list is only a default seed).
+- **Onboarding nicknames** — expanded from 5 to 100 names (50 masculine, 50 feminine); "Generate"
+  alternates gender each tap and a new "Previous" control steps back through suggestions.
+- **Wired previously dead buttons** — Restore Purchases, Rate App, Share App, Refer a Friend, Tip Jar,
+  Privacy Policy & Terms of Service (URLs centralized in `AppLinks.kt`).
+- Redesigned the **budget limit editor** as a styled bottom sheet (global + per-category).
+
+### Improved
+- **Settings & Subscription screens fully redesigned** with premium visual polish and motion matching
+  the Dashboard/Analytics language: colored glow shadows, the brand hero gradient on the Plan/Upgrade
+  cards, spring press-feedback, and animated sync state. The 882-line Settings monolith was decomposed
+  into focused section components.
+- **Color consistency** — replaced off-brand slate/indigo status colors and a neon footer accent with
+  the brand palette (semantic AccentGreen / WarningOrange / ExpenseRed tokens) across both screens.
+
+---
+
 ## [1.3.0] — 2026-06-09 · Feature Release 🚀
 
 ### Added
