@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.horizontalScroll
@@ -30,19 +30,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.pesasense.ui.theme.AccentGreenDark
-import com.pesasense.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.AccentGreenDark
+import com.pesalytics.ui.theme.AccentGreenLight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pesasense.R
-import com.pesasense.model.Goal
+import com.pesalytics.R
+import com.pesalytics.model.Goal
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.model.GoalType
-import com.pesasense.ui.theme.ExpenseRed
-import com.pesasense.ui.theme.IncomeGreen
+import com.pesalytics.model.GoalType
+import com.pesalytics.ui.theme.ExpenseRed
+import com.pesalytics.ui.theme.IncomeGreen
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -67,7 +67,7 @@ fun FinancialGoalsScreen(
                     title = { 
                         Image(
                             painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                            contentDescription = "PesaSense",
+                            contentDescription = "Pesalytics",
                             modifier = Modifier.height(32.dp),
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                         )

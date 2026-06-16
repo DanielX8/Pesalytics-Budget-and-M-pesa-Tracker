@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -30,7 +30,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.R
+import com.pesalytics.R
 
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.ui.draw.clip
@@ -42,7 +42,7 @@ import androidx.compose.foundation.clickable
 @Composable
 fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedTransaction by remember { mutableStateOf<com.pesasense.model.Transaction?>(null) }
+    var selectedTransaction by remember { mutableStateOf<com.pesalytics.model.Transaction?>(null) }
     var showTransactionDetails by remember { mutableStateOf(false) }
     var showCategoryEdit by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -76,12 +76,12 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                     if (transaction.isFeeTransaction) return@count false
                     when (filter) {
                         "All" -> true
-                        "Send Money" -> transaction.type == com.pesasense.model.TransactionType.SEND_MONEY
-                        "Received" -> transaction.type == com.pesasense.model.TransactionType.RECEIVE_MONEY || transaction.type == com.pesasense.model.TransactionType.MANUAL_INCOME
-                        "Paybill" -> transaction.type == com.pesasense.model.TransactionType.PAYBILL
-                        "Buy Goods" -> transaction.type == com.pesasense.model.TransactionType.BUY_GOODS
-                        "Withdraw" -> transaction.type == com.pesasense.model.TransactionType.WITHDRAW
-                        "Airtime" -> transaction.type == com.pesasense.model.TransactionType.AIRTIME
+                        "Send Money" -> transaction.type == com.pesalytics.model.TransactionType.SEND_MONEY
+                        "Received" -> transaction.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY || transaction.type == com.pesalytics.model.TransactionType.MANUAL_INCOME
+                        "Paybill" -> transaction.type == com.pesalytics.model.TransactionType.PAYBILL
+                        "Buy Goods" -> transaction.type == com.pesalytics.model.TransactionType.BUY_GOODS
+                        "Withdraw" -> transaction.type == com.pesalytics.model.TransactionType.WITHDRAW
+                        "Airtime" -> transaction.type == com.pesalytics.model.TransactionType.AIRTIME
                         "Fuliza" -> transaction.category.equals("Fuliza", ignoreCase = true)
                         else -> true
                     }
@@ -98,12 +98,12 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
 
                 val matchesFilter = when (selectedFilter) {
                     "All" -> true
-                    "Send Money" -> transaction.type == com.pesasense.model.TransactionType.SEND_MONEY
-                    "Received" -> transaction.type == com.pesasense.model.TransactionType.RECEIVE_MONEY || transaction.type == com.pesasense.model.TransactionType.MANUAL_INCOME
-                    "Paybill" -> transaction.type == com.pesasense.model.TransactionType.PAYBILL
-                    "Buy Goods" -> transaction.type == com.pesasense.model.TransactionType.BUY_GOODS
-                    "Withdraw" -> transaction.type == com.pesasense.model.TransactionType.WITHDRAW
-                    "Airtime" -> transaction.type == com.pesasense.model.TransactionType.AIRTIME
+                    "Send Money" -> transaction.type == com.pesalytics.model.TransactionType.SEND_MONEY
+                    "Received" -> transaction.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY || transaction.type == com.pesalytics.model.TransactionType.MANUAL_INCOME
+                    "Paybill" -> transaction.type == com.pesalytics.model.TransactionType.PAYBILL
+                    "Buy Goods" -> transaction.type == com.pesalytics.model.TransactionType.BUY_GOODS
+                    "Withdraw" -> transaction.type == com.pesalytics.model.TransactionType.WITHDRAW
+                    "Airtime" -> transaction.type == com.pesalytics.model.TransactionType.AIRTIME
                     "Fuliza" -> transaction.category.equals("Fuliza", ignoreCase = true)
                     else -> true
                 }
@@ -173,7 +173,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
             onShare = {
                 val sendIntent: android.content.Intent = android.content.Intent().apply {
                     action = android.content.Intent.ACTION_SEND
-                    putExtra(android.content.Intent.EXTRA_TEXT, "PesaSense Transaction Receipt:\nRef: ${selectedTransaction!!.remoteRef}\nPayee: ${selectedTransaction!!.payee}\nAmount: KES ${formatCurrency(selectedTransaction!!.amount)}")
+                    putExtra(android.content.Intent.EXTRA_TEXT, "Pesalytics Transaction Receipt:\nRef: ${selectedTransaction!!.remoteRef}\nPayee: ${selectedTransaction!!.payee}\nAmount: KES ${formatCurrency(selectedTransaction!!.amount)}")
                     type = "text/plain"
                 }
                 val shareIntent = android.content.Intent.createChooser(sendIntent, null)
@@ -189,7 +189,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                     title = { 
                         Image(
                             painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                            contentDescription = "PesaSense",
+                            contentDescription = "Pesalytics",
                             modifier = Modifier.height(32.dp),
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                         )
@@ -216,7 +216,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                                     .padding(12.dp)
                                     .size(10.dp)
                                     .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(com.pesasense.ui.theme.ExpenseRed)
+                                    .background(com.pesalytics.ui.theme.ExpenseRed)
                             )
                         }
                     },
@@ -233,9 +233,9 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                 .padding(padding)
         ) {
             val filteredAmount = filteredTransactions.sumOf { 
-                if (it.type == com.pesasense.model.TransactionType.RECEIVE_MONEY || it.type == com.pesasense.model.TransactionType.MANUAL_INCOME) it.amount else -it.amount 
+                if (it.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY || it.type == com.pesalytics.model.TransactionType.MANUAL_INCOME) it.amount else -it.amount 
             }
-            val amtColor = if (filteredAmount >= 0) com.pesasense.ui.theme.AccentGreenLight else com.pesasense.ui.theme.ExpenseRed
+            val amtColor = if (filteredAmount >= 0) com.pesalytics.ui.theme.AccentGreenLight else com.pesalytics.ui.theme.ExpenseRed
             val amtPrefix = if (filteredAmount >= 0) "+KES " else "-KES "
             
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {

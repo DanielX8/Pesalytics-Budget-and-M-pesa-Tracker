@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -36,11 +36,11 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.foundation.border
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.R
-import com.pesasense.model.Budget
-import com.pesasense.ui.theme.AccentGreenDark
-import com.pesasense.ui.theme.AccentGreenLight
-import com.pesasense.ui.theme.ExpenseRed
+import com.pesalytics.R
+import com.pesalytics.model.Budget
+import com.pesalytics.ui.theme.AccentGreenDark
+import com.pesalytics.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.ExpenseRed
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,7 +64,7 @@ fun BudgetPlannerScreen(
                     title = { 
                         Image(
                             painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                            contentDescription = "PesaSense",
+                            contentDescription = "Pesalytics",
                             modifier = Modifier.height(32.dp),
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                         )

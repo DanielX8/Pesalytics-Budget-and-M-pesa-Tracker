@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -18,8 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.pesasense.ui.theme.AccentGreenDark
-import com.pesasense.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.AccentGreenDark
+import com.pesalytics.ui.theme.AccentGreenLight
 
 data class FaqItem(val question: String, val answer: String)
 
@@ -28,8 +28,8 @@ data class FaqItem(val question: String, val answer: String)
 fun FaqScreen(onNavigateBack: () -> Unit) {
     val faqs = listOf(
         FaqItem(
-            question = "How does PesaSense track my M-Pesa transactions?",
-            answer = "PesaSense securely reads your M-Pesa SMS messages stored locally on your device. It extracts the transaction details like amount, date, and merchant to give you insights without ever connecting to the internet or your bank account."
+            question = "How does Pesalytics track my M-Pesa transactions?",
+            answer = "Pesalytics securely reads your M-Pesa SMS messages stored locally on your device. It extracts the transaction details like amount, date, and merchant to give you insights without ever connecting to the internet or your bank account."
         ),
         FaqItem(
             question = "Is my financial data safe?",
@@ -79,7 +79,7 @@ fun FaqScreen(onNavigateBack: () -> Unit) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Everything you need to know about PesaSense and how it helps you manage your money.",
+                    text = "Everything you need to know about Pesalytics and how it helps you manage your money.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

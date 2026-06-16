@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.unit.sp
@@ -37,13 +37,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.pesasense.R
-import com.pesasense.ui.theme.AccentGreenLight
-import com.pesasense.ui.theme.AccentGreenDark
-import com.pesasense.ui.theme.WarningOrange
+import com.pesalytics.R
+import com.pesalytics.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.AccentGreenDark
+import com.pesalytics.ui.theme.WarningOrange
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.model.ThemeMode
-import com.pesasense.ui.theme.ExpenseRed
+import com.pesalytics.model.ThemeMode
+import com.pesalytics.ui.theme.ExpenseRed
 import androidx.compose.foundation.border
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.boundsInWindow
@@ -93,7 +93,7 @@ fun SettingsScreen(
                     title = { 
                         Image(
                             painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                            contentDescription = "PesaSense",
+                            contentDescription = "Pesalytics",
                             modifier = Modifier.height(32.dp),
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                         )
@@ -673,7 +673,7 @@ fun SettingsScreen(
                                     if (!isPremium) {
                                         showExportGateDialog = true
                                     } else {
-                                        val file = com.pesasense.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
+                                        val file = com.pesalytics.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
                                         viewModel.addNotification(if (file != null) "CSV saved to Downloads" else "Export failed")
                                         if (file != null) android.widget.Toast.makeText(context, "CSV exported successfully", android.widget.Toast.LENGTH_SHORT).show()
                                     }
@@ -684,7 +684,7 @@ fun SettingsScreen(
                                     if (!isPremium) {
                                         showExportGateDialog = true
                                     } else {
-                                        com.pesasense.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
+                                        com.pesalytics.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
                                             viewModel.addNotification("Print dialog opened for PDF generation.")
                                             android.widget.Toast.makeText(context, "PDF generated successfully", android.widget.Toast.LENGTH_SHORT).show()
                                         }

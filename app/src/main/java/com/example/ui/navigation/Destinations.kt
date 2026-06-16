@@ -1,4 +1,4 @@
-package com.pesasense.ui.navigation
+package com.pesalytics.ui.navigation
 
 import kotlinx.serialization.Serializable
 

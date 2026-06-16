@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,8 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pesasense.R
-import com.pesasense.ui.theme.AccentGreenLight
+import com.pesalytics.R
+import com.pesalytics.ui.theme.AccentGreenLight
 import kotlinx.coroutines.launch
 
 sealed class OnboardingContent {
@@ -46,14 +46,14 @@ sealed class OnboardingContent {
 
 val onboardingSlides = listOf(
     OnboardingContent.Standard(
-        title = "Welcome to PesaSense",
+        title = "Welcome to Pesalytics",
         description = "Your automated, privacy-first financial companion that transforms offline M-PESA alerts into powerful insights.",
         bullets = listOf("Secure data access setup", "Local SMS log synchronization", "Budget target configuration")
     ),
     OnboardingContent.ProfileSetup,
     OnboardingContent.Standard(
         title = "Your Privacy Matters",
-        description = "PesaSense operates entirely offline. Your transaction logs are computed directly on your phone hardware—zero cloud tracking, zero data sharing, absolute financial anonymity.",
+        description = "Pesalytics operates entirely offline. Your transaction logs are computed directly on your phone hardware—zero cloud tracking, zero data sharing, absolute financial anonymity.",
         icon = Icons.Rounded.Security,
         bullets = listOf(
             "Only transaction messages are processed",
@@ -69,7 +69,7 @@ val onboardingSlides = listOf(
     ),
     OnboardingContent.Standard(
         title = "Synchronize Your Ledger",
-        description = "To automatically capture incoming alerts and map your historical budget trends in real-time, PesaSense requires local device permission to look up message patterns.",
+        description = "To automatically capture incoming alerts and map your historical budget trends in real-time, Pesalytics requires local device permission to look up message patterns.",
         icon = Icons.Rounded.Sync
     )
 )
@@ -102,7 +102,7 @@ fun AnimatedLogo() {
     
     Image(
         painter = painterResource(id = R.drawable.header_logo),
-        contentDescription = "PesaSense Logo",
+        contentDescription = "Pesalytics Logo",
         modifier = Modifier
             .size(80.dp)
             .offset(y = offsetY)

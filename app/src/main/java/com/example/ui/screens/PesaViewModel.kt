@@ -1,20 +1,20 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.pesasense.data.PesaRepository
-import com.pesasense.model.Bill
-import com.pesasense.model.Transaction
-import com.pesasense.model.TransactionType
-import com.pesasense.model.BillCycle
-import com.pesasense.model.Budget
-import com.pesasense.model.Goal
-import com.pesasense.model.GoalType
-import com.pesasense.model.ThemeMode
+import com.pesalytics.data.PesaRepository
+import com.pesalytics.model.Bill
+import com.pesalytics.model.Transaction
+import com.pesalytics.model.TransactionType
+import com.pesalytics.model.BillCycle
+import com.pesalytics.model.Budget
+import com.pesalytics.model.Goal
+import com.pesalytics.model.GoalType
+import com.pesalytics.model.ThemeMode
 import androidx.compose.ui.geometry.Offset
-import com.pesasense.patterns.PatternEngine
-import com.pesasense.patterns.PatternResult
+import com.pesalytics.patterns.PatternEngine
+import com.pesalytics.patterns.PatternResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,8 +31,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import com.pesasense.data.billing.SubscriptionManager
-import com.pesasense.data.billing.PromoResult
+import com.pesalytics.data.billing.SubscriptionManager
+import com.pesalytics.data.billing.PromoResult
 
 data class AppNotification(
     val id: String = java.util.UUID.randomUUID().toString(),
@@ -49,12 +49,12 @@ data class HomeUiState(
     val isBalanceVisible: Boolean = true,
     val currentBudgetLimit: Double = 0.0,
     val hasBudget: Boolean = false,
-    val budgets: List<com.pesasense.model.Budget> = emptyList()
+    val budgets: List<com.pesalytics.model.Budget> = emptyList()
 )
 
 class PesaViewModel(
     private val repository: PesaRepository,
-    private val notificationHelper: com.pesasense.notifications.NotificationHelper? = null,
+    private val notificationHelper: com.pesalytics.notifications.NotificationHelper? = null,
     val subscriptionManager: SubscriptionManager? = null
 ) : ViewModel() {
 
@@ -104,8 +104,8 @@ class PesaViewModel(
 
     // ── Subscription state ────────────────────────────────────────────────────
     val subscriptionState = subscriptionManager?.state
-    val subscriptionStateFlow: StateFlow<com.pesasense.data.billing.SubscriptionState> =
-        subscriptionManager?.state ?: MutableStateFlow(com.pesasense.data.billing.SubscriptionState())
+    val subscriptionStateFlow: StateFlow<com.pesalytics.data.billing.SubscriptionState> =
+        subscriptionManager?.state ?: MutableStateFlow(com.pesalytics.data.billing.SubscriptionState())
     val trialDaysRemaining get() = subscriptionManager?.state?.value?.trialDaysRemaining ?: 0
 
     private val _promoMessage = MutableStateFlow<String?>(null)
@@ -164,7 +164,7 @@ class PesaViewModel(
     }
 
     fun upgradeToPremium() {
-        subscriptionManager?.grantFromPromo(com.pesasense.data.billing.PromoGrant.Lifetime)
+        subscriptionManager?.grantFromPromo(com.pesalytics.data.billing.PromoGrant.Lifetime)
     }
 
     fun completeOnboarding(name: String, avatarIndex: Int, context: android.content.Context) {
@@ -330,7 +330,7 @@ class PesaViewModel(
         val accountRef: String?
     )
 
-    private suspend fun parseMpesaSms(body: String, timestamp: Long, customRules: List<com.pesasense.model.CustomRule>): List<Transaction> {
+    private suspend fun parseMpesaSms(body: String, timestamp: Long, customRules: List<com.pesalytics.model.CustomRule>): List<Transaction> {
         val results = mutableListOf<Transaction>()
 
         // Two-pass Fuliza enrichment: detect outstanding-balance SMS and enrich the original transaction
@@ -681,11 +681,11 @@ class PesaViewModel(
             is PromoResult.EarlybirdLifetime  -> "🎉 EARLYBIRD accepted! Lifetime Premium unlocked."
             is PromoResult.EarlybirdSunset    -> "EARLYBIRD has ended — you've been given a 14-day free trial instead."
             is PromoResult.Success            -> when (result.grant) {
-                is com.pesasense.data.billing.PromoGrant.Lifetime   -> "🎉 Lifetime Premium unlocked!"
-                is com.pesasense.data.billing.PromoGrant.Monthly    -> "✅ 1 month Premium granted!"
-                is com.pesasense.data.billing.PromoGrant.Quarterly  -> "✅ 3 months Premium granted!"
-                is com.pesasense.data.billing.PromoGrant.Yearly     -> "✅ 1 year Premium granted!"
-                is com.pesasense.data.billing.PromoGrant.Trial14Days -> "✅ 14-day trial extended!"
+                is com.pesalytics.data.billing.PromoGrant.Lifetime   -> "🎉 Lifetime Premium unlocked!"
+                is com.pesalytics.data.billing.PromoGrant.Monthly    -> "✅ 1 month Premium granted!"
+                is com.pesalytics.data.billing.PromoGrant.Quarterly  -> "✅ 3 months Premium granted!"
+                is com.pesalytics.data.billing.PromoGrant.Yearly     -> "✅ 1 year Premium granted!"
+                is com.pesalytics.data.billing.PromoGrant.Trial14Days -> "✅ 14-day trial extended!"
             }
             is PromoResult.AlreadyRedeemed    -> "This code has already been used on this device."
             is PromoResult.Invalid            -> "Invalid promo code. Check and try again."
@@ -705,8 +705,8 @@ class PesaViewModel(
 
 class PesaViewModelFactory(
     private val repository: PesaRepository,
-    private val notificationHelper: com.pesasense.notifications.NotificationHelper? = null,
-    private val subscriptionManager: com.pesasense.data.billing.SubscriptionManager? = null
+    private val notificationHelper: com.pesalytics.notifications.NotificationHelper? = null,
+    private val subscriptionManager: com.pesalytics.data.billing.SubscriptionManager? = null
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PesaViewModel::class.java)) {

@@ -1,4 +1,4 @@
-package com.pesasense.data
+package com.pesalytics.data
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -6,10 +6,10 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Delete
 import androidx.room.Update
-import com.pesasense.model.Bill
-import com.pesasense.model.Budget
-import com.pesasense.model.CustomRule
-import com.pesasense.model.Transaction
+import com.pesalytics.model.Bill
+import com.pesalytics.model.Budget
+import com.pesalytics.model.CustomRule
+import com.pesalytics.model.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -87,10 +87,10 @@ interface BudgetDao {
 @Dao
 interface GoalDao {
     @Query("SELECT * FROM goals ORDER BY targetDate ASC")
-    fun getAllGoals(): Flow<List<com.pesasense.model.Goal>>
+    fun getAllGoals(): Flow<List<com.pesalytics.model.Goal>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertGoal(goal: com.pesasense.model.Goal)
+    suspend fun insertGoal(goal: com.pesalytics.model.Goal)
 
     @Query("UPDATE goals SET savedAmount = savedAmount + :amount WHERE id = :id")
     suspend fun addGoalContribution(id: Int, amount: Double)

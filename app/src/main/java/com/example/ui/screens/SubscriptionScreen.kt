@@ -1,4 +1,4 @@
-package com.pesasense.ui.screens
+package com.pesalytics.ui.screens
 
 import androidx.compose.ui.unit.sp
 
@@ -27,11 +27,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pesasense.R
-import com.pesasense.model.BillCycle
-import com.pesasense.ui.theme.AccentGreenLight
-import com.pesasense.ui.theme.ExpenseRed
-import com.pesasense.ui.theme.WarningOrange
+import com.pesalytics.R
+import com.pesalytics.model.BillCycle
+import com.pesalytics.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.ExpenseRed
+import com.pesalytics.ui.theme.WarningOrange
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +61,7 @@ fun SubscriptionScreen(
                     title = { 
                         Image(
                             painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                            contentDescription = "PesaSense",
+                            contentDescription = "Pesalytics",
                             modifier = Modifier.height(32.dp),
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                         )
@@ -100,7 +100,7 @@ fun SubscriptionScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Unlock your full financial potential with PesaSense Premium.",
+                        text = "Unlock your full financial potential with Pesalytics Premium.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -203,7 +203,7 @@ fun SubscriptionScreen(
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("PesaSense Premium", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text("Pesalytics Premium", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             Spacer(modifier = Modifier.height(16.dp))
                             FeatureBullet("Unlimited transaction tracking", color = MaterialTheme.colorScheme.onPrimaryContainer)
                             FeatureBullet("Smart categorization algorithms", color = MaterialTheme.colorScheme.onPrimaryContainer)
@@ -213,11 +213,11 @@ fun SubscriptionScreen(
                                 onClick = {
                                 val activity = context as? android.app.Activity ?: return@Button
                                 val sku = when (selectedPlan) {
-                                    "Monthly"   -> com.pesasense.data.billing.BillingConfig.SKU_MONTHLY
-                                    "Quarterly" -> com.pesasense.data.billing.BillingConfig.SKU_QUARTERLY
-                                    "Yearly"    -> com.pesasense.data.billing.BillingConfig.SKU_YEARLY
-                                    "Lifetime"  -> com.pesasense.data.billing.BillingConfig.SKU_LIFETIME
-                                    else -> com.pesasense.data.billing.BillingConfig.SKU_YEARLY
+                                    "Monthly"   -> com.pesalytics.data.billing.BillingConfig.SKU_MONTHLY
+                                    "Quarterly" -> com.pesalytics.data.billing.BillingConfig.SKU_QUARTERLY
+                                    "Yearly"    -> com.pesalytics.data.billing.BillingConfig.SKU_YEARLY
+                                    "Lifetime"  -> com.pesalytics.data.billing.BillingConfig.SKU_LIFETIME
+                                    else -> com.pesalytics.data.billing.BillingConfig.SKU_YEARLY
                                 }
                                 viewModel.subscriptionManager?.launchBillingFlow(activity, sku)
                             },
