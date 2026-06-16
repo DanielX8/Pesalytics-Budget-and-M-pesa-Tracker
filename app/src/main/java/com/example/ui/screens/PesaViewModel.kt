@@ -286,10 +286,15 @@ class PesaViewModel(
 
     // ── SMS sync ─────────────────────────────────────────────────────────────
     fun syncMpesaSms(context: android.content.Context) {
+        // Guard against overlapping syncs (Dashboard re-syncs on every visit). Two concurrent
+        // runs would each read the pre-sync set and double-insert. Set the flag synchronously
+        // on the caller (Main) thread before launching so the check is race-free.
+        if (isSyncing.value) return
+        isSyncing.value = true
+        syncProgress.value = 0
+        android.widget.Toast.makeText(context, "Syncing…", android.widget.Toast.LENGTH_SHORT).show()
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val transactionsList = mutableListOf<Transaction>()
-            isSyncing.value = true
-            syncProgress.value = 0
             try {
                 val existingTransactions = repository.allTransactions.first()
                 val existingRefs = existingTransactions.map { "${it.remoteRef}_${it.isFeeTransaction}" }.toSet()
