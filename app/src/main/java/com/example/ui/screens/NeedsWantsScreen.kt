@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesasense.R
@@ -46,6 +48,10 @@ fun NeedsWantsScreen(
     val context = LocalContext.current
     val categories by viewModel.knownCategories.collectAsStateWithLifecycle()
     val classification by viewModel.needsWantsClassification.collectAsStateWithLifecycle()
+    // Include user-added custom categories (saved in the classification map) even if they
+    // don't yet appear in any transaction.
+    val allCategories = (categories + classification.keys).distinct().sorted()
+    var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -76,23 +82,41 @@ fun NeedsWantsScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Needs vs Wants",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Decide which categories count as a Need and which are a Want. This drives the Needs vs Wants breakdown in Analytics.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Needs vs Wants",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "A Need is essential spending you can't easily avoid — rent, food, transport, " +
+                            "utilities, school fees, loan repayments. A Want is optional and discretionary — " +
+                            "dining out, entertainment, shopping, subscriptions. Tap to set how each category counts.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = { showAddDialog = true },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Category")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
 
-            items(categories) { category ->
+            items(allCategories) { category ->
                 val isNeed = isNeedCategory(category, classification)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -122,6 +146,41 @@ fun NeedsWantsScreen(
 
             item { Spacer(modifier = Modifier.height(32.dp)) }
         }
+    }
+
+    if (showAddDialog) {
+        var name by remember { mutableStateOf("") }
+        var isNeed by remember { mutableStateOf(true) }
+        AlertDialog(
+            onDismissRequest = { showAddDialog = false },
+            title = { Text("Add Category") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Category name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Is this a Need or a Want?", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    NeedWantToggle(isNeed = isNeed, onSelect = { isNeed = it })
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (name.isNotBlank()) viewModel.setCategoryClassification(name.trim(), isNeed, context)
+                        showAddDialog = false
+                    },
+                    enabled = name.isNotBlank()
+                ) { Text("Add") }
+            },
+            dismissButton = { TextButton(onClick = { showAddDialog = false }) { Text("Cancel") } }
+        )
     }
 }
 

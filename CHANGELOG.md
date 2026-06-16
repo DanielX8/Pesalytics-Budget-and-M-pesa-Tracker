@@ -38,6 +38,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Color consistency** — replaced off-brand slate/indigo status colors and a neon footer accent with
   the brand palette (semantic AccentGreen / WarningOrange / ExpenseRed tokens) across both screens.
 
+### Review-pass fixes (post first build)
+- **Duplicate transactions fixed** — removing the SMS cap made full-inbox syncs slow enough that
+  overlapping syncs (the Dashboard re-syncs on every visit) could double-insert. Added a guard against
+  concurrent syncs, a unique index on `transactions(remoteRef, isFeeTransaction)`, and **migration
+  11→12** that de-duplicates any existing rows.
+- **Sync feedback** — a short "Syncing…" toast now fires when a sync starts (alongside the top progress line).
+- **Needs vs Wants** — centered the title, added a clear Need-vs-Want explainer, and an **Add Category**
+  flow (name + Need/Want) so users can classify categories that aren't in their history yet.
+- **Settings colors** — the section titles, Plan card "Premium" badge, and the Sync card now use the
+  readable hero-card green (the deep forest green is reserved for the Goals/Budget screens). The Premium
+  badge is now a white pill so it's clearly visible on the gradient.
+- **Onboarding nicknames** are fun finance personas again (Budget Boss, Coin Master, Ledger Lord…),
+  still 50/50 with gender alternation + Previous.
+
 ---
 
 ## [1.3.0] — 2026-06-09 · Feature Release 🚀

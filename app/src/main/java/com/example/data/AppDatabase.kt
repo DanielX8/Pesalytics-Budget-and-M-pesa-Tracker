@@ -44,7 +44,23 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
     }
 }
 
-@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class], version = 11, exportSchema = false)
+// Transactions had no uniqueness, so overlapping SMS syncs could double-insert the same
+// receipt. De-duplicate existing rows (keep the earliest per receipt) then add a unique
+// index so OnConflictStrategy.REPLACE upserts and duplicates become impossible.
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "DELETE FROM transactions WHERE id NOT IN " +
+                "(SELECT MIN(id) FROM transactions GROUP BY remoteRef, isFeeTransaction)"
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_transactions_remoteRef_isFeeTransaction " +
+                "ON transactions(remoteRef, isFeeTransaction)"
+        )
+    }
+}
+
+@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class], version = 12, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun billDao(): BillDao
@@ -62,7 +78,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "pesasense_database"
-                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11).build()
+                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12).build()
                 INSTANCE = instance
                 instance
             }
