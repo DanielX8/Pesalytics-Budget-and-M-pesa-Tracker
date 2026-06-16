@@ -1,6 +1,7 @@
 package com.pesasense.model
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
@@ -70,11 +71,14 @@ data class Bill(
     val lastPaidDate: Long? = null
 )
 
-@Entity(tableName = "budgets")
+@Entity(
+    tableName = "budgets",
+    indices = [Index(value = ["category", "monthYear"], unique = true)]
+)
 @Serializable
 data class Budget(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val category: String, // Or "GLOBAL"
+    val category: String, // Or "Overall" for the global cap
     val limitAmount: Double,
     val spentAmount: Double = 0.0,
     val monthYear: String // e.g. "2026-05"

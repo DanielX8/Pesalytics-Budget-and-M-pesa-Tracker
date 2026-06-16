@@ -27,7 +27,24 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
     }
 }
 
-@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class], version = 10, exportSchema = false)
+// Budgets previously had no uniqueness on (category, monthYear), so editing a limit
+// inserted a brand-new row instead of replacing it (the old buggy behaviour). De-duplicate
+// existing rows (keep the newest per category+month) then add a unique index so that
+// OnConflictStrategy.REPLACE upserts correctly from here on.
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "DELETE FROM budgets WHERE id NOT IN " +
+                "(SELECT MAX(id) FROM budgets GROUP BY category, monthYear)"
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_budgets_category_monthYear " +
+                "ON budgets(category, monthYear)"
+        )
+    }
+}
+
+@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class], version = 11, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun billDao(): BillDao
@@ -45,7 +62,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "pesasense_database"
-                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10).build()
+                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11).build()
                 INSTANCE = instance
                 instance
             }

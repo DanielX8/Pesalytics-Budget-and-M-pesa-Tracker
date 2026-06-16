@@ -82,7 +82,36 @@ val avatarIcons = listOf(
     Icons.Rounded.Pets
 )
 
-val funNicknames = listOf("Budget Boss", "Finance Ninja", "Coin Master", "Ledger Lord", "Saver Supreme")
+val masculineNicknames = listOf(
+    "Champ", "Chief", "Maverick", "Ace", "Hunter", "Duke", "King", "Titan", "Blaze", "Rocky",
+    "Bruno", "Diesel", "Goliath", "Hawk", "Jet", "Knox", "Leo", "Max", "Rex", "Zane",
+    "Bear", "Bolt", "Brick", "Bucky", "Colt", "Dash", "Flash", "Gunner", "Hank", "Jax",
+    "Loki", "Magnus", "Nero", "Onyx", "Phoenix", "Ranger", "Saint", "Steel", "Storm", "Thor",
+    "Tank", "Viper", "Wolf", "Wyatt", "Apollo", "Atlas", "Cyrus", "Drake", "Falcon", "Spike"
+)
+
+val feminineNicknames = listOf(
+    "Queen", "Bella", "Luna", "Star", "Ruby", "Rosie", "Daisy", "Coco", "Ginger", "Honey",
+    "Ivy", "Jade", "Lily", "Mimi", "Nova", "Pearl", "Pixie", "Sky", "Sunny", "Willow",
+    "Angel", "Aurora", "Blossom", "Breezy", "Cherry", "Cleo", "Diva", "Dove", "Ember", "Fern",
+    "Gem", "Goldie", "Grace", "Hazel", "Iris", "Juno", "Kiki", "Lulu", "Mango", "Misty",
+    "Opal", "Peaches", "Poppy", "Sapphire", "Sienna", "Sparkle", "Tiara", "Velvet", "Vela", "Zara"
+)
+
+/**
+ * An alternating masculine/feminine pool (M, F, M, F, …), each gender shuffled once.
+ * "Generate" walks forward through it so taps alternate gender; "Previous" walks back.
+ */
+fun buildNicknamePool(): List<String> {
+    val m = masculineNicknames.shuffled()
+    val f = feminineNicknames.shuffled()
+    return buildList {
+        for (i in 0 until maxOf(m.size, f.size)) {
+            if (i < m.size) add(m[i])
+            if (i < f.size) add(f[i])
+        }
+    }
+}
 
 @Composable
 fun AnimatedLogo() {
@@ -122,6 +151,8 @@ fun OnboardingScreen(
     
     var name by remember { mutableStateOf("") }
     var selectedAvatar by remember { mutableStateOf(0) }
+    val nicknamePool = remember { buildNicknamePool() }
+    var nicknameIndex by remember { mutableStateOf(-1) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -248,13 +279,38 @@ fun OnboardingScreen(
                         )
                         
                         Spacer(modifier = Modifier.height(12.dp))
-                        
-                        TextButton(
-                            onClick = { name = funNicknames.random() }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                            TextButton(
+                                onClick = {
+                                    if (nicknameIndex > 0) {
+                                        nicknameIndex--
+                                        name = nicknamePool[nicknameIndex]
+                                    }
+                                },
+                                enabled = nicknameIndex > 0
+                            ) {
+                                Icon(Icons.Rounded.ChevronLeft, contentDescription = "Previous nickname", modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Previous")
+                            }
+
                             Spacer(Modifier.width(8.dp))
-                            Text("Generate Nickname", color = AccentGreenLight, fontWeight = FontWeight.Bold)
+
+                            TextButton(
+                                onClick = {
+                                    nicknameIndex = (nicknameIndex + 1) % nicknamePool.size
+                                    name = nicknamePool[nicknameIndex]
+                                }
+                            ) {
+                                Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Generate Nickname", color = AccentGreenLight, fontWeight = FontWeight.Bold)
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(32.dp))

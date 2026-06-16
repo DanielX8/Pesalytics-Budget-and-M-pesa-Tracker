@@ -51,8 +51,9 @@ fun BudgetPlannerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
+    val insights by viewModel.budgetInsights.collectAsStateWithLifecycle()
     var showAddBudgetSheet by remember { mutableStateOf(false) }
-    var showEditGlobalBudgetDialog by remember { mutableStateOf(false) }
+    var editingBudget by remember { mutableStateOf<Budget?>(null) }
 
     val globalBudget = uiState.budgets.find { it.category == "Overall" }
     val categoryBudgets = uiState.budgets.filter { it.category != "Overall" }
@@ -125,10 +126,12 @@ fun BudgetPlannerScreen(
                     globalBudget = globalBudget,
                     categoryBudgets = categoryBudgets,
                     totalSpentThisMonth = uiState.monthlyExpense,
+                    categorySpent = uiState.categorySpent,
+                    insights = insights,
                     isPremium = isPremium,
                     onDeleteBudget = { cat -> viewModel.deleteBudget(cat) },
-                    onEditBudget = { _ -> showAddBudgetSheet = true },
-                    onEditGlobalBudget = { showEditGlobalBudgetDialog = true },
+                    onEditBudget = { budget -> editingBudget = budget },
+                    onEditGlobalBudget = { editingBudget = globalBudget },
                     onDeleteGlobalBudget = { viewModel.deleteBudget("Overall") }
                 )
                 }
@@ -150,39 +153,14 @@ fun BudgetPlannerScreen(
             )
         }
 
-        if (showEditGlobalBudgetDialog && globalBudget != null) {
-            var newLimit by remember { mutableStateOf(globalBudget.limitAmount.toInt().toString()) }
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { showEditGlobalBudgetDialog = false },
-                title = { Text("Edit Overall Budget") },
-                text = {
-                    Column {
-                        androidx.compose.material3.OutlinedTextField(
-                            value = newLimit,
-                            onValueChange = { newLimit = it },
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                            label = { Text("Limit Amount (KES)") },
-                            singleLine = true
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Note: The limit will be shown in the home dashboard screen after being set.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+        editingBudget?.let { budget ->
+            EditBudgetLimitSheet(
+                budget = budget,
+                onSave = { amt ->
+                    viewModel.addOrUpdateBudget(budget.category, amt)
+                    editingBudget = null
                 },
-                confirmButton = {
-                    androidx.compose.material3.TextButton(onClick = {
-                        newLimit.toDoubleOrNull()?.let { amt ->
-                            viewModel.addOrUpdateBudget("Overall", amt)
-                        }
-                        showEditGlobalBudgetDialog = false
-                    }) { Text("Save") }
-                },
-                dismissButton = {
-                    androidx.compose.material3.TextButton(onClick = { showEditGlobalBudgetDialog = false }) { Text("Cancel") }
-                }
+                onDismiss = { editingBudget = null }
             )
         }
     }
@@ -320,6 +298,8 @@ fun ActiveStateBudget(
     globalBudget: Budget,
     categoryBudgets: List<Budget>,
     totalSpentThisMonth: Double,
+    categorySpent: Map<String, Double>,
+    insights: BudgetInsights,
     isPremium: Boolean = false,
     onDeleteBudget: (String) -> Unit,
     onEditBudget: (Budget) -> Unit,
@@ -403,10 +383,8 @@ fun ActiveStateBudget(
         }
 
         items(categoryBudgets) { catBudget ->
-            // Use dummy spent or dynamic spent if we actually track it per category? 
-            // In a real app we'd query transactions by category. Here we use spentAmount which might be 0 default.
-            // But we should use it. For UI purposes, let's just make it look good.
-            val catSpent = catBudget.spentAmount 
+            // Real per-category spend for the selected month (computed in the ViewModel).
+            val catSpent = categorySpent[catBudget.category] ?: 0.0
             val progress = if (catBudget.limitAmount > 0) (catSpent / catBudget.limitAmount).toFloat() else 0f
             val isOver = catSpent > catBudget.limitAmount
 
@@ -462,14 +440,26 @@ fun ActiveStateBudget(
                 Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("BEST MONTH", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("April '24", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("92% adhered", style = MaterialTheme.typography.bodySmall, color = AccentGreenLight)
+                        Text(
+                            if (insights.hasData) insights.bestMonthLabel ?: "—" else "—",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            if (insights.hasData) "KES ${formatCurrency(insights.bestMonthSaved)} saved" else "No data yet",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = AccentGreenLight
+                        )
                     }
                 }
                 Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("AVG. SAVED", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("KES 8.4K", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (insights.hasData) "KES ${formatCurrency(insights.avgSaved)}" else "—",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                         Text("6-month avg", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -493,7 +483,7 @@ fun AddBudgetBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
     
-    val DeepEmerald = Color(0xFF0F5B1A)
+    val DeepEmerald = AccentGreenDark
     val defaultCategories = listOf("Groceries", "Transport", "Utilities", "Rent", "Internet")
     
     // Initialize map with existing categories + defaults
@@ -682,5 +672,65 @@ fun AddBudgetBottomSheet(
                 TextButton(onClick = { showCustomDialog = false }) { Text("Cancel") }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditBudgetLimitSheet(
+    budget: Budget,
+    onSave: (Double) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+    val isOverall = budget.category == "Overall"
+    val deepEmerald = AccentGreenDark
+    var amount by remember {
+        mutableStateOf(if (budget.limitAmount > 0) budget.limitAmount.toInt().toString() else "")
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
+            Text(
+                if (isOverall) "Edit Overall Budget" else "Edit ${budget.category} Budget",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Update the monthly spending limit. It updates instantly across the app.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            OutlinedTextField(
+                value = amount,
+                onValueChange = { new -> amount = new.filter { it.isDigit() } },
+                modifier = Modifier.fillMaxWidth(),
+                prefix = { Text("KES ") },
+                label = { Text("Limit Amount") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = {
+                    val amt = amount.toDoubleOrNull()
+                    if (amt != null && amt > 0) {
+                        coroutineScope.launch { sheetState.hide() }
+                            .invokeOnCompletion { onSave(amt) }
+                    }
+                },
+                enabled = (amount.toDoubleOrNull() ?: 0.0) > 0,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = deepEmerald),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Text("Save Limit", fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        }
     }
 }
