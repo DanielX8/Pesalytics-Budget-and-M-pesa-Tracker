@@ -5,6 +5,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.2] — 2026-06-22 · Analytics Dashboard Expansion & UI Polish
+
+### Added
+- **Balance Progression Chart** — new line chart in Analytics showing account balance over the
+  selected month using the `balanceAfter` field recorded on every transaction. Displays peak,
+  lowest, and current balance stats below the chart.
+- **Largest Transactions card** — surfaces the top 5 biggest individual expenses for the month,
+  ranked with payee, transaction type, date, and amount. Identifies high-impact transactions
+  that drive the monthly total.
+- **Top Payees card** — groups expenses by payee, ranks the top 5 by total amount paid, and
+  shows a proportional bar and % of total expenses for each. Answers "who specifically got
+  your money" beyond the type-level donut chart.
+- **Income Sources card** — mirrors Top Payees for the income side: who paid you, how much,
+  and their share of total income received this month.
+- **Budget vs Actual card** — bridges BudgetPlanner and Analytics. Shows each category budget
+  as a progress bar (spent / limit) color-coded green (<70%), orange (70–99%), red (≥100%).
+  Overall budget gets a taller bar. Both data sources are already wired to `selectedMonthIndex`
+  so past-month navigation works automatically. Card is hidden when no budgets are set.
+- **Spend Velocity dual-line chart** — replaced the stats-only banner with a Canvas line chart
+  overlaying current-month vs previous-month daily spending side-by-side for instant visual
+  comparison.
+- **Pesalytics landing page** added to onboarding flow.
+- **NeedsVsWantsCard** is now tappable — navigates directly to the Needs/Wants settings screen.
+- **Dark mode accent polish** — `HeroCardDarkGreen` (#1A4D2E) token added; interactive controls
+  (toggles, segmented selectors, chips) use a theme-aware green in dark mode.
+
+### Changed
+- **R8 full mode enabled** (`android.enableR8.fullMode=true`) for smaller, more aggressively
+  optimised release APKs.
+- **Promo code registry rotated** — all 100 hashes (10 Lifetime, 20 Yearly, 20 Quarterly,
+  50 Monthly) refreshed.
+
+### Fixed
+- Notification permission prompt timing corrected — now fires after onboarding completion
+  rather than at app launch.
+
+---
+
 ## [1.4.1] — 2026-06-22 · Audit Fixes, Notification Bridge & Real Reports
 
 ### Fixed
