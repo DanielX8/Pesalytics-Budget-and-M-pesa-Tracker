@@ -69,9 +69,14 @@ import com.pesalytics.ui.theme.HeroGradientEnd
 import com.pesalytics.ui.theme.TransferBlue
 import com.pesalytics.ui.theme.WarningOrange
 import androidx.compose.ui.unit.sp
-import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
+
+private val currencyFormat = java.text.NumberFormat.getInstance().apply {
+    minimumFractionDigits = 2
+    maximumFractionDigits = 2
+}
+private val timeFormat = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,17 +85,20 @@ fun DashboardScreen(
     onNavigateToAllTransactions: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
     onNavigateToBills: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToBudgetPlanner: () -> Unit,
     onNavigateToGoals: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val syncProgress by viewModel.syncProgress.collectAsStateWithLifecycle()
+    val syncTotalMessages by viewModel.syncTotalMessages.collectAsStateWithLifecycle()
+    val isFirstSync by viewModel.isFirstSync.collectAsStateWithLifecycle()
     var notificationsExpanded by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     var hasRequestedSmsPermission by remember { mutableStateOf(false) }
+    var showSmsDisclosure by remember { mutableStateOf(false) }
 
     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -107,10 +115,33 @@ fun DashboardScreen(
             if (androidx.core.content.ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 viewModel.syncMpesaSms(context)
             } else {
-                permissionLauncher.launch(permission)
+                showSmsDisclosure = true
             }
             hasRequestedSmsPermission = true
         }
+    }
+
+    if (showSmsDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showSmsDisclosure = false },
+            title = { Text("M-PESA SMS Access") },
+            text = {
+                Text(
+                    "Pesalytics reads your M-PESA SMS messages to automatically track your transactions.\n\n" +
+                    "Your messages are processed entirely on your device — no data is ever uploaded or shared. " +
+                    "Only M-PESA messages from Safaricom are read; all other SMS are ignored."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSmsDisclosure = false
+                    permissionLauncher.launch(android.Manifest.permission.READ_SMS)
+                }) { Text("Allow") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSmsDisclosure = false }) { Text("Not now") }
+            }
+        )
     }
 
     var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
@@ -331,10 +362,36 @@ fun DashboardScreen(
                 }
             }
             if (isSyncing) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().height(2.dp),
-                    color = AccentGreenLight
-                )
+                val firstSyncFraction = if (isFirstSync && syncTotalMessages > 0)
+                    (syncProgress.toFloat() / syncTotalMessages.toFloat()).coerceIn(0f, 1f)
+                else -1f  // sentinel: use indeterminate bar
+
+                if (firstSyncFraction >= 0f) {
+                    // First sync — determinate bar with percentage label
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        LinearProgressIndicator(
+                            progress = { firstSyncFraction },
+                            modifier = Modifier.fillMaxWidth().height(2.dp),
+                            color = AccentGreenLight,
+                            trackColor = AccentGreenDark.copy(alpha = 0.3f)
+                        )
+                        Text(
+                            text = "Importing M-PESA history… ${(firstSyncFraction * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .padding(top = 2.dp, bottom = 4.dp)
+                        )
+                    }
+                } else {
+                    // Subsequent sync — fast, indeterminate
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().height(2.dp),
+                        color = AccentGreenLight,
+                        trackColor = AccentGreenDark.copy(alpha = 0.3f)
+                    )
+                }
             }
           }
         },
@@ -391,10 +448,11 @@ fun DashboardScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
+            item(key = "greeting") {
+                val greeting = remember { getGreetingMessage() }
                 Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
                     Text(
-                        text = "${getGreetingMessage()},",
+                        text = "$greeting,",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -407,7 +465,7 @@ fun DashboardScreen(
                 }
             }
             
-            item {
+            item(key = "month-selector") {
                 val months = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
                 val selectedMonthIndex by viewModel.selectedMonthIndex.collectAsStateWithLifecycle()
                 val selectedMonth = months.getOrNull(selectedMonthIndex) ?: months.first()
@@ -441,26 +499,26 @@ fun DashboardScreen(
                 }
             }
 
-            item {
+            item(key = "hero-card") {
                 Box(modifier = Modifier.animateItem()) {
                     HeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
                 }
             }
             
-            item {
+            item(key = "quick-nav") {
                 Row(
                     modifier = Modifier.fillMaxWidth().animateItem(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     QuickNavButton(icon = Icons.Default.Insights, label = "Analytics", color = TransferBlue, onClick = onNavigateToAnalytics)
                     QuickNavButton(icon = Icons.AutoMirrored.Filled.ReceiptLong, label = "Bills", color = AccentGreenDark, onClick = onNavigateToBills)
-                    QuickNavButton(icon = Icons.Default.DonutLarge, label = "Budget", color = ExpenseRed, onClick = onNavigateToSettings)
+                    QuickNavButton(icon = Icons.Default.DonutLarge, label = "Budget", color = ExpenseRed, onClick = onNavigateToBudgetPlanner)
                     QuickNavButton(icon = Icons.Default.TrackChanges, label = "Goals", color = IncomeGreen, onClick = onNavigateToGoals)
                 }
             }
 
             if (uiState.hasBudget) {
-                item {
+                item(key = "budget-progress") {
                     val spent = uiState.monthlyExpense
                     val limit = uiState.currentBudgetLimit
                     val progress = if (limit > 0) (spent / limit).toFloat().coerceIn(0f, 1f) else 0f
@@ -495,7 +553,7 @@ fun DashboardScreen(
                 }
             }
 
-            item {
+            item(key = "recent-header") {
                 Row(
                     modifier = Modifier.fillMaxWidth().animateItem(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -510,7 +568,7 @@ fun DashboardScreen(
             }
 
             // AnimatedContent: smoothly crossfades between empty state and populated list
-            item {
+            item(key = "recent-content") {
                 AnimatedContent(
                     targetState = groupedRecents.isEmpty(),
                     transitionSpec = {
@@ -949,7 +1007,6 @@ fun MetadataRow(label: String, value: String) {
     }
 }
 
-@Composable
 fun getIconForTransaction(transaction: Transaction): androidx.compose.ui.graphics.vector.ImageVector {
     if (transaction.isFeeTransaction) return Icons.AutoMirrored.Filled.ReceiptLong
     
@@ -1000,8 +1057,7 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null) {
         
         Spacer(modifier = Modifier.width(16.dp))
         
-        val format = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val timeStr = format.format(Date(transaction.timestamp))
+        val timeStr = timeFormat.format(Date(transaction.timestamp))
         val typeStr = transaction.type.name.replace("_", " ").lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
         
         val subtitleStr = buildString {
@@ -1046,12 +1102,7 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null) {
     }
 }
 
-fun formatCurrency(amount: Double): String {
-    return NumberFormat.getInstance().apply { 
-        minimumFractionDigits = 2
-        maximumFractionDigits = 2 
-    }.format(amount)
-}
+fun formatCurrency(amount: Double): String = currencyFormat.format(amount)
 
 fun getGreetingMessage(): String {
     val calendar = Calendar.getInstance()

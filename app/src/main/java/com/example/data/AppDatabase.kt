@@ -60,7 +60,7 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
     }
 }
 
-@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class], version = 12, exportSchema = false)
+@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class], version = 12, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun billDao(): BillDao

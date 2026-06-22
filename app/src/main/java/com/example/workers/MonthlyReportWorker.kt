@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.pesalytics.PesalyticsApplication
-import com.pesalytics.notifications.NotificationHelper
 import com.pesalytics.model.TransactionType
+import com.pesalytics.notifications.NotificationHelper
 import kotlinx.coroutines.flow.first
 import java.util.Calendar
 
@@ -15,6 +15,7 @@ class MonthlyReportWorker(appContext: Context, workerParams: WorkerParameters) :
     override suspend fun doWork(): Result {
         val repository = (applicationContext as PesalyticsApplication).repository
         val notif = NotificationHelper(applicationContext)
+        val prefs = applicationContext.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
 
         // ── Last month's financial summary ───────────────────────────────────
         val lastMonthStart = Calendar.getInstance().apply {
@@ -39,17 +40,34 @@ class MonthlyReportWorker(appContext: Context, workerParams: WorkerParameters) :
             .filter { it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME }
             .sumOf { it.amount }
         val expense = monthTxns
-            .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
+            .filter {
+                it.type != TransactionType.RECEIVE_MONEY &&
+                it.type != TransactionType.MANUAL_INCOME &&
+                it.type != TransactionType.MANUAL_TRANSFER
+            }
             .sumOf { it.amount }
         val savings = income - expense
+        val txnCount = monthTxns.size
+        val topCat = monthTxns
+            .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
+            .groupBy { it.category ?: "Other" }
+            .mapValues { e -> e.value.sumOf { it.amount } }
+            .maxByOrNull { it.value }?.key
 
         val cal = Calendar.getInstance().apply { timeInMillis = lastMonthStart }
         val monthName = java.text.SimpleDateFormat("MMMM", java.util.Locale.getDefault()).format(cal.time)
 
-        notif.showMonthlyReport(
-            "$monthName Financial Summary",
-            "Income KES ${"%.0f".format(income)} · Expenses KES ${"%.0f".format(expense)} · " +
-            "${if (savings >= 0) "Saved" else "Over budget by"} KES ${"%.0f".format(Math.abs(savings))}."
+        val body = buildString {
+            append("Income KES ${"%.0f".format(income)} · Expenses KES ${"%.0f".format(expense)} · ")
+            append(if (savings >= 0) "Saved KES ${"%.0f".format(savings)}." else "Over budget by KES ${"%.0f".format(-savings)}.")
+            if (topCat != null) append(" Top spend: $topCat.")
+        }
+
+        notif.showMonthlyReport("$monthName Financial Summary", body)
+        appendInAppNotification(
+            prefs,
+            "$monthName summary: KES ${"%.0f".format(income)} in, KES ${"%.0f".format(expense)} out across $txnCount transactions. " +
+            if (savings >= 0) "Saved KES ${"%.0f".format(savings)}." else "Over by KES ${"%.0f".format(-savings)}."
         )
 
         // ── Goal progress reminders ─────────────────────────────────────────
@@ -57,17 +75,12 @@ class MonthlyReportWorker(appContext: Context, workerParams: WorkerParameters) :
         goals.forEach { goal ->
             val pct = if (goal.targetAmount > 0) (goal.savedAmount / goal.targetAmount * 100).toInt() else 0
             val remaining = goal.targetAmount - goal.savedAmount
-            notif.showGoalReminder(
-                "Goal Update: ${goal.name}",
-                "$pct% complete. KES ${"%.0f".format(remaining)} remaining. " +
-                "Keep contributing KES ${"%.0f".format(goal.monthlyContribution)}/month."
-            )
+            val goalMsg = "$pct% complete. KES ${"%.0f".format(remaining)} remaining. Keep contributing KES ${"%.0f".format(goal.monthlyContribution)}/month."
+            notif.showGoalReminder("Goal Update: ${goal.name}", goalMsg)
+            appendInAppNotification(prefs, "Goal '${goal.name}': $goalMsg")
         }
 
         // ── Self-reschedule for the 1st of next month at 9:00 AM ───────────
-        // Using a OneTimeWorkRequest chain instead of a 30-day periodic job
-        // ensures the report always fires on the correct calendar date regardless
-        // of month length (28 / 29 / 30 / 31 days).
         val nextMonthDelay = delayUntilFirstOfNextMonth(9, 0)
         androidx.work.WorkManager.getInstance(applicationContext).enqueueUniqueWork(
             "monthly_report",
@@ -79,6 +92,15 @@ class MonthlyReportWorker(appContext: Context, workerParams: WorkerParameters) :
         )
 
         return Result.success()
+    }
+
+    private fun appendInAppNotification(
+        prefs: android.content.SharedPreferences,
+        message: String
+    ) {
+        val existing = prefs.getString("pending_in_app_notifs", "") ?: ""
+        val updated = if (existing.isBlank()) message else "$existing\n$message"
+        prefs.edit().putString("pending_in_app_notifs", updated).apply()
     }
 
     private fun delayUntilFirstOfNextMonth(hour: Int, minute: Int): Long {
