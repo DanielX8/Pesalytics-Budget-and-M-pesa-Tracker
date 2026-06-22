@@ -332,7 +332,7 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         onNavigateToAllTransactions = { navController.navigate(AllTransactions) },
                         onNavigateToAnalytics = { navController.navigate(Analytics) },
                         onNavigateToBills = { navController.navigate(Bills) },
-                        onNavigateToSettings = { navController.navigate(BudgetPlanner) },
+                        onNavigateToBudgetPlanner = { navController.navigate(BudgetPlanner) },
                         onNavigateToGoals = { navController.navigate(FinancialGoals) }
                     )
                 }
