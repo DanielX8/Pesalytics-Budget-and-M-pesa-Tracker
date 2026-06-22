@@ -382,20 +382,22 @@ fun AddBillBottomSheetContent(
         Spacer(modifier = Modifier.height(24.dp))
         Text("BILLING CYCLE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(8.dp))
+        val cycleAccent = interactiveGreen
         Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant), horizontalArrangement = Arrangement.SpaceEvenly) {
             BillCycle.entries.forEach { option ->
                 val isSelected = cycle == option
                 Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(if (isSelected) AccentGreenLight else Color.Transparent).clickable { cycle = option }.padding(vertical = 12.dp),
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(if (isSelected) cycleAccent else Color.Transparent).clickable { cycle = option }.padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(option.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                    Text(option.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
         // Auto Pay toggle
+        val autoPayAccent = interactiveGreen
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text("Auto Pay", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -404,7 +406,7 @@ fun AddBillBottomSheetContent(
             Switch(
                 checked = isAutoPay,
                 onCheckedChange = { isAutoPay = it },
-                colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha = 0.5f))
+                colors = SwitchDefaults.colors(checkedThumbColor = autoPayAccent, checkedTrackColor = autoPayAccent.copy(alpha = 0.5f))
             )
         }
 
