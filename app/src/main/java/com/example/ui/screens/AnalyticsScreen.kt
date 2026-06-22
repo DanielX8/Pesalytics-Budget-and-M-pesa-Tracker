@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesalytics.R
+import com.pesalytics.model.Budget
 import com.pesalytics.model.TransactionType
 import com.pesalytics.patterns.CategoryDelta
 import com.pesalytics.patterns.FulizaMonthPoint
@@ -56,7 +58,8 @@ import kotlin.math.atan2
 fun AnalyticsScreen(
     viewModel: PesaViewModel,
     onNavigateBack: () -> Unit,
-    onNavigateToSubscription: () -> Unit
+    onNavigateToSubscription: () -> Unit,
+    onNavigateToNeedsWants: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
@@ -200,13 +203,15 @@ fun AnalyticsScreen(
 
             // Spend Velocity Banner
             patternResult?.spendVelocity?.let { velocity ->
-                item { SpendVelocityBanner(velocity) }
+                item { SpendVelocityBanner(velocity, uiState.transactions) }
             }
 
             // Month Comparison Card
             patternResult?.monthComparison?.let { comparison ->
                 item { MonthComparisonCard(comparison) }
             }
+
+            item { BalanceProgressionChart(monthTransactions, startTimestamp) }
 
             item {
                 WhereItGoesChart(
@@ -215,14 +220,24 @@ fun AnalyticsScreen(
                 )
             }
 
+            item { LargestTransactionsCard(monthTransactions) }
+
             item { TransactionFeesCard(monthTransactions) }
+
+            item { TopPayeesCard(monthTransactions) }
+            item { IncomeSourcesCard(monthTransactions) }
+
+            val budgetsForCard = uiState.budgets
+            if (budgetsForCard.isNotEmpty()) {
+                item { BudgetVsActualCard(budgetsForCard, uiState.categorySpent) }
+            }
 
             item {
                 Text("PATTERNS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 0.dp))
             }
 
             item { SpendingRhythmChart(monthTransactions) }
-            item { NeedsVsWantsCard(monthTransactions, needsWantsClassification) }
+            item { NeedsVsWantsCard(monthTransactions, needsWantsClassification, onNavigateToNeedsWants) }
             item {
                 SpendingCalendar(monthTransactions, startTimestamp, displayMonth)
             }
@@ -242,7 +257,50 @@ fun AnalyticsScreen(
 }
 
 @Composable
-fun SpendVelocityBanner(velocity: SpendVelocity) {
+fun SpendVelocityBanner(velocity: SpendVelocity, allTransactions: List<com.pesalytics.model.Transaction>) {
+    val currentMonthStart = remember {
+        Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
+    val prevMonthStart = remember(currentMonthStart) {
+        Calendar.getInstance().apply { timeInMillis = currentMonthStart; add(Calendar.MONTH, -1) }.timeInMillis
+    }
+    val daysInPrevMonth = remember(prevMonthStart) {
+        Calendar.getInstance().apply { timeInMillis = prevMonthStart }.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
+
+    fun dailySpendForMonth(monthStart: Long, daysInMonth: Int): List<Double> = (1..daysInMonth).map { day ->
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = monthStart
+            set(Calendar.DAY_OF_MONTH, day)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        val s = cal.timeInMillis
+        cal.set(Calendar.HOUR_OF_DAY, 23); cal.set(Calendar.MINUTE, 59); cal.set(Calendar.SECOND, 59); cal.set(Calendar.MILLISECOND, 999)
+        allTransactions.filter {
+            !it.isFeeTransaction &&
+            it.type != TransactionType.RECEIVE_MONEY &&
+            it.type != TransactionType.MANUAL_INCOME &&
+            it.timestamp in s..cal.timeInMillis
+        }.sumOf { it.amount }
+    }
+
+    val currentDailySpend = remember(allTransactions, currentMonthStart, velocity.daysInMonth) {
+        dailySpendForMonth(currentMonthStart, velocity.daysInMonth)
+    }
+    val prevDailySpend = remember(allTransactions, prevMonthStart, daysInPrevMonth) {
+        dailySpendForMonth(prevMonthStart, daysInPrevMonth)
+    }
+    val maxY = remember(currentDailySpend, prevDailySpend) {
+        maxOf(currentDailySpend.maxOrNull() ?: 0.0, prevDailySpend.maxOrNull() ?: 0.0).coerceAtLeast(1.0)
+    }
+    val currMonthLabel = remember(currentMonthStart) { SimpleDateFormat("MMM", Locale.getDefault()).format(Date(currentMonthStart)) }
+    val prevMonthLabel = remember(prevMonthStart) { SimpleDateFormat("MMM", Locale.getDefault()).format(Date(prevMonthStart)) }
+
+    val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+
     Card(
         modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -250,9 +308,68 @@ fun SpendVelocityBanner(velocity: SpendVelocity) {
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text("Spend Velocity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text("Day ${velocity.daysElapsed} of ${velocity.daysInMonth}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Legend
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(AccentGreenLight))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(currMonthLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(TransferBlue.copy(alpha = 0.65f)))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(prevMonthLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
+
+            Canvas(modifier = Modifier.fillMaxWidth().height(140.dp)) {
+                val w = size.width; val h = size.height
+
+                // Faint horizontal guide lines
+                repeat(3) { i ->
+                    val gy = h * (1f - (i + 1) / 4f)
+                    drawLine(gridColor, Offset(0f, gy), Offset(w, gy), strokeWidth = 1f)
+                }
+
+                // Previous month line (blue)
+                val prevStep = if (daysInPrevMonth > 1) w / (daysInPrevMonth - 1).toFloat() else w
+                if (prevDailySpend.isNotEmpty()) {
+                    val path = Path()
+                    prevDailySpend.forEachIndexed { i, amt ->
+                        val x = i * prevStep
+                        val y = h - (amt / maxY * h).toFloat()
+                        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                    }
+                    drawPath(path, TransferBlue.copy(alpha = 0.55f), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+                }
+
+                // Current month line (green) — only up to today
+                val currStep = if (velocity.daysInMonth > 1) w / (velocity.daysInMonth - 1).toFloat() else w
+                val activeDays = currentDailySpend.take(velocity.daysElapsed)
+                if (activeDays.isNotEmpty()) {
+                    val path = Path()
+                    activeDays.forEachIndexed { i, amt ->
+                        val x = i * currStep
+                        val y = h - (amt / maxY * h).toFloat()
+                        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                    }
+                    drawPath(path, AccentGreenLight, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
+                    // Today marker dot
+                    val lastX = (activeDays.size - 1) * currStep
+                    val lastY = h - (activeDays.last() / maxY * h).toFloat()
+                    drawCircle(AccentGreenLight, radius = 4.dp.toPx(), center = Offset(lastX, lastY))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Stats footer
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text("Daily Avg", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -627,7 +744,8 @@ fun SpendingRhythmChart(transactions: List<com.pesalytics.model.Transaction>) {
 @Composable
 fun NeedsVsWantsCard(
     transactions: List<com.pesalytics.model.Transaction>,
-    classification: Map<String, Boolean>
+    classification: Map<String, Boolean>,
+    onNavigateToNeedsWants: () -> Unit
 ) {
     val expenses = transactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
     var needsAmount = 0.0; var wantsAmount = 0.0
@@ -639,7 +757,7 @@ fun NeedsVsWantsCard(
     val needsColor = AccentGreenLight; val wantsColor = Color(0xFFFF5252)
     var showWantsTooltip by remember { mutableStateOf(false) }
 
-    Card(modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
+    Card(modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)).clickable(onClick = onNavigateToNeedsWants), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -654,7 +772,7 @@ fun NeedsVsWantsCard(
                         }
                     }
                 }
-                Icon(Icons.AutoMirrored.Filled.CallMade, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.AutoMirrored.Filled.CallMade, contentDescription = "Go to settings", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text("This month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -791,6 +909,332 @@ fun SpendingCalendar(transactions: List<com.pesalytics.model.Transaction>, month
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BalanceProgressionChart(transactions: List<com.pesalytics.model.Transaction>, monthStartTimestamp: Long) {
+    val balancePoints = transactions
+        .filter { !it.isFeeTransaction && it.balanceAfter > 0 }
+        .sortedBy { it.timestamp }
+    if (balancePoints.isEmpty()) return
+
+    val maxBalance = balancePoints.maxOf { it.balanceAfter }
+    val minBalance = balancePoints.minOf { it.balanceAfter }
+    val range = (maxBalance - minBalance).coerceAtLeast(1.0)
+    val currentBalance = balancePoints.last().balanceAfter
+    val monthEnd = remember(monthStartTimestamp) {
+        Calendar.getInstance().apply { timeInMillis = monthStartTimestamp; add(Calendar.MONTH, 1) }.timeInMillis
+    }
+    val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+
+    Card(
+        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("Account Balance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text("Balance progression this month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Canvas(modifier = Modifier.fillMaxWidth().height(140.dp)) {
+                val w = size.width
+                val h = size.height
+                val timeRange = (monthEnd - monthStartTimestamp).toFloat().coerceAtLeast(1f)
+
+                repeat(3) { i ->
+                    val gy = h * (1f - (i + 1) / 4f)
+                    drawLine(gridColor, Offset(0f, gy), Offset(w, gy), strokeWidth = 1f)
+                }
+
+                if (balancePoints.size >= 2) {
+                    val points = balancePoints.map { tx ->
+                        val x = ((tx.timestamp - monthStartTimestamp) / timeRange * w).coerceIn(0f, w)
+                        val y = (h - ((tx.balanceAfter - minBalance) / range * h).toFloat()).coerceIn(0f, h)
+                        Offset(x, y)
+                    }
+                    val fillPath = Path()
+                    points.forEachIndexed { i, pt -> if (i == 0) fillPath.moveTo(pt.x, pt.y) else fillPath.lineTo(pt.x, pt.y) }
+                    fillPath.lineTo(points.last().x, h)
+                    fillPath.lineTo(0f, h)
+                    fillPath.close()
+                    drawPath(fillPath, AccentGreenLight.copy(alpha = 0.08f))
+
+                    val linePath = Path()
+                    points.forEachIndexed { i, pt -> if (i == 0) linePath.moveTo(pt.x, pt.y) else linePath.lineTo(pt.x, pt.y) }
+                    drawPath(linePath, AccentGreenLight, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+                    drawCircle(AccentGreenLight, radius = 4.dp.toPx(), center = points.last())
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("Peak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("KES ${formatCurrency(maxBalance)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = AccentGreenLight)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Lowest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "KES ${formatCurrency(minBalance)}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (minBalance < maxBalance * 0.2) ExpenseRed else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Current", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("KES ${formatCurrency(currentBalance)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LargestTransactionsCard(transactions: List<com.pesalytics.model.Transaction>) {
+    val dateFormat = remember { SimpleDateFormat("MMM d", Locale.getDefault()) }
+    val typeLabels = mapOf(
+        TransactionType.SEND_MONEY to "Send Money",
+        TransactionType.PAYBILL to "Paybill",
+        TransactionType.BUY_GOODS to "Buy Goods",
+        TransactionType.WITHDRAW to "Withdraw",
+        TransactionType.AIRTIME to "Airtime",
+        TransactionType.MANUAL_EXPENSE to "Manual",
+        TransactionType.POCHI to "Pochi"
+    )
+    val top = transactions
+        .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME && !it.isFeeTransaction }
+        .sortedByDescending { it.amount }
+        .take(5)
+    if (top.isEmpty()) return
+
+    Card(
+        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("Largest Transactions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text("Biggest individual expenses this month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            top.forEachIndexed { index, tx ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier.size(28.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("${index + 1}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(tx.payee.take(24), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "${typeLabels[tx.type] ?: "Other"} · ${dateFormat.format(Date(tx.timestamp))}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Text("KES ${formatCurrency(tx.amount)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = ExpenseRed)
+                }
+                if (index < top.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+            }
+        }
+    }
+}
+
+@Composable
+fun TopPayeesCard(transactions: List<com.pesalytics.model.Transaction>) {
+    val expenses = transactions.filter {
+        it.type != TransactionType.RECEIVE_MONEY &&
+        it.type != TransactionType.MANUAL_INCOME &&
+        !it.isFeeTransaction
+    }
+    val totalExpense = expenses.sumOf { it.amount }.coerceAtLeast(1.0)
+    val topPayees = expenses
+        .groupBy { it.payee }
+        .mapValues { entry -> entry.value.sumOf { it.amount } }
+        .entries.sortedByDescending { it.value }
+        .take(5)
+    if (topPayees.isEmpty()) return
+
+    val maxAmount = topPayees.first().value.coerceAtLeast(1.0)
+    val barColors = listOf(ExpenseRed, TransferBlue, AccentGreenLight, WarningOrange, Color(0xFF9C27B0))
+
+    Card(
+        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("Top Payees", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text("Who received most of your money", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            topPayees.forEachIndexed { index, entry ->
+                val barColor = barColors[index % barColors.size]
+                val fraction = (entry.value / maxAmount).toFloat()
+                val pctOfTotal = ((entry.value / totalExpense) * 100).toInt()
+
+                Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Box(
+                                modifier = Modifier.size(24.dp).clip(CircleShape).background(barColor.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("${index + 1}", style = MaterialTheme.typography.labelSmall, color = barColor, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(entry.key.take(22), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("KES ${formatCurrency(entry.value)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                            Text("$pctOfTotal%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) {
+                        Box(modifier = Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(barColor))
+                    }
+                }
+                if (index < topPayees.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f), modifier = Modifier.padding(vertical = 2.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun IncomeSourcesCard(transactions: List<com.pesalytics.model.Transaction>) {
+    val income = transactions.filter {
+        (it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME) &&
+        !it.isFeeTransaction
+    }
+    val totalIncome = income.sumOf { it.amount }.coerceAtLeast(1.0)
+    val sources = income
+        .groupBy { it.payee }
+        .mapValues { entry -> entry.value.sumOf { it.amount } }
+        .entries.sortedByDescending { it.value }
+        .take(5)
+    if (sources.isEmpty()) return
+
+    val maxAmount = sources.first().value.coerceAtLeast(1.0)
+
+    Card(
+        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("Income Sources", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text("Who paid you this month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            sources.forEachIndexed { index, entry ->
+                val fraction = (entry.value / maxAmount).toFloat()
+                val pctOfTotal = ((entry.value / totalIncome) * 100).toInt()
+
+                Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Box(
+                                modifier = Modifier.size(24.dp).clip(CircleShape).background(AccentGreenLight.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("${index + 1}", style = MaterialTheme.typography.labelSmall, color = AccentGreenLight, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(entry.key.take(22), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("KES ${formatCurrency(entry.value)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = AccentGreenLight)
+                            Text("$pctOfTotal%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) {
+                        Box(modifier = Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(AccentGreenLight))
+                    }
+                }
+                if (index < sources.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f), modifier = Modifier.padding(vertical = 2.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun BudgetVsActualCard(budgets: List<Budget>, categorySpent: Map<String, Double>) {
+    val overallBudget = budgets.find { it.category == "Overall" }
+    val categoryBudgets = budgets.filter { it.category != "Overall" }
+    if (overallBudget == null && categoryBudgets.isEmpty()) return
+
+    Card(
+        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("Budget vs Actual", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text("How spending tracks against your plan", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            overallBudget?.let { budget ->
+                val totalSpent = categorySpent.values.sum()
+                BudgetProgressRow(label = "Overall", spent = totalSpent, limit = budget.limitAmount, isOverall = true)
+                if (categoryBudgets.isNotEmpty()) HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f))
+            }
+
+            categoryBudgets.forEachIndexed { index, budget ->
+                val spent = categorySpent[budget.category] ?: 0.0
+                BudgetProgressRow(label = budget.category, spent = spent, limit = budget.limitAmount, isOverall = false)
+                if (index < categoryBudgets.lastIndex) HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+            }
+        }
+    }
+}
+
+@Composable
+fun BudgetProgressRow(label: String, spent: Double, limit: Double, isOverall: Boolean) {
+    val fraction = if (limit > 0) (spent / limit).toFloat() else 0f
+    val barColor = when {
+        fraction >= 1f -> ExpenseRed
+        fraction >= 0.7f -> WarningOrange
+        else -> AccentGreenLight
+    }
+    val statusText = when {
+        fraction >= 1f -> "Over by KES ${formatCurrency(spent - limit)}"
+        else -> "KES ${formatCurrency(limit - spent)} remaining · ${(fraction * 100).toInt()}% used"
+    }
+
+    Column {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+            Text(
+                label,
+                style = if (isOverall) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isOverall) FontWeight.Bold else FontWeight.SemiBold
+            )
+            Text("KES ${formatCurrency(spent)} / ${formatCurrency(limit)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(modifier = Modifier.fillMaxWidth().height(if (isOverall) 8.dp else 6.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) {
+            Box(modifier = Modifier.fillMaxWidth(fraction.coerceAtMost(1f)).fillMaxHeight().clip(RoundedCornerShape(4.dp)).background(barColor))
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(statusText, style = MaterialTheme.typography.labelSmall, color = barColor)
     }
 }
 
