@@ -1,0 +1,99 @@
+name: Build & Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.4.1)'
+        required: true
+        default: 'v1.4.1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36 & build-tools
+        run: |
+          sdkmanager --update
+          sdkmanager "platforms;android-36" "build-tools;35.0.1" "platform-tools"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build optimized release APK
+        run: ./gradlew assembleRelease --no-daemon --build-cache
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.parallel=true"
+
+      - name: Locate APK
+        id: apk
+        run: |
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          echo "path=$APK" >> $GITHUB_OUTPUT
+          echo "name=pesalytics-release-$(git describe --tags --abbrev=0 2>/dev/null || echo ${{ github.event.inputs.tag || github.ref_name }}).apk" >> $GITHUB_OUTPUT
+
+      - name: Rename APK
+        run: mv "${{ steps.apk.outputs.path }}" "app/build/outputs/apk/release/${{ steps.apk.outputs.name }}"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pesalytics-release-apk
+          path: app/build/outputs/apk/release/${{ steps.apk.outputs.name }}
+          retention-days: 30
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "value=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.value }}
+          name: "Pesalytics ${{ steps.tag.outputs.value }}"
+          draft: false
+          prerelease: false
+          files: app/build/outputs/apk/release/${{ steps.apk.outputs.name }}
+          body: |
+            ## Pesalytics ${{ steps.tag.outputs.value }}
+
+            ### What's new
+            - Fixed DAO monthly queries missing upper bound — income/expense now scoped correctly to the selected month
+            - Added Pochi la Biashara SMS parsing
+            - Balance hidden by default with 5-second auto-hide after reveal
+            - First-sync shows real percentage progress; subsequent syncs use timestamp high-water mark for speed
+            - Weekly notification reports the previous complete week (not the current in-progress one)
+            - Daily/weekly/monthly notifications now bridge to the in-app notification bell
+            - Daily notification enriched with transaction count and top spending category
+            - Monthly worker now correctly excludes transfers from expense totals
+            - PDF reports replaced all filler content with real data: actual date range, income, real category breakdown, top merchants, transaction table
+            - SMS Prominent Disclosure dialog shown before the system permission prompt
+            - PatternEngine is now a singleton — no more per-call instantiation
+            - PromoCode redemption moved to Dispatchers.Default
+            - Room schema export enabled with KSP output path
+
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/master/CHANGELOG.md) for full details.
