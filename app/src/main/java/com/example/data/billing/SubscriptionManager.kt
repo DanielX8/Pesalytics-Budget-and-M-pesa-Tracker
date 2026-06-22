@@ -14,7 +14,7 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
 
     private val prefs = context.getSharedPreferences("pesa_subscription", Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var reconnectDelay = 1_000L
+    @Volatile private var reconnectDelay = 1_000L
 
     private val _state = MutableStateFlow(loadStateFromPrefs())
     val state: StateFlow<SubscriptionState> = _state
@@ -34,8 +34,8 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
     }
 
     fun disconnect() {
+        billingClient.endConnection()  // stop incoming events before cancelling inflight coroutines
         scope.cancel()
-        billingClient.endConnection()
     }
 
     override fun onBillingSetupFinished(result: BillingResult) {
@@ -332,9 +332,8 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
             if (alreadyRedeemed) return PromoResult.AlreadyRedeemed
 
             val count = prefs.getInt("earlybird_count", 0)
-            val launchMs = prefs.getLong("play_store_launch_ms", 0L)
-            val daysSince = if (launchMs > 0L) (System.currentTimeMillis() - launchMs) / TimeUnit.DAYS.toMillis(1) else 0L
-            val sunset = count >= MAX_EARLYBIRD || (launchMs > 0L && daysSince >= EARLYBIRD_WINDOW_DAYS)
+            val daysSince = (System.currentTimeMillis() - BillingConfig.PLAY_STORE_LAUNCH_MS) / TimeUnit.DAYS.toMillis(1)
+            val sunset = count >= MAX_EARLYBIRD || daysSince >= EARLYBIRD_WINDOW_DAYS
 
             return if (sunset) {
                 grantFromPromo(PromoGrant.Trial14Days)

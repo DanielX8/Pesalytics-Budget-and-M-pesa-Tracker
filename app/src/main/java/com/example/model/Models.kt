@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
+import androidx.compose.runtime.Immutable
 
 @Serializable
 enum class TransactionType {
@@ -19,6 +20,7 @@ enum class TransactionType {
     MANUAL_TRANSFER
 }
 
+@Immutable
 @Entity(
     tableName = "transactions",
     indices = [Index(value = ["remoteRef", "isFeeTransaction"], unique = true)]

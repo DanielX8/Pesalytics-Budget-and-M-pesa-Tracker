@@ -8,4 +8,7 @@ object BillingConfig {
 
     val ALL_SUBS  = listOf(SKU_MONTHLY, SKU_QUARTERLY, SKU_YEARLY)
     val ALL_INAPP = listOf(SKU_LIFETIME)
+
+    // v1.0.0 Play Store release date — anchors the EARLYBIRD 90-day sunset window.
+    const val PLAY_STORE_LAUNCH_MS = 1748044800000L  // 2026-05-24 00:00 UTC
 }
