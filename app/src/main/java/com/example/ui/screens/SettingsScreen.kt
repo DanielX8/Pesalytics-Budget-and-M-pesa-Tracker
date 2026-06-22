@@ -443,6 +443,7 @@ private fun SettingsDivider(padded: Boolean = false) {
 
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
+    val accent = interactiveGreen
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -452,13 +453,14 @@ private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Un
         Switch(
             checked = checked,
             onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(checkedThumbColor = AccentGreenLight, checkedTrackColor = AccentGreenLight.copy(alpha = 0.5f))
+            colors = SwitchDefaults.colors(checkedThumbColor = accent, checkedTrackColor = accent.copy(alpha = 0.5f))
         )
     }
 }
 
 @Composable
 private fun SegmentedRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
+    val accent = interactiveGreen
     Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant), horizontalArrangement = Arrangement.SpaceEvenly) {
         options.forEach { option ->
             val isSelected = selected == option
@@ -466,7 +468,7 @@ private fun SegmentedRow(options: List<String>, selected: String, onSelect: (Str
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSelected) AccentGreenLight else Color.Transparent)
+                    .background(if (isSelected) accent else Color.Transparent)
                     .clickable { onSelect(option) }
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
@@ -479,7 +481,8 @@ private fun SegmentedRow(options: List<String>, selected: String, onSelect: (Str
 
 @Composable
 private fun ExportChip(label: String, onClick: () -> Unit) {
-    Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(AccentGreenLight.copy(alpha = 0.15f)).clickable { onClick() }.padding(horizontal = 10.dp, vertical = 6.dp)) {
+    val accent = interactiveGreen
+    Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(accent.copy(alpha = 0.15f)).clickable { onClick() }.padding(horizontal = 10.dp, vertical = 6.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = HeroGreen, fontWeight = FontWeight.SemiBold)
     }
 }
