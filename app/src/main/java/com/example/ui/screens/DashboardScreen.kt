@@ -118,6 +118,27 @@ fun DashboardScreen(
         }
     }
 
+    val trialJustStarted by viewModel.trialJustStarted.collectAsStateWithLifecycle()
+    var showTrialDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(trialJustStarted) {
+        if (trialJustStarted) {
+            showTrialDialog = true
+            viewModel.consumeTrialStartedEvent()
+        }
+    }
+    if (showTrialDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showTrialDialog = false },
+            title = { androidx.compose.material3.Text("14-Day Free Trial Started!", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+            text = { androidx.compose.material3.Text("You now have full access to all Pesalytics Premium features for 14 days — completely free. Enjoy the analytics, budget planner, bill tracker, and data exports. No payment required to start.") },
+            confirmButton = {
+                androidx.compose.material3.Button(onClick = { showTrialDialog = false }) {
+                    androidx.compose.material3.Text("Let's Go!")
+                }
+            }
+        )
+    }
+
     var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
     var showTransactionDetails by remember { mutableStateOf(false) }
     var showAddManualDialog by remember { mutableStateOf(false) }

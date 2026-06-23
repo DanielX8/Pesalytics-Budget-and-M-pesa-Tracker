@@ -19,6 +19,11 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
     private val _state = MutableStateFlow(loadStateFromPrefs())
     val state: StateFlow<SubscriptionState> = _state
 
+    private val _trialJustStarted = MutableStateFlow(false)
+    val trialJustStarted: StateFlow<Boolean> = _trialJustStarted
+
+    fun consumeTrialStartedEvent() { _trialJustStarted.value = false }
+
     private val _products = MutableStateFlow<Map<String, ProductDetails>>(emptyMap())
     val products: StateFlow<Map<String, ProductDetails>> = _products
 
@@ -183,6 +188,7 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
         if (prefs.getLong("trial_start_ms", 0L) == 0L) {
             prefs.edit().putLong("trial_start_ms", System.currentTimeMillis()).apply()
             _state.value = loadStateFromPrefs()
+            _trialJustStarted.value = true
         }
     }
 
@@ -332,9 +338,7 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
             if (alreadyRedeemed) return PromoResult.AlreadyRedeemed
 
             val count = prefs.getInt("earlybird_count", 0)
-            val launchMs = prefs.getLong("play_store_launch_ms", 0L)
-            val daysSince = if (launchMs > 0L) (System.currentTimeMillis() - launchMs) / TimeUnit.DAYS.toMillis(1) else 0L
-            val sunset = count >= MAX_EARLYBIRD || (launchMs > 0L && daysSince >= EARLYBIRD_WINDOW_DAYS)
+            val sunset = count >= MAX_EARLYBIRD
 
             return if (sunset) {
                 grantFromPromo(PromoGrant.Trial14Days)
