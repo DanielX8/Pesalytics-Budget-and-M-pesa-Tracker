@@ -458,7 +458,7 @@ private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Un
 }
 
 @Composable
-private fun SegmentedRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
+internal fun SegmentedRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
     Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant), horizontalArrangement = Arrangement.SpaceEvenly) {
         options.forEach { option ->
             val isSelected = selected == option
