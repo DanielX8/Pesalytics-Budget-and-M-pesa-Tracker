@@ -517,6 +517,22 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
     val subState by viewModel.subscriptionStateFlow.collectAsStateWithLifecycle()
     val daysRemaining = subState.trialDaysRemaining.toLong()
     val gradient = rememberBrandGradient()
+
+    val planLabel = when (subState.tier) {
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_MONTHLY   -> "Monthly Plan"
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_QUARTERLY -> "Quarterly Plan"
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_YEARLY    -> "Yearly Plan"
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_LIFETIME  -> "Lifetime"
+        com.pesalytics.domain.model.SubscriptionTier.TRIAL             -> "14-Day Free Trial"
+        com.pesalytics.domain.model.SubscriptionTier.FREE              -> "Free Plan"
+    }
+    val statusLabel = when {
+        subState.tier == com.pesalytics.domain.model.SubscriptionTier.PREMIUM_LIFETIME -> "Never expires"
+        isPremium -> "Active"
+        daysRemaining > 0 -> "Expires in $daysRemaining days"
+        else -> "Upgrade to unlock all features"
+    }
+
     SettingsSection("PLAN") {
         Box(
             modifier = Modifier
@@ -526,7 +542,6 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
                 .background(gradient)
                 .clickableScale { onNavigateToSubscription() }
         ) {
-            // Subtle radial sheen for depth, mirroring the Dashboard hero card.
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -539,16 +554,12 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
             )
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    SubscriptionTierBadge(isPremium = isPremium, isTrial = !isPremium && daysRemaining > 0, trialDaysLeft = daysRemaining.toInt())
+                    SubscriptionTierBadge(isPremium = isPremium, isTrial = subState.isTrial, trialDaysLeft = daysRemaining.toInt())
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        if (isPremium) "Active" else if (daysRemaining > 0) "Expires in $daysRemaining days" else "Trial Expired",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.85f)
-                    )
+                    Text(statusLabel, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(if (isPremium) "Premium" else "Free Trial", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(planLabel, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
                 Spacer(modifier = Modifier.height(16.dp))
                 Surface(
                     color = Color.White,
@@ -556,7 +567,7 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(modifier = Modifier.fillMaxWidth().height(44.dp), contentAlignment = Alignment.Center) {
-                        Text(if (isPremium) "Manage Plan" else "Compare Plans", fontWeight = FontWeight.Bold, color = HeroGreen)
+                        Text(if (isPremium) "Manage Plan" else "Upgrade to Premium", fontWeight = FontWeight.Bold, color = HeroGreen)
                     }
                 }
             }

@@ -117,6 +117,8 @@ class PesaViewModel(
     val subscriptionStateFlow: StateFlow<com.pesalytics.data.billing.SubscriptionState> =
         subscriptionManager?.state ?: MutableStateFlow(com.pesalytics.data.billing.SubscriptionState())
     val trialDaysRemaining get() = subscriptionManager?.state?.value?.trialDaysRemaining ?: 0
+    val trialJustStarted: StateFlow<Boolean> = subscriptionManager?.trialJustStarted ?: MutableStateFlow(false)
+    fun consumeTrialStartedEvent() { subscriptionManager?.consumeTrialStartedEvent() }
 
     private val _promoMessage = MutableStateFlow<String?>(null)
     val promoMessage = _promoMessage.asStateFlow()
