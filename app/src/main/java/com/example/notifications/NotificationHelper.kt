@@ -80,6 +80,17 @@ class NotificationHelper(private val context: Context) {
         showNotification(REPORTS_CHANNEL_ID, 2003, title, message)
     }
 
+    /** Subscription or trial expiry warning (3 days / 1 day / today) */
+    fun showSubscriptionExpiryAlert(isTrial: Boolean, daysLeft: Int) {
+        val label = if (isTrial) "trial" else "Premium subscription"
+        val message = when {
+            daysLeft <= 0 -> "Your $label expires today. Renew to keep full access."
+            daysLeft == 1 -> "Your $label expires tomorrow."
+            else          -> "Your $label expires in $daysLeft days."
+        }
+        showNotification(ALERTS_CHANNEL_ID, 1005, "Premium Expiring Soon", message)
+    }
+
     fun showReportNotification(title: String, message: String) {
         createNotificationChannels()
         val intent = Intent(context, MainActivity::class.java).apply {

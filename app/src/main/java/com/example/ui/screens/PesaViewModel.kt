@@ -188,6 +188,7 @@ class PesaViewModel(
         context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
             .putBoolean("has_completed_onboarding", true)
             .apply()
+        subscriptionManager?.startTrialIfNotStarted()
     }
 
     // ── Theme ────────────────────────────────────────────────────────────────

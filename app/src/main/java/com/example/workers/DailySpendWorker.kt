@@ -7,6 +7,7 @@ import com.pesalytics.PesalyticsApplication
 import com.pesalytics.notifications.NotificationHelper
 import kotlinx.coroutines.flow.first
 import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
 class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
@@ -78,6 +79,23 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
                     "You've exceeded your KES ${"%.0f".format(globalBudget.limitAmount)} monthly budget.")
                 pct >= 0.8 -> notif.showBudgetAlert("Budget Warning",
                     "You've used ${"%.0f".format(pct * 100)}% of your monthly budget.")
+            }
+        }
+
+        // ── Subscription / trial expiry warning ─────────────────────────────
+        val subPrefs = applicationContext.getSharedPreferences("pesa_subscription", android.content.Context.MODE_PRIVATE)
+        val tierName = subPrefs.getString("tier", "FREE") ?: "FREE"
+        val trialStartMs = subPrefs.getLong("trial_start_ms", 0L)
+        val paymentExpiryMs = subPrefs.getLong("expiry_ms", 0L)
+        val effectiveExpiryMs = when (tierName) {
+            "TRIAL" -> if (trialStartMs > 0L) trialStartMs + TimeUnit.DAYS.toMillis(14) else 0L
+            "PREMIUM_MONTHLY", "PREMIUM_QUARTERLY", "PREMIUM_YEARLY" -> paymentExpiryMs
+            else -> 0L
+        }
+        if (effectiveExpiryMs > 0L) {
+            val daysLeft = ((effectiveExpiryMs - now) / (1000 * 60 * 60 * 24)).toInt()
+            if (daysLeft in 0..3) {
+                notif.showSubscriptionExpiryAlert(isTrial = tierName == "TRIAL", daysLeft = daysLeft)
             }
         }
 
