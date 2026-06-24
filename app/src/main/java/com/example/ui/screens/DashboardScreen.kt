@@ -253,54 +253,90 @@ fun DashboardScreen(
     }
 
     if (showCategoryEdit && selectedTransaction != null) {
+        val categorySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val categoryScope = rememberCoroutineScope()
         var newCategoryName by remember { mutableStateOf(selectedTransaction!!.category) }
         val predefinedCategories = listOf("Groceries", "Utilities", "Food & Dining", "Transport", "Shopping", "Entertainment", "Health", "Airtime", "Other")
-        
-        AlertDialog(
-            onDismissRequest = { showCategoryEdit = false },
-            title = { Text("Edit Category") },
-            text = {
-                Column {
-                    Text("Change category for all past and future transactions from:", style = MaterialTheme.typography.bodySmall)
-                    Text(selectedTransaction!!.payee, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-                    
-                    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
-                    FlowRow(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        predefinedCategories.forEach { category ->
-                            FilterChip(
-                                selected = newCategoryName.equals(category, ignoreCase = true),
-                                onClick = { newCategoryName = category },
-                                label = { Text(category) }
-                            )
-                        }
-                    }
 
-                    OutlinedTextField(
-                        value = newCategoryName,
-                        onValueChange = { newCategoryName = it },
-                        label = { Text("Custom Category") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (newCategoryName.isNotBlank()) {
-                        viewModel.updateTransactionCategory(selectedTransaction!!, newCategoryName.trim())
-                        selectedTransaction = selectedTransaction!!.copy(category = newCategoryName.trim())
+        ModalBottomSheet(
+            onDismissRequest = { showCategoryEdit = false },
+            sheetState = categorySheetState,
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 40.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Edit Category", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = {
+                        categoryScope.launch { categorySheetState.hide() }.invokeOnCompletion { showCategoryEdit = false }
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
                     }
-                    showCategoryEdit = false
-                }) { Text("Save", color = MaterialTheme.colorScheme.primary) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCategoryEdit = false }) { Text("Cancel") }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Recategorise all transactions from:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    selectedTransaction!!.payee,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+                FlowRow(
+                    modifier = Modifier.padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    predefinedCategories.forEach { category ->
+                        FilterChip(
+                            selected = newCategoryName.equals(category, ignoreCase = true),
+                            onClick = { newCategoryName = category },
+                            label = { Text(category) }
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = newCategoryName,
+                    onValueChange = { newCategoryName = it },
+                    label = { Text("Custom category") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = {
+                        if (newCategoryName.isNotBlank()) {
+                            viewModel.updateTransactionCategory(selectedTransaction!!, newCategoryName.trim())
+                            selectedTransaction = selectedTransaction!!.copy(category = newCategoryName.trim())
+                        }
+                        categoryScope.launch { categorySheetState.hide() }.invokeOnCompletion { showCategoryEdit = false }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark),
+                    shape = RoundedCornerShape(24.dp),
+                    enabled = newCategoryName.isNotBlank()
+                ) {
+                    Text("Save Category", fontWeight = FontWeight.Bold, color = Color.White)
+                }
             }
-        )
+        }
     }
 
     if (showTransactionDetails && selectedTransaction != null) {
@@ -491,7 +527,8 @@ fun DashboardScreen(
                 val selectedMonthIndex by viewModel.selectedMonthIndex.collectAsStateWithLifecycle()
                 val selectedMonth = months.getOrNull(selectedMonthIndex) ?: months.first()
                 val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = maxOf(0, selectedMonthIndex - 1))
-                
+                val monthAccent = interactiveGreen
+
                 androidx.compose.foundation.lazy.LazyRow(
                     state = lazyListState,
                     modifier = Modifier.fillMaxWidth(),
@@ -504,7 +541,7 @@ fun DashboardScreen(
                             modifier = Modifier
                                 .shadow(2.dp, RoundedCornerShape(24.dp))
                                 .clip(RoundedCornerShape(24.dp))
-                                .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                                .background(if (isSelected) monthAccent else MaterialTheme.colorScheme.surface)
                                 .clickable { viewModel.setSelectedMonth(index) }
                                 .padding(horizontal = 20.dp, vertical = 10.dp),
                             contentAlignment = Alignment.Center

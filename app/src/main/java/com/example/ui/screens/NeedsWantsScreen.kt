@@ -186,12 +186,13 @@ fun NeedsWantsScreen(
 
 @Composable
 private fun NeedWantToggle(isNeed: Boolean, onSelect: (Boolean) -> Unit) {
+    val needColor = interactiveGreen
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        SegmentChip("Need", selected = isNeed, selectedColor = AccentGreenLight) { onSelect(true) }
+        SegmentChip("Need", selected = isNeed, selectedColor = needColor) { onSelect(true) }
         SegmentChip("Want", selected = !isNeed, selectedColor = ExpenseRed) { onSelect(false) }
     }
 }

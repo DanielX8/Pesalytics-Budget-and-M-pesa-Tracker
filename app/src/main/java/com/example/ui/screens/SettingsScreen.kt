@@ -86,7 +86,18 @@ fun SettingsScreen(
     val goals by viewModel.goals.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val syncProgress by viewModel.syncProgress.collectAsStateWithLifecycle()
-    var showEditNameDialog by remember { mutableStateOf(false) }
+    var showEditNameSheet by remember { mutableStateOf(false) }
+    var editTempName by remember { mutableStateOf(userName) }
+    var editTempAvatar by remember { mutableStateOf(userAvatarIndex) }
+    val editNicknamePool = remember { buildNicknamePool() }
+    var editNicknameIndex by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(showEditNameSheet) {
+        if (showEditNameSheet) {
+            editTempName = userName
+            editTempAvatar = userAvatarIndex
+            editNicknameIndex = -1
+        }
+    }
     var showExportGateDialog by remember { mutableStateOf(false) }
     var showDeleteAllDialog by remember { mutableStateOf(false) }
     var showTipJarDialog by remember { mutableStateOf(false) }
@@ -180,7 +191,7 @@ fun SettingsScreen(
                 }
             }
 
-            item { ProfileCard(userName, userAvatarIndex) { showEditNameDialog = true } }
+            item { ProfileCard(userName, userAvatarIndex) { showEditNameSheet = true } }
 
             item { PlanCard(viewModel, isPremium, onNavigateToSubscription) }
 
@@ -344,34 +355,140 @@ fun SettingsScreen(
         }
     }
 
-    if (showEditNameDialog) {
-        var tempName by remember { mutableStateOf(userName) }
-        AlertDialog(
-            onDismissRequest = { showEditNameDialog = false },
-            title = { Text("Edit Display Name", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
-            text = {
+    if (showEditNameSheet) {
+        val editSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val editScope = rememberCoroutineScope()
+        ModalBottomSheet(
+            onDismissRequest = { showEditNameSheet = false },
+            sheetState = editSheetState,
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Edit Profile",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+
+                // ── Avatar picker ────────────────────────────────────────────
+                Text(
+                    "Choose an avatar",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.Start).padding(bottom = 12.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    avatarIcons.forEachIndexed { index, icon ->
+                        val isSelected = editTempAvatar == index
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isSelected) AccentGreenLight.copy(alpha = 0.15f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                )
+                                .border(
+                                    width = if (isSelected) 2.dp else 0.dp,
+                                    color = if (isSelected) AccentGreenLight else Color.Transparent,
+                                    shape = CircleShape
+                                )
+                                .clickable { editTempAvatar = index },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = "Avatar $index",
+                                tint = if (isSelected) AccentGreenLight else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // ── Name field ────────────────────────────────────────────────
+                Text(
+                    "Display name",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.Start).padding(bottom = 8.dp)
+                )
                 OutlinedTextField(
-                    value = tempName,
-                    onValueChange = { tempName = it },
-                    label = { Text("Name") },
+                    value = editTempName,
+                    onValueChange = { editTempName = it },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AccentGreenLight,
+                        cursorColor = AccentGreenLight
+                    )
                 )
-            },
-            confirmButton = {
+
+                // ── Nickname generator ────────────────────────────────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = {
+                            if (editNicknameIndex > 0) {
+                                editNicknameIndex--
+                                editTempName = editNicknamePool[editNicknameIndex]
+                            }
+                        },
+                        enabled = editNicknameIndex > 0
+                    ) {
+                        Icon(Icons.Rounded.ChevronLeft, contentDescription = "Previous nickname", modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Previous")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            editNicknameIndex = (editNicknameIndex + 1) % editNicknamePool.size
+                            editTempName = editNicknamePool[editNicknameIndex]
+                        }
+                    ) {
+                        Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Generate Nickname", color = AccentGreenLight, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Button(
                     onClick = {
-                        if (tempName.isNotBlank()) viewModel.setUserName(tempName.trim(), context)
-                        showEditNameDialog = false
+                        if (editTempName.isNotBlank()) {
+                            viewModel.setProfileInfo(editTempName.trim(), editTempAvatar, context)
+                        }
+                        editScope.launch { editSheetState.hide() }.invokeOnCompletion {
+                            showEditNameSheet = false
+                        }
                     },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight),
-                    shape = RoundedCornerShape(8.dp)
-                ) { Text("Save") }
-            },
-            dismissButton = { TextButton(onClick = { showEditNameDialog = false }) { Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant) } },
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+                    shape = RoundedCornerShape(24.dp),
+                    enabled = editTempName.isNotBlank()
+                ) {
+                    Text("Save Profile", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        }
     }
 
     if (showExportGateDialog) {
