@@ -26,6 +26,21 @@ Your phone already receives a text for every M-PESA transaction you make. Pesaly
 
 ---
 
+## ⬇️ Download the App
+
+> **Just want to install the app?** No coding required — download the APK directly.
+
+1. Go to the [**Releases page**](https://github.com/DanielX8/Pesalytics-Budget-and-M-pesa-Tracker/releases)
+2. Tap the latest release (e.g. `v1.4.3`)
+3. Under **Assets**, download the `.apk` file (e.g. `pesalytics-release-v1.4.3.apk`)
+4. On your Android phone, open the downloaded file
+5. If prompted, allow **"Install from unknown sources"** in your phone's settings
+6. Install and enjoy!
+
+> **Tip:** After installation, sideloaded updates from the same release page will work seamlessly — no need to uninstall first, as long as you always download from this page.
+
+---
+
 ### How it works
 
 1. **Grant SMS Permission** (Read-only) — No account creation, no cloud syncing, your data never leaves your device.
