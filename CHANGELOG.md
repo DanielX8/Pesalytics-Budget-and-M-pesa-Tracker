@@ -5,6 +5,118 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.2] — 2026-06-22 · Analytics Dashboard Expansion & UI Polish
+
+### Added
+- **Balance Progression Chart** — new line chart in Analytics showing account balance over the
+  selected month using the `balanceAfter` field recorded on every transaction. Displays peak,
+  lowest, and current balance stats below the chart.
+- **Largest Transactions card** — surfaces the top 5 biggest individual expenses for the month,
+  ranked with payee, transaction type, date, and amount. Identifies high-impact transactions
+  that drive the monthly total.
+- **Top Payees card** — groups expenses by payee, ranks the top 5 by total amount paid, and
+  shows a proportional bar and % of total expenses for each. Answers "who specifically got
+  your money" beyond the type-level donut chart.
+- **Income Sources card** — mirrors Top Payees for the income side: who paid you, how much,
+  and their share of total income received this month.
+- **Budget vs Actual card** — bridges BudgetPlanner and Analytics. Shows each category budget
+  as a progress bar (spent / limit) color-coded green (<70%), orange (70–99%), red (≥100%).
+  Overall budget gets a taller bar. Both data sources are already wired to `selectedMonthIndex`
+  so past-month navigation works automatically. Card is hidden when no budgets are set.
+- **Spend Velocity dual-line chart** — replaced the stats-only banner with a Canvas line chart
+  overlaying current-month vs previous-month daily spending side-by-side for instant visual
+  comparison.
+- **Pesalytics landing page** added to onboarding flow.
+- **NeedsVsWantsCard** is now tappable — navigates directly to the Needs/Wants settings screen.
+- **Dark mode accent polish** — `HeroCardDarkGreen` (#1A4D2E) token added; interactive controls
+  (toggles, segmented selectors, chips) use a theme-aware green in dark mode.
+
+### Changed
+- **R8 full mode enabled** (`android.enableR8.fullMode=true`) for smaller, more aggressively
+  optimised release APKs.
+- **Promo code registry rotated** — all 100 hashes (10 Lifetime, 20 Yearly, 20 Quarterly,
+  50 Monthly) refreshed.
+
+### Fixed
+- Notification permission prompt timing corrected — now fires after onboarding completion
+  rather than at app launch.
+
+---
+
+## [1.4.1] — 2026-06-22 · Audit Fixes, Notification Bridge & Real Reports
+
+### Fixed
+- **Monthly income/expense queries missing upper bound (critical)** — All DAO queries for
+  `getMonthlyIncome` and `getMonthlyExpense` lacked an `endOfMonth` bound, causing them to
+  return cumulative totals from the start of the month onwards rather than the selected month
+  only. Both queries now require and enforce `timestamp < :endOfMonth`. The `uiState` combine
+  was also reading `currentMonthStart.value` as a side-channel; replaced with a `MonthlyStats`
+  flow that derives `endOfMonth` inside `flatMapLatest` and passes it through correctly.
+- **`checkBudgetThresholds()` used stale month end** — The budget threshold check was calling
+  `getMonthlyExpense` with only the start timestamp; it now computes and passes `endOfMonth`.
+- **Monthly worker included transfers in expenses** — `MonthlyReportWorker` was summing
+  `MANUAL_TRANSFER` transactions as expenses. Those are now excluded.
+- **Daily worker compile error** — `DailySpendWorker` was calling the old single-argument
+  `getMonthlyExpense(start)` which no longer existed after the DAO fix. Updated to pass both
+  `startOfMonth` and `endOfMonth`.
+- **Workers had no in-app notification bridge** — Daily, weekly, and monthly workers posted
+  system notifications but never surfaced anything in the in-app bell. Workers now write
+  pending messages to a `pending_in_app_notifs` SharedPreferences key; `PesaViewModel` drains
+  and clears this queue into `_notifications` on every app launch.
+- **PDF reports showed filler content** — The generated PDF had a hardcoded `/30` daily
+  average, a fake CSS gradient "chart", no income data, and "Generated Report" as the date.
+  The report now uses real data throughout: actual date range from transaction timestamps,
+  correct daily average from the true day span, income in the At-a-Glance card, a real
+  category breakdown table with inline progress bars, a top-merchants table, a 6-metric
+  summary card, and a full recent-transactions table (last 20, colour-coded).
+- **`redeemPromoCode()` blocked the main thread** — SHA-256 hashing ran on the caller's
+  thread. Moved to `Dispatchers.Default` inside `viewModelScope.launch`.
+- **`PatternEngine` instantiated on every transaction change** — Each `allTransactions`
+  emission created a new `PatternEngine()`. Replaced with a singleton instance.
+- **Dead `else` branch in promo `when` block** — The exhaustive `when` on `PromoResult`
+  had an unreachable `else -> "Unknown promo result."` fallthrough. Removed.
+- **`SubscriptionManager.disconnect()` order** — Was cancelling the coroutine scope before
+  ending the billing client connection, risking unacknowledged purchases in flight.
+  Reordered: `billingClient.endConnection()` now runs before `scope.cancel()`.
+- **EARLYBIRD window never enforced** — `play_store_launch_ms` pref was never written
+  anywhere, so `daysSince` was always 0 and the 90-day sunset never triggered. Replaced with
+  a hardcoded constant `BillingConfig.PLAY_STORE_LAUNCH_MS = 1748044800000L` (2026-05-24).
+
+### Added
+- **Pochi la Biashara SMS parsing** — New regex rule in `parseMpesaSms()` maps Pochi
+  payments to `TransactionType.POCHI`.
+- **SMS Prominent Disclosure dialog** — An `AlertDialog` explaining on-device-only SMS
+  processing is shown before the system permission prompt, satisfying Google Play's
+  Prominent Disclosure requirement.
+- **GitHub Actions release workflow** — `.github/workflows/build-release.yml` builds an
+  optimized release APK and publishes it as a GitHub Release on any `v*` tag push or
+  manual `workflow_dispatch`.
+- **Room schema export** — `exportSchema = true` with KSP `room.schemaLocation` pointing
+  to `$projectDir/schemas` so schema diffs are trackable in version control.
+
+### Improved
+- **Balance hidden by default** — Hero card balance is now hidden on launch. Revealing it
+  starts a 5-second timer that auto-hides it again. Timer cancels if toggled before expiry.
+- **First-sync percentage progress** — During the first-ever sync a determinate progress bar
+  shows the real import percentage. Subsequent syncs show a thin indeterminate bar and run
+  significantly faster via a timestamp high-water-mark query (`AND date > :lastTimestamp`).
+- **Weekly notification reports the previous complete week** — The worker previously reported
+  the current in-progress week. It now always reports the last fully completed Mon–Sun window.
+- **Daily notification enriched** — Body now includes transaction count and the top spending
+  category alongside the total spend figure.
+- **Weekly notification enriched** — Body now includes top spending category and a
+  saved/overspent comparison line.
+- **Monthly notification enriched** — Body now includes top spending category and transaction
+  count alongside income/expense/savings figures.
+- **`onNavigateToSettings` parameter renamed** — `DashboardScreen` parameter was misleadingly
+  named; renamed to `onNavigateToBudgetPlanner` throughout (screen, call site in `MainActivity`).
+- **`getGreetingMessage()` memoized** — Wrapped in `remember { }` so it doesn't recompute on
+  every recomposition inside `LazyColumn`.
+- **`getIconForTransaction()` annotation removed** — Function returns a pure value; the
+  spurious `@Composable` annotation that made it part of the composition was removed.
+
+---
+
 ## [1.4.0] — 2026-06-16 · Fixes, Settings/Subscription Redesign & Polish 🎨
 
 ### Fixed

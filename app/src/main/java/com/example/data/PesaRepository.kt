@@ -19,8 +19,8 @@ class PesaRepository(
     val allCustomRules: Flow<List<CustomRule>> = customRuleDao.getAllRules()
     val allGoals: Flow<List<Goal>> = goalDao.getAllGoals()
 
-    fun getMonthlyIncome(startOfMonth: Long) = transactionDao.getMonthlyIncome(startOfMonth)
-    fun getMonthlyExpense(startOfMonth: Long) = transactionDao.getMonthlyExpense(startOfMonth)
+    fun getMonthlyIncome(startOfMonth: Long, endOfMonth: Long) = transactionDao.getMonthlyIncome(startOfMonth, endOfMonth)
+    fun getMonthlyExpense(startOfMonth: Long, endOfMonth: Long) = transactionDao.getMonthlyExpense(startOfMonth, endOfMonth)
     fun getBudgetsForMonth(monthYear: String) = budgetDao.getBudgetsForMonth(monthYear)
 
     suspend fun insertTransaction(transaction: Transaction) {

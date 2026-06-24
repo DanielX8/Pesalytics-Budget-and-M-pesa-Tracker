@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.pesalytics.ui.theme.AccentGreenDark
 import com.pesalytics.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.HeroCardDarkGreen
 
 /**
  * The hero-card mid-green (present in the Dashboard balance gradient in both light and dark
@@ -51,6 +52,17 @@ fun Modifier.clickableScale(pressedScale: Float = 0.97f, onClick: () -> Unit): M
         .graphicsLayer { scaleX = scale; scaleY = scale }
         .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onClick)
 }
+
+/**
+ * Theme-aware interactive accent: bright #49BC4C in light mode, dark hero-card
+ * forest green #1A4D2E in dark mode. Use for toggles, selectors, and chips —
+ * not for data-visualisation colours.
+ */
+val interactiveGreen: Color
+    @Composable get() {
+        val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
+        return if (isLight) AccentGreenLight else HeroCardDarkGreen
+    }
 
 /** The same hero gradient used on the Dashboard balance card (light vs dark aware). */
 @Composable
