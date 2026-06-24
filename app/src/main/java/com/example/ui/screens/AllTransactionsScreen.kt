@@ -253,22 +253,26 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
             }
 
             // Month Tabs
+            val tabAccent = interactiveGreen
             ScrollableTabRow(
                 selectedTabIndex = availableMonths.indexOf(selectedMonth).coerceAtLeast(0),
                 modifier = Modifier.fillMaxWidth(),
                 edgePadding = 16.dp,
                 containerColor = Color.Transparent,
+                contentColor = tabAccent,
                 divider = {}
             ) {
                 availableMonths.forEachIndexed { index, month ->
                     Tab(
                         selected = selectedMonth == month,
                         onClick = { selectedMonth = month },
-                        text = { 
+                        selectedContentColor = tabAccent,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = {
                             Text(
-                                text = if (month == currentMonth) "This Month" else month, 
-                                fontWeight = if (selectedMonth == month) FontWeight.Bold else FontWeight.Normal 
-                            ) 
+                                text = if (month == currentMonth) "This Month" else month,
+                                fontWeight = if (selectedMonth == month) FontWeight.Bold else FontWeight.Normal
+                            )
                         }
                     )
                 }
@@ -295,6 +299,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
             )
 
             // Filter Chips
+            val chipAccent = interactiveGreen
             androidx.compose.foundation.lazy.LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -308,8 +313,8 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
                         onClick = { selectedFilter = filter },
                         label = { Text("$filter ${filterCounts[filter] ?: 0}") },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                            selectedContainerColor = chipAccent,
+                            selectedLabelColor = Color.White
                         ),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
                     )

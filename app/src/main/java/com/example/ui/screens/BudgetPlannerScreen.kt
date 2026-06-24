@@ -53,6 +53,7 @@ fun BudgetPlannerScreen(
     val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
     val insights by viewModel.budgetInsights.collectAsStateWithLifecycle()
     var showAddBudgetSheet by remember { mutableStateOf(false) }
+    var showGlobalBudgetSheet by remember { mutableStateOf(false) }
     var editingBudget by remember { mutableStateOf<Budget?>(null) }
 
     val globalBudget = uiState.budgets.find { it.category == "Overall" }
@@ -118,7 +119,7 @@ fun BudgetPlannerScreen(
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 if (globalBudget == null) {
                 EmptyStateBudget(
-                    onSaveGlobalLimit = { limit -> viewModel.addOrUpdateBudget("Overall", limit) },
+                    onSetGlobalBudget = { showGlobalBudgetSheet = true },
                     onCreateCategoryBudget = { showAddBudgetSheet = true }
                 )
             } else {
@@ -163,16 +164,26 @@ fun BudgetPlannerScreen(
                 onDismiss = { editingBudget = null }
             )
         }
+
+        if (showGlobalBudgetSheet) {
+            EditBudgetLimitSheet(
+                budget = Budget(category = "Overall", limitAmount = 0.0, monthYear = ""),
+                onSave = { amt ->
+                    viewModel.addOrUpdateBudget("Overall", amt)
+                    showGlobalBudgetSheet = false
+                },
+                onDismiss = { showGlobalBudgetSheet = false }
+            )
+        }
     }
 }
 
 @Composable
 fun EmptyStateBudget(
-    onSaveGlobalLimit: (Double) -> Unit,
+    onSetGlobalBudget: () -> Unit,
     onCreateCategoryBudget: () -> Unit
 ) {
-    var globalLimitInput by remember { mutableStateOf("") }
-
+    val accent = interactiveGreen
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -192,36 +203,23 @@ fun EmptyStateBudget(
                             Text("REQUIRED", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                         }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = globalLimitInput,
-                        onValueChange = { globalLimitInput = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        prefix = { Text("KES ") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Set a monthly spending cap that will appear on your home dashboard and alert you as you approach your limit.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = {
-                            globalLimitInput.toDoubleOrNull()?.let { onSaveGlobalLimit(it) }
-                        },
-                        enabled = globalLimitInput.toDoubleOrNull() != null,
+                        onClick = onSetGlobalBudget,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight),
+                        colors = ButtonDefaults.buttonColors(containerColor = accent),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Save Limit")
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Set Monthly Budget Limit")
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Note: The limit will be shown in the home dashboard screen after being set.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             }
         }
@@ -239,7 +237,7 @@ fun EmptyStateBudget(
                 Button(
                     onClick = onCreateCategoryBudget,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight),
+                    colors = ButtonDefaults.buttonColors(containerColor = accent),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("CREATE CATEGORY BUDGET")
