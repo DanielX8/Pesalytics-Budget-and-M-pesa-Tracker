@@ -29,11 +29,21 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteTransaction(id: Int)
 
-    @Query("SELECT SUM(amount) FROM transactions WHERE type IN ('RECEIVE_MONEY', 'MANUAL_INCOME') AND timestamp >= :startOfMonth")
-    fun getMonthlyIncome(startOfMonth: Long): Flow<Double?>
-    
-    @Query("SELECT SUM(amount) FROM transactions WHERE type NOT IN ('RECEIVE_MONEY', 'MANUAL_INCOME', 'MANUAL_TRANSFER') AND timestamp >= :startOfMonth")
-    fun getMonthlyExpense(startOfMonth: Long): Flow<Double?>
+    @Query("""
+        SELECT SUM(amount) FROM transactions
+        WHERE type IN ('RECEIVE_MONEY', 'MANUAL_INCOME')
+        AND isFeeTransaction = 0
+        AND timestamp >= :startOfMonth AND timestamp < :endOfMonth
+    """)
+    fun getMonthlyIncome(startOfMonth: Long, endOfMonth: Long): Flow<Double?>
+
+    @Query("""
+        SELECT SUM(amount) FROM transactions
+        WHERE type NOT IN ('RECEIVE_MONEY', 'MANUAL_INCOME', 'MANUAL_TRANSFER')
+        AND isFeeTransaction = 0
+        AND timestamp >= :startOfMonth AND timestamp < :endOfMonth
+    """)
+    fun getMonthlyExpense(startOfMonth: Long, endOfMonth: Long): Flow<Double?>
 
     @Query("UPDATE transactions SET category = :newCategory WHERE id = :id")
     suspend fun updateTransactionCategory(id: Int, newCategory: String)

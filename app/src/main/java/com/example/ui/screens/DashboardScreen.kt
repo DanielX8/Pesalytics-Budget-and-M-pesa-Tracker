@@ -85,17 +85,20 @@ fun DashboardScreen(
     onNavigateToAllTransactions: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
     onNavigateToBills: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToBudgetPlanner: () -> Unit,
     onNavigateToGoals: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val syncProgress by viewModel.syncProgress.collectAsStateWithLifecycle()
+    val syncTotalMessages by viewModel.syncTotalMessages.collectAsStateWithLifecycle()
+    val isFirstSync by viewModel.isFirstSync.collectAsStateWithLifecycle()
     var notificationsExpanded by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     var hasRequestedSmsPermission by remember { mutableStateOf(false) }
+    var showSmsDisclosure by remember { mutableStateOf(false) }
 
     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -112,7 +115,7 @@ fun DashboardScreen(
             if (androidx.core.content.ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 viewModel.syncMpesaSms(context)
             } else {
-                permissionLauncher.launch(permission)
+                showSmsDisclosure = true
             }
             hasRequestedSmsPermission = true
         }
@@ -135,6 +138,29 @@ fun DashboardScreen(
                 androidx.compose.material3.Button(onClick = { showTrialDialog = false }) {
                     androidx.compose.material3.Text("Let's Go!")
                 }
+            }
+        )
+    }
+
+    if (showSmsDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showSmsDisclosure = false },
+            title = { Text("M-PESA SMS Access") },
+            text = {
+                Text(
+                    "Pesalytics reads your M-PESA SMS messages to automatically track your transactions.\n\n" +
+                    "Your messages are processed entirely on your device — no data is ever uploaded or shared. " +
+                    "Only M-PESA messages from Safaricom are read; all other SMS are ignored."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSmsDisclosure = false
+                    permissionLauncher.launch(android.Manifest.permission.READ_SMS)
+                }) { Text("Allow") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSmsDisclosure = false }) { Text("Not now") }
             }
         )
     }
@@ -357,10 +383,36 @@ fun DashboardScreen(
                 }
             }
             if (isSyncing) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().height(2.dp),
-                    color = AccentGreenLight
-                )
+                val firstSyncFraction = if (isFirstSync && syncTotalMessages > 0)
+                    (syncProgress.toFloat() / syncTotalMessages.toFloat()).coerceIn(0f, 1f)
+                else -1f  // sentinel: use indeterminate bar
+
+                if (firstSyncFraction >= 0f) {
+                    // First sync — determinate bar with percentage label
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        LinearProgressIndicator(
+                            progress = { firstSyncFraction },
+                            modifier = Modifier.fillMaxWidth().height(2.dp),
+                            color = AccentGreenLight,
+                            trackColor = AccentGreenDark.copy(alpha = 0.3f)
+                        )
+                        Text(
+                            text = "Importing M-PESA history… ${(firstSyncFraction * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .padding(top = 2.dp, bottom = 4.dp)
+                        )
+                    }
+                } else {
+                    // Subsequent sync — fast, indeterminate
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().height(2.dp),
+                        color = AccentGreenLight,
+                        trackColor = AccentGreenDark.copy(alpha = 0.3f)
+                    )
+                }
             }
           }
         },
@@ -418,9 +470,10 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item(key = "greeting") {
+                val greeting = remember { getGreetingMessage() }
                 Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
                     Text(
-                        text = "${getGreetingMessage()},",
+                        text = "$greeting,",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -480,7 +533,7 @@ fun DashboardScreen(
                 ) {
                     QuickNavButton(icon = Icons.Default.Insights, label = "Analytics", color = TransferBlue, onClick = onNavigateToAnalytics)
                     QuickNavButton(icon = Icons.AutoMirrored.Filled.ReceiptLong, label = "Bills", color = AccentGreenDark, onClick = onNavigateToBills)
-                    QuickNavButton(icon = Icons.Default.DonutLarge, label = "Budget", color = ExpenseRed, onClick = onNavigateToSettings)
+                    QuickNavButton(icon = Icons.Default.DonutLarge, label = "Budget", color = ExpenseRed, onClick = onNavigateToBudgetPlanner)
                     QuickNavButton(icon = Icons.Default.TrackChanges, label = "Goals", color = IncomeGreen, onClick = onNavigateToGoals)
                 }
             }
@@ -975,7 +1028,6 @@ fun MetadataRow(label: String, value: String) {
     }
 }
 
-@Composable
 fun getIconForTransaction(transaction: Transaction): androidx.compose.ui.graphics.vector.ImageVector {
     if (transaction.isFeeTransaction) return Icons.AutoMirrored.Filled.ReceiptLong
     

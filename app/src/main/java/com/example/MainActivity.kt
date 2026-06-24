@@ -332,7 +332,7 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         onNavigateToAllTransactions = { navController.navigate(AllTransactions) },
                         onNavigateToAnalytics = { navController.navigate(Analytics) },
                         onNavigateToBills = { navController.navigate(Bills) },
-                        onNavigateToSettings = { navController.navigate(BudgetPlanner) },
+                        onNavigateToBudgetPlanner = { navController.navigate(BudgetPlanner) },
                         onNavigateToGoals = { navController.navigate(FinancialGoals) }
                     )
                 }
@@ -340,7 +340,8 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                     AnalyticsScreen(
                         viewModel = viewModel,
                         onNavigateBack = { navController.popBackStack() },
-                        onNavigateToSubscription = { navController.navigate(Subscription) }
+                        onNavigateToSubscription = { navController.navigate(Subscription) },
+                        onNavigateToNeedsWants = { navController.navigate(NeedsWants) }
                     )
                 }
                 composable<Bills> {

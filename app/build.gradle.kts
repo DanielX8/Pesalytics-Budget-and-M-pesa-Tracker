@@ -15,25 +15,18 @@ android {
     applicationId = "com.pesalytics"
     minSdk = 24
     targetSdk = 36
-    versionCode = 3
-    versionName = "1.4.0"
+    versionCode = 5
+    versionName = "1.4.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
-    }
-    create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+      storeFile = file(System.getenv("KEYSTORE_PATH") ?: "${rootDir}/pesalytics-release.jks")
+      storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "Pesalytics2026!"
+      keyAlias = System.getenv("KEY_ALIAS") ?: "pesalytics"
+      keyPassword = System.getenv("KEY_PASSWORD") ?: "Pesalytics2026!"
     }
   }
 
@@ -43,7 +36,7 @@ android {
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("debug")
+      signingConfig = signingConfigs.getByName("release")
     }
     debug {
       // Use default debug keystore managed by Android Gradle Plugin
@@ -129,4 +122,8 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }

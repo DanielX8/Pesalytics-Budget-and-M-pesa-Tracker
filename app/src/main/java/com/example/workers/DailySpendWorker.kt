@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.pesalytics.PesalyticsApplication
+import com.pesalytics.model.TransactionType
 import com.pesalytics.notifications.NotificationHelper
 import kotlinx.coroutines.flow.first
 import java.util.Calendar
@@ -15,7 +16,7 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
     override suspend fun doWork(): Result {
         val repository = (applicationContext as PesalyticsApplication).repository
         val notif = NotificationHelper(applicationContext)
-        val prefs = applicationContext.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+        val prefs = applicationContext.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
         val frequency = prefs.getString("report_frequency", "Daily") ?: "Daily"
 
         // ── Yesterday's spending summary (only for Daily frequency) ─────────
@@ -32,10 +33,23 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
 
             val expense = repository.getDailyExpense(startYesterday, endYesterday) ?: 0.0
             if (expense > 0) {
-                notif.showDailySpendSummary(
-                    "Yesterday's Spending",
-                    "You spent KES ${"%.2f".format(expense)} yesterday."
-                )
+                // Enrich with transaction count and top category
+                val yesterdayTxns = repository.allTransactions.first()
+                    .filter { it.timestamp in startYesterday..endYesterday && !it.isFeeTransaction }
+                val txnCount = yesterdayTxns.size
+                val topCat = yesterdayTxns
+                    .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
+                    .groupBy { it.category ?: "Other" }
+                    .mapValues { e -> e.value.sumOf { it.amount } }
+                    .maxByOrNull { it.value }?.key
+
+                val body = buildString {
+                    append("You spent KES ${"%.0f".format(expense)} across $txnCount transaction${if (txnCount == 1) "" else "s"}.")
+                    if (topCat != null) append(" Top category: $topCat.")
+                }
+
+                notif.showDailySpendSummary("Yesterday's Spending", body)
+                appendInAppNotification(prefs, "Yesterday's spending: KES ${"%.0f".format(expense)} — $body")
             }
         }
 
@@ -51,34 +65,39 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
                 val when_ = if (days == 0) "TODAY" else if (days == 1) "TOMORROW" else "in $days days"
                 "${bill.name} due $when_ — KES ${"%.2f".format(bill.amount)}"
             }
-            notif.showBillAlert(
-                if (dueSoon.size == 1) "Bill Due Soon" else "${dueSoon.size} Bills Due Soon",
-                summary
-            )
+            val title = if (dueSoon.size == 1) "Bill Due Soon" else "${dueSoon.size} Bills Due Soon"
+            notif.showBillAlert(title, summary)
+            appendInAppNotification(prefs, "$title: $summary")
         }
 
-        // ── Budget threshold check (only fires when the user has set a budget) ──
+        // ── Budget threshold check ───────────────────────────────────────────
         val monthStart = Calendar.getInstance().apply {
             set(Calendar.DAY_OF_MONTH, 1)
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val monthEnd = Calendar.getInstance().apply {
+            timeInMillis = monthStart; add(Calendar.MONTH, 1)
         }.timeInMillis
         val monthStr = java.text.SimpleDateFormat("MM/yyyy", java.util.Locale.getDefault())
             .format(java.util.Date(monthStart))
         val budgets = repository.getBudgetsForMonth(monthStr).first()
         val globalBudget = budgets.find { it.category == "Overall" }
 
-        // Only alert if the user has actually configured a budget
         if (globalBudget != null && globalBudget.limitAmount > 0) {
-            // Use getMonthlyExpense() — not getDailyExpense() — to get the full
-            // month's spending so the threshold percentage is calculated correctly.
-            val monthExpense = repository.getMonthlyExpense(monthStart).first() ?: 0.0
+            val monthExpense = repository.getMonthlyExpense(monthStart, monthEnd).first() ?: 0.0
             val pct = monthExpense / globalBudget.limitAmount
             when {
-                pct >= 1.0 -> notif.showBudgetAlert("Budget Exceeded",
-                    "You've exceeded your KES ${"%.0f".format(globalBudget.limitAmount)} monthly budget.")
-                pct >= 0.8 -> notif.showBudgetAlert("Budget Warning",
-                    "You've used ${"%.0f".format(pct * 100)}% of your monthly budget.")
+                pct >= 1.0 -> {
+                    val msg = "You've exceeded your KES ${"%.0f".format(globalBudget.limitAmount)} monthly budget."
+                    notif.showBudgetAlert("Budget Exceeded", msg)
+                    appendInAppNotification(prefs, "Budget Exceeded: $msg")
+                }
+                pct >= 0.8 -> {
+                    val msg = "You've used ${"%.0f".format(pct * 100)}% of your monthly budget."
+                    notif.showBudgetAlert("Budget Warning", msg)
+                    appendInAppNotification(prefs, "Budget Warning: $msg")
+                }
             }
         }
 
@@ -100,5 +119,14 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
         }
 
         return Result.success()
+    }
+
+    private fun appendInAppNotification(
+        prefs: android.content.SharedPreferences,
+        message: String
+    ) {
+        val existing = prefs.getString("pending_in_app_notifs", "") ?: ""
+        val updated = if (existing.isBlank()) message else "$existing\n$message"
+        prefs.edit().putString("pending_in_app_notifs", updated).apply()
     }
 }

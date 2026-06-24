@@ -16,6 +16,8 @@ import androidx.compose.ui.geometry.Offset
 import com.pesalytics.patterns.PatternEngine
 import com.pesalytics.patterns.PatternResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -98,7 +100,9 @@ class PesaViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), "")
 
     // ── General state ────────────────────────────────────────────────────────
-    val isBalanceVisible = MutableStateFlow(true)
+    // Default hidden — user must explicitly reveal. Auto-hides 5 s after reveal.
+    val isBalanceVisible = MutableStateFlow(false)
+    private var balanceHideJob: Job? = null
     val themeMode = MutableStateFlow(ThemeMode.SYSTEM)
     val revealOrigin = MutableStateFlow(Offset.Zero)
     private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
@@ -133,21 +137,24 @@ class PesaViewModel(
     // ── SMS sync progress ────────────────────────────────────────────────────
     val isSyncing = MutableStateFlow(false)
     val syncProgress = MutableStateFlow(0)
+    // Total M-PESA SMS count — only populated during the first-ever sync for the % display.
+    // Zero means indeterminate (subsequent syncs show the thin indeterminate bar instead).
+    val syncTotalMessages = MutableStateFlow(0)
+    // True only during the very first sync so the UI knows to show the percentage label.
+    val isFirstSync = MutableStateFlow(true)
 
     // ── Pattern analysis ─────────────────────────────────────────────────────
     private val _patternResult = MutableStateFlow<PatternResult?>(null)
     val patternResult = _patternResult.asStateFlow()
+    private val patternEngine = PatternEngine()
 
     init {
-        // Collect transactions and refresh patterns as soon as any data arrives.
-        // Using collect instead of `first { isNotEmpty() }` prevents hanging forever
-        // on a fresh install with an empty database.
+        // Refresh patterns on every transaction change. Using collect (not first{}) so
+        // patterns stay live after the initial load. No return@collect — that would only
+        // skip the current emission, not stop the flow.
         viewModelScope.launch {
             repository.allTransactions.collect { txns ->
-                if (txns.isNotEmpty()) {
-                    refreshPatterns()
-                    return@collect
-                }
+                if (txns.isNotEmpty()) refreshPatterns()
             }
         }
     }
@@ -174,10 +181,25 @@ class PesaViewModel(
         userName.value = prefs.getString("user_name", "User") ?: "User"
         userAvatar.value = prefs.getInt("user_avatar", 0)
         isFirstLaunch.value = !prefs.getBoolean("has_completed_onboarding", false)
+        isFirstSync.value = !prefs.getBoolean("has_synced_before", false)
         loadThemeMode(context)
         loadNotificationPrefs(context)
         loadNeedsWants(context)
         checkUpcomingBills()
+        drainWorkerNotifications(prefs)
+    }
+
+    // Workers (DailySpendWorker, WeeklyReportWorker, MonthlyReportWorker) write in-app
+    // notification messages to "pending_in_app_notifs" in SharedPreferences because they
+    // can't reach this ViewModel directly. We drain and clear that queue on app launch.
+    private fun drainWorkerNotifications(prefs: android.content.SharedPreferences) {
+        val raw = prefs.getString("pending_in_app_notifs", "") ?: ""
+        if (raw.isBlank()) return
+        val incoming = raw.split("\n")
+            .filter { it.isNotBlank() }
+            .map { AppNotification(message = it) }
+        _notifications.value = incoming + _notifications.value
+        prefs.edit().remove("pending_in_app_notifs").apply()
     }
 
     fun upgradeToPremium() {
@@ -284,54 +306,103 @@ class PesaViewModel(
         viewModelScope.launch(Dispatchers.Default) {
             val transactions = repository.allTransactions.first()
             if (transactions.isNotEmpty()) {
-                _patternResult.value = PatternEngine().compute(transactions)
+                _patternResult.value = patternEngine.compute(transactions)
             }
         }
     }
 
     // ── SMS sync ─────────────────────────────────────────────────────────────
     fun syncMpesaSms(context: android.content.Context) {
-        // Guard against overlapping syncs (Dashboard re-syncs on every visit). Two concurrent
-        // runs would each read the pre-sync set and double-insert. Set the flag synchronously
-        // on the caller (Main) thread before launching so the check is race-free.
+        // Guard against overlapping syncs. Set the flag synchronously on Main before launching
+        // so two rapid calls can't both pass the check.
         if (isSyncing.value) return
         isSyncing.value = true
         syncProgress.value = 0
-        android.widget.Toast.makeText(context, "Syncing…", android.widget.Toast.LENGTH_SHORT).show()
+        syncTotalMessages.value = 0
+
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+            val hasSyncedBefore = prefs.getBoolean("has_synced_before", false)
+            val lastSyncTimestamp = prefs.getLong("last_sync_timestamp_ms", 0L)
+            isFirstSync.value = !hasSyncedBefore
+
             val transactionsList = mutableListOf<Transaction>()
             try {
                 val existingTransactions = repository.allTransactions.first()
                 val existingRefs = existingTransactions.map { "${it.remoteRef}_${it.isFeeTransaction}" }.toSet()
                 val customRules = repository.allCustomRules.first()
 
+                // First sync: count all M-PESA messages upfront so the UI can show a real %.
+                // Subsequent syncs: skip the count query — the bar stays indeterminate.
+                if (!hasSyncedBefore) {
+                    val countCursor = context.contentResolver.query(
+                        android.net.Uri.parse("content://sms/inbox"),
+                        arrayOf("_id"), "address = ?", arrayOf("MPESA"), null
+                    )
+                    syncTotalMessages.value = countCursor?.count ?: 0
+                    countCursor?.close()
+                }
+
+                // Subsequent syncs query ONLY messages newer than the last processed timestamp,
+                // cutting the cursor to a handful of rows instead of the entire inbox.
+                val selection: String
+                val selectionArgs: Array<String>
+                if (hasSyncedBefore && lastSyncTimestamp > 0L) {
+                    selection = "address = ? AND date > ?"
+                    selectionArgs = arrayOf("MPESA", lastSyncTimestamp.toString())
+                } else {
+                    selection = "address = ?"
+                    selectionArgs = arrayOf("MPESA")
+                }
+
                 val cursor = context.contentResolver.query(
                     android.net.Uri.parse("content://sms/inbox"),
                     null,
-                    "address = ?",
-                    arrayOf("MPESA"),
+                    selection,
+                    selectionArgs,
                     "date DESC"
                 )
+
+                var latestTimestamp = lastSyncTimestamp
+                var processedMessageCount = 0
 
                 if (cursor != null && cursor.moveToFirst()) {
                     val bodyIndex = cursor.getColumnIndex("body")
                     val dateIndex = cursor.getColumnIndex("date")
-                    do {
-                        val body = cursor.getString(bodyIndex)
-                        val timestamp = cursor.getLong(dateIndex)
-                        val extractedTransactions = parseMpesaSms(body, timestamp, customRules)
+                    if (bodyIndex == -1 || dateIndex == -1) {
+                        cursor.close()
+                    } else {
+                        do {
+                            val body = cursor.getString(bodyIndex)
+                            val timestamp = cursor.getLong(dateIndex)
+                            if (timestamp > latestTimestamp) latestTimestamp = timestamp
 
-                        for (transaction in extractedTransactions) {
-                            val uniqueKey = "${transaction.remoteRef}_${transaction.isFeeTransaction}"
-                            if (existingRefs.contains(uniqueKey)) continue
-                            if (!transactionsList.any { "${it.remoteRef}_${it.isFeeTransaction}" == uniqueKey }) {
-                                transactionsList.add(transaction)
-                                syncProgress.value = transactionsList.size
+                            val extractedTransactions = parseMpesaSms(body, timestamp, customRules)
+                            for (transaction in extractedTransactions) {
+                                val uniqueKey = "${transaction.remoteRef}_${transaction.isFeeTransaction}"
+                                if (existingRefs.contains(uniqueKey)) continue
+                                if (!transactionsList.any { "${it.remoteRef}_${it.isFeeTransaction}" == uniqueKey }) {
+                                    transactionsList.add(transaction)
+                                }
                             }
-                        }
-                    } while (cursor.moveToNext()) // Parse the entire M-PESA inbox, no cap.
-                    cursor.close()
+
+                            processedMessageCount++
+                            // Only update the progress counter during the first sync (percentage mode).
+                            if (!hasSyncedBefore) syncProgress.value = processedMessageCount
+
+                        } while (cursor.moveToNext())
+                        cursor.close()
+                    }
                 }
+
+                // Persist the high-water-mark so the next sync starts from here.
+                prefs.edit().apply {
+                    if (!hasSyncedBefore) putBoolean("has_synced_before", true)
+                    if (latestTimestamp > lastSyncTimestamp) putLong("last_sync_timestamp_ms", latestTimestamp)
+                    apply()
+                }
+                // Update the flag so a repeat call in the same session is treated as subsequent.
+                isFirstSync.value = false
 
                 if (transactionsList.isNotEmpty()) {
                     repository.insertTransactions(transactionsList)
@@ -355,7 +426,7 @@ class PesaViewModel(
                         }
                     }
 
-                    _notifications.value = listOf(AppNotification(message = "Synced ${transactionsList.size} new MPESA records.")) + _notifications.value
+                    _notifications.value = listOf(AppNotification(message = "Synced ${transactionsList.size} new M-PESA records.")) + _notifications.value
                     checkBudgetThresholds()
                     refreshPatterns()
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -363,7 +434,7 @@ class PesaViewModel(
                     }
                 } else {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        android.widget.Toast.makeText(context, "M-Pesa messages synced successfully (no new messages)", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, "Already up to date", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
 
@@ -434,6 +505,10 @@ class PesaViewModel(
             },
             RuleEntry(TransactionType.MANUAL_EXPENSE, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*Ksh([\\d,]+\\.\\d{2})\\s+deducted.*?settle your Fuliza", RegexOption.IGNORE_CASE)) { m ->
                 SmsFields(m.groupValues[1], m.groupValues[2].replace(",","").toDoubleOrNull() ?: 0.0, "Fuliza", 0.0, 0.0, null)
+            },
+            // Pochi la Biashara — payment to a business wallet (no account number, "sent to" phrasing)
+            RuleEntry(TransactionType.POCHI, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*Ksh([\\d,]+\\.\\d{2})\\s+sent to\\s+(.+?)\\s+Pochi la Biashara\\s+on\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+at\\s+(\\d{1,2}:\\d{2}\\s*[APM]{2})\\.?\\s*New M-PESA balance is Ksh([\\d,]+\\.\\d{2})\\.(?:\\s*Transaction cost,?\\s*Ksh([\\d,]+\\.\\d{2})\\.?)?", RegexOption.IGNORE_CASE)) { m ->
+                SmsFields(m.groupValues[1], m.groupValues[2].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues[3].trim(), m.groupValues[6].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues.getOrNull(7)?.replace(",","")?.toDoubleOrNull() ?: 0.0, null)
             }
         )
 
@@ -546,33 +621,51 @@ class PesaViewModel(
 
     // ── Balance visibility ───────────────────────────────────────────────────
     fun toggleBalanceVisibility() {
-        isBalanceVisible.value = !isBalanceVisible.value
+        balanceHideJob?.cancel()
+        val nowVisible = !isBalanceVisible.value
+        isBalanceVisible.value = nowVisible
+        if (nowVisible) {
+            // Auto-hide after 5 seconds; cancelled immediately if the user hides manually
+            balanceHideJob = viewModelScope.launch {
+                delay(5_000L)
+                isBalanceVisible.value = false
+            }
+        }
     }
 
     // ── DB-backed state ──────────────────────────────────────────────────────
-    val bills = repository.allBills.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
-    val goals = repository.allGoals.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
+    val bills = repository.allBills.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val goals = repository.allGoals.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // Bundles the month window + aggregates from the DAO so the uiState combine has no
+    // side-channel reads and always uses the correct upper bound for monthly queries.
+    private data class MonthlyStats(val start: Long, val end: Long, val income: Double, val expense: Double)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val monthlyStats: kotlinx.coroutines.flow.Flow<MonthlyStats> =
+        currentMonthStart.flatMapLatest { start ->
+            val end = Calendar.getInstance().apply {
+                timeInMillis = start; add(Calendar.MONTH, 1)
+            }.timeInMillis
+            combine(
+                repository.getMonthlyIncome(start, end),
+                repository.getMonthlyExpense(start, end)
+            ) { income, expense -> MonthlyStats(start, end, income ?: 0.0, expense ?: 0.0) }
+        }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<HomeUiState> = combine(
         repository.allTransactions,
-        currentMonthStart.flatMapLatest { repository.getMonthlyIncome(it) },
-        currentMonthStart.flatMapLatest { repository.getMonthlyExpense(it) },
+        monthlyStats,
         isBalanceVisible,
         currentMonthYearString.flatMapLatest { repository.getBudgetsForMonth(it) }
-    ) { transactions, income, expense, isVisible, budgets ->
+    ) { transactions, stats, isVisible, budgets ->
         val balance = transactions.maxByOrNull { it.timestamp }?.balanceAfter ?: 0.0
         val globalBudget = budgets.find { it.category == "Overall" }
 
-        // Per-category spend for the selected month (drives real budget progress bars).
-        val monthStart = currentMonthStart.value
-        val monthEnd = Calendar.getInstance().apply {
-            timeInMillis = monthStart
-            add(Calendar.MONTH, 1)
-        }.timeInMillis
         val categorySpent = transactions
             .filter {
-                it.timestamp in monthStart until monthEnd &&
+                it.timestamp in stats.start until stats.end &&
                     it.type != TransactionType.RECEIVE_MONEY &&
                     it.type != TransactionType.MANUAL_INCOME &&
                     it.type != TransactionType.MANUAL_TRANSFER &&
@@ -584,8 +677,8 @@ class PesaViewModel(
         HomeUiState(
             transactions = transactions,
             recentTransactions = transactions.take(10),
-            monthlyIncome = income ?: 0.0,
-            monthlyExpense = expense ?: 0.0,
+            monthlyIncome = stats.income,
+            monthlyExpense = stats.expense,
             currentBalance = balance,
             isBalanceVisible = isVisible,
             currentBudgetLimit = globalBudget?.limitAmount ?: 0.0,
@@ -767,7 +860,10 @@ class PesaViewModel(
             val monthYear = currentMonthYearString.value
             val currentMonthStartMs = currentMonthStart.value
             val budgets = repository.getBudgetsForMonth(monthYear).firstOrNull() ?: emptyList()
-            val expenses = repository.getMonthlyExpense(currentMonthStartMs).firstOrNull() ?: 0.0
+            val currentMonthEndMs = Calendar.getInstance().apply {
+                timeInMillis = currentMonthStartMs; add(Calendar.MONTH, 1)
+            }.timeInMillis
+            val expenses = repository.getMonthlyExpense(currentMonthStartMs, currentMonthEndMs).firstOrNull() ?: 0.0
 
             val globalBudget = budgets.find { it.category == "Overall" }
             if (globalBudget != null && globalBudget.limitAmount > 0) {
@@ -822,22 +918,23 @@ class PesaViewModel(
 
     fun redeemPromoCode(code: String) {
         val manager = subscriptionManager ?: return
-        val result = manager.redeemPromoCode(code)
-        val msg = when (result) {
-            is PromoResult.EarlybirdLifetime  -> "🎉 EARLYBIRD accepted! Lifetime Premium unlocked."
-            is PromoResult.EarlybirdSunset    -> "EARLYBIRD has ended — you've been given a 14-day free trial instead."
-            is PromoResult.Success            -> when (result.grant) {
-                is com.pesalytics.data.billing.PromoGrant.Lifetime   -> "🎉 Lifetime Premium unlocked!"
-                is com.pesalytics.data.billing.PromoGrant.Monthly    -> "✅ 1 month Premium granted!"
-                is com.pesalytics.data.billing.PromoGrant.Quarterly  -> "✅ 3 months Premium granted!"
-                is com.pesalytics.data.billing.PromoGrant.Yearly     -> "✅ 1 year Premium granted!"
-                is com.pesalytics.data.billing.PromoGrant.Trial14Days -> "✅ 14-day trial extended!"
+        viewModelScope.launch(Dispatchers.Default) {
+            val result = manager.redeemPromoCode(code)
+            val msg = when (result) {
+                is PromoResult.EarlybirdLifetime  -> "🎉 EARLYBIRD accepted! Lifetime Premium unlocked."
+                is PromoResult.EarlybirdSunset    -> "EARLYBIRD has ended — you've been given a 14-day free trial instead."
+                is PromoResult.Success            -> when (result.grant) {
+                    is com.pesalytics.data.billing.PromoGrant.Lifetime    -> "🎉 Lifetime Premium unlocked!"
+                    is com.pesalytics.data.billing.PromoGrant.Monthly     -> "✅ 1 month Premium granted!"
+                    is com.pesalytics.data.billing.PromoGrant.Quarterly   -> "✅ 3 months Premium granted!"
+                    is com.pesalytics.data.billing.PromoGrant.Yearly      -> "✅ 1 year Premium granted!"
+                    is com.pesalytics.data.billing.PromoGrant.Trial14Days -> "✅ 14-day trial extended!"
+                }
+                is PromoResult.AlreadyRedeemed    -> "This code has already been used on this device."
+                is PromoResult.Invalid            -> "Invalid promo code. Check and try again."
             }
-            is PromoResult.AlreadyRedeemed    -> "This code has already been used on this device."
-            is PromoResult.Invalid            -> "Invalid promo code. Check and try again."
-            else                              -> "Unknown promo result."
+            _promoMessage.value = msg
         }
-        _promoMessage.value = msg
     }
 
     fun clearPromoMessage() {
