@@ -89,18 +89,13 @@ jobs:
             ## Pesalytics ${{ steps.tag.outputs.value }}
 
             ### What's new
-            - Fixed DAO monthly queries missing upper bound — income/expense now scoped correctly to the selected month
-            - Added Pochi la Biashara SMS parsing
-            - Balance hidden by default with 5-second auto-hide after reveal
-            - First-sync shows real percentage progress; subsequent syncs use timestamp high-water mark for speed
-            - Weekly notification reports the previous complete week (not the current in-progress one)
-            - Daily/weekly/monthly notifications now bridge to the in-app notification bell
-            - Daily notification enriched with transaction count and top spending category
-            - Monthly worker now correctly excludes transfers from expense totals
-            - PDF reports replaced all filler content with real data: actual date range, income, real category breakdown, top merchants, transaction table
-            - SMS Prominent Disclosure dialog shown before the system permission prompt
-            - PatternEngine is now a singleton — no more per-call instantiation
-            - PromoCode redemption moved to Dispatchers.Default
-            - Room schema export enabled with KSP output path
+            - **Bottom sheet dialogs** — name edit, category edit, and global budget setup now open as smooth Material 3 bottom sheets instead of modal dialogs
+            - **Profile editor with avatars & nicknames** — edit your display name from Settings with the same avatar picker and nickname generator from the onboarding screen
+            - **Dark mode accent fixes** — month selector, budget toggle, needs/wants toggle, and category filter chips now all use the correct dark-green accent (`#1A4D2E`) in dark mode instead of bright green
+            - **Branch unification** — master now contains all commits from both development lines, so cloning the repo always builds the latest version
+            - **README download guide** — added a clear step-by-step APK download section for non-developers
 
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/master/CHANGELOG.md) for full details.
+            ### Installation
+            Download the APK from the **Assets** section below. Enable *Install from unknown sources* on your Android device, then open the file to install.
+
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/master/CHANGELOG.md) for full history.
