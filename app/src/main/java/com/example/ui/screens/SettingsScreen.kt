@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesalytics.model.ThemeMode
 import com.pesalytics.ui.theme.ExpenseRed
 import com.pesalytics.util.AppLinks
+import kotlinx.coroutines.launch
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -576,7 +577,7 @@ private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Un
 }
 
 @Composable
-private fun SegmentedRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
+internal fun SegmentedRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
     val accent = interactiveGreen
     Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant), horizontalArrangement = Arrangement.SpaceEvenly) {
         options.forEach { option ->
