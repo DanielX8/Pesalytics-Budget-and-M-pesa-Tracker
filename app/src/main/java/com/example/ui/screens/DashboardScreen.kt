@@ -829,7 +829,7 @@ fun HeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
                             Icon(
                                 imageVector = Icons.Default.ArrowUpward,
                                 contentDescription = null,
-                                tint = AccentGreenLight,
+                                tint = Color.White.copy(alpha = 0.9f),
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))

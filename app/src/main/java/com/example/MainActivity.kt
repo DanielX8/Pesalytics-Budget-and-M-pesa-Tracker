@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.navigation.toRoute
 import kotlin.math.sqrt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
@@ -329,7 +330,7 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                 composable<Home> {
                     DashboardScreen(
                         viewModel = viewModel,
-                        onNavigateToAllTransactions = { navController.navigate(AllTransactions) },
+                        onNavigateToAllTransactions = { navController.navigate(AllTransactions()) },
                         onNavigateToAnalytics = { navController.navigate(Analytics) },
                         onNavigateToBills = { navController.navigate(Bills) },
                         onNavigateToBudgetPlanner = { navController.navigate(BudgetPlanner) },
@@ -341,7 +342,8 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         viewModel = viewModel,
                         onNavigateBack = { navController.popBackStack() },
                         onNavigateToSubscription = { navController.navigate(Subscription) },
-                        onNavigateToNeedsWants = { navController.navigate(NeedsWants) }
+                        onNavigateToNeedsWants = { navController.navigate(NeedsWants) },
+                        onNavigateToAllTransactions = { filter -> navController.navigate(AllTransactions(filter)) }
                     )
                 }
                 composable<Bills> {
@@ -385,9 +387,11 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
-                composable<AllTransactions> {
+                composable<AllTransactions> { backStackEntry ->
+                    val dest: AllTransactions = backStackEntry.toRoute()
                     AllTransactionsScreen(
                         viewModel = viewModel,
+                        initialFilter = dest.filter,
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }

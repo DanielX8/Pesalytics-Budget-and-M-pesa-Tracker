@@ -5,6 +5,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.3] — 2026-06-25 · Analytics Navigation, Card Reorder & Subscription Polish
+
+### Added
+- **WhereItGoes deep-link navigation** — the "Where It Goes" section header is now tappable
+  and opens the All Transactions screen. Tapping a donut slice reveals a "View transactions →"
+  row below the chart; tapping that row opens All Transactions pre-filtered to that exact
+  transaction type (e.g. tapping the Paybill slice deep-links directly to Paybill transactions).
+- **Subscription renewal countdown** — when a paid plan is within 14 days of its renewal date
+  the Settings plan card switches from "Active" to "Renews in X days" highlighted in orange,
+  giving users clear advance notice before they're charged.
+- **Tier-specific plan badge** — the subscription badge in Settings now shows the exact plan
+  tier ("Monthly ✓", "Quarterly ✓", "Yearly ✓", "Lifetime ✓") instead of the generic
+  "Premium ✓", so users can confirm which plan they're on at a glance.
+
+### Changed
+- **Analytics card order** — re-sequenced for a cleaner narrative arc:
+  Month Comparison → Where It Goes → Largest Transactions → Top Payees → Income Sources →
+  Account Balance → Spend Velocity → Total Fees → Budget vs Actual → Patterns.
+  Breakdowns (who/what) now appear before trajectory (balance, velocity) and supporting
+  detail (fees) moves to the end.
+- **Green color consistency** — resolved clashing green shades across Settings and Dashboard:
+  icon container backgrounds in Settings now use the same `HeroGreen` base as their icon tint
+  (previously mixed `AccentGreenLight` backgrounds with `HeroGreen` icons); the Money In arrow
+  on the hero card changed from `AccentGreenLight` (nearly invisible on the bright gradient) to
+  white, matching the rest of the hero card text.
+
+---
+
 ## [1.4.2] — 2026-06-22 · Analytics Dashboard Expansion & UI Polish
 
 ### Added

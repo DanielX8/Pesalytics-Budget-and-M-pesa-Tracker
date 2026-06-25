@@ -40,7 +40,7 @@ import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
+fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All", onNavigateBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTransaction by remember { mutableStateOf<com.pesalytics.model.Transaction?>(null) }
     var showTransactionDetails by remember { mutableStateOf(false) }
@@ -49,7 +49,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) 
 
     // Supported filter chips
     val filterOptions = listOf("All", "Send Money", "Received", "Paybill", "Buy Goods", "Withdraw", "Airtime", "Fuliza")
-    var selectedFilter by remember { mutableStateOf(filterOptions[0]) }
+    var selectedFilter by remember { mutableStateOf(if (initialFilter in filterOptions) initialFilter else filterOptions[0]) }
     var searchQuery by remember { mutableStateOf("") }
 
     val monthFormat = remember { java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault()) }
