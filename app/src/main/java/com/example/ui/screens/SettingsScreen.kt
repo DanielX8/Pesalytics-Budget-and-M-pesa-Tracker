@@ -261,7 +261,7 @@ fun SettingsScreen(
             item { SettingsSection("DATA EXPORT") {
                 SettingsCard {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(AccentGreenLight.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(HeroGreen.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
                             Icon(Icons.Rounded.Upload, contentDescription = null, tint = HeroGreen)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
@@ -613,7 +613,7 @@ private fun ProfileCard(userName: String, avatarIndex: Int, onEdit: () -> Unit) 
     val currentAvatar = avatarIcons.getOrNull(avatarIndex) ?: Icons.Rounded.Person
     SettingsCard {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(AccentGreenLight.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(HeroGreen.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
                 Icon(currentAvatar, contentDescription = null, modifier = Modifier.size(30.dp), tint = HeroGreen)
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -639,6 +639,11 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
     val daysRemaining = subState.trialDaysRemaining.toLong()
     val gradient = rememberBrandGradient()
 
+    val daysUntilRenewal = remember(subState.expiryMs) {
+        if (subState.isLifetime || subState.isFree || subState.isTrial) Long.MAX_VALUE
+        else ((subState.expiryMs - System.currentTimeMillis()) / 86_400_000L).coerceAtLeast(0L)
+    }
+
     val planLabel = when (subState.tier) {
         com.pesalytics.domain.model.SubscriptionTier.PREMIUM_MONTHLY   -> "Monthly Plan"
         com.pesalytics.domain.model.SubscriptionTier.PREMIUM_QUARTERLY -> "Quarterly Plan"
@@ -649,10 +654,12 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
     }
     val statusLabel = when {
         subState.tier == com.pesalytics.domain.model.SubscriptionTier.PREMIUM_LIFETIME -> "Never expires"
-        isPremium -> "Active"
-        daysRemaining > 0 -> "Expires in $daysRemaining days"
-        else -> "Upgrade to unlock all features"
+        subState.isTrial                                                                -> "Expires in ${subState.trialDaysRemaining} days"
+        isPremium && daysUntilRenewal <= 14                                             -> "Renews in $daysUntilRenewal days"
+        isPremium                                                                       -> "Active"
+        else                                                                            -> "Upgrade to unlock all features"
     }
+    val statusColor = if (isPremium && !subState.isLifetime && daysUntilRenewal <= 14) WarningOrange else Color.White.copy(alpha = 0.85f)
 
     SettingsSection("PLAN") {
         Box(
@@ -675,9 +682,9 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
             )
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    SubscriptionTierBadge(isPremium = isPremium, isTrial = subState.isTrial, trialDaysLeft = daysRemaining.toInt())
+                    SubscriptionTierBadge(tier = subState.tier, trialDaysLeft = daysRemaining.toInt())
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(statusLabel, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f))
+                    Text(statusLabel, style = MaterialTheme.typography.bodySmall, color = statusColor)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(planLabel, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
@@ -848,13 +855,16 @@ fun SupportListItem(icon: ImageVector, title: String, subtitle: String?, onClick
 }
 
 @Composable
-private fun SubscriptionTierBadge(isPremium: Boolean, isTrial: Boolean = false, trialDaysLeft: Int = 0) {
+private fun SubscriptionTierBadge(tier: com.pesalytics.domain.model.SubscriptionTier, trialDaysLeft: Int = 0) {
     // Rendered on the green gradient hero card, so the chip is an opaque white pill with
     // strong-colored text for clear contrast in both light and dark mode.
-    val (text, contentColor) = when {
-        isPremium -> "Premium ✓" to HeroGreen
-        isTrial -> "Trial — $trialDaysLeft days left" to WarningOrange
-        else -> "Free plan" to Color(0xFF444444)
+    val (text, contentColor) = when (tier) {
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_MONTHLY   -> "Monthly ✓"   to HeroGreen
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_QUARTERLY -> "Quarterly ✓" to HeroGreen
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_YEARLY    -> "Yearly ✓"    to HeroGreen
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_LIFETIME  -> "Lifetime ✓"  to HeroGreen
+        com.pesalytics.domain.model.SubscriptionTier.TRIAL             -> "Trial — $trialDaysLeft days left" to WarningOrange
+        else                                                            -> "Free plan"   to Color(0xFF444444)
     }
     Surface(color = Color.White, shape = RoundedCornerShape(20.dp)) {
         Text(text, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium, color = contentColor, fontWeight = FontWeight.Bold)

@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
@@ -59,7 +60,8 @@ fun AnalyticsScreen(
     viewModel: PesaViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToSubscription: () -> Unit,
-    onNavigateToNeedsWants: () -> Unit
+    onNavigateToNeedsWants: () -> Unit,
+    onNavigateToAllTransactions: (filter: String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
@@ -201,31 +203,34 @@ fun AnalyticsScreen(
                 }
             }
 
-            // Spend Velocity Banner
-            patternResult?.spendVelocity?.let { velocity ->
-                item { SpendVelocityBanner(velocity, uiState.transactions) }
-            }
-
-            // Month Comparison Card
+            // Month Comparison — quick context before the detail cards
             patternResult?.monthComparison?.let { comparison ->
                 item { MonthComparisonCard(comparison) }
             }
 
-            item { BalanceProgressionChart(monthTransactions, startTimestamp) }
-
+            // Where It Goes — primary overview: where did money go?
             item {
                 WhereItGoesChart(
                     transactions = monthTransactions,
-                    categoryDeltas = patternResult?.categoryDeltas ?: emptyList()
+                    categoryDeltas = patternResult?.categoryDeltas ?: emptyList(),
+                    onNavigateToAllTransactions = onNavigateToAllTransactions
                 )
             }
 
+            // Who/what breakdown
             item { LargestTransactionsCard(monthTransactions) }
-
-            item { TransactionFeesCard(monthTransactions) }
-
             item { TopPayeesCard(monthTransactions) }
             item { IncomeSourcesCard(monthTransactions) }
+
+            // Trajectory
+            item { BalanceProgressionChart(monthTransactions, startTimestamp) }
+
+            patternResult?.spendVelocity?.let { velocity ->
+                item { SpendVelocityBanner(velocity, uiState.transactions) }
+            }
+
+            // Supporting detail
+            item { TransactionFeesCard(monthTransactions) }
 
             val budgetsForCard = uiState.budgets
             if (budgetsForCard.isNotEmpty()) {
@@ -468,7 +473,7 @@ fun SummaryCard(title: String, amount: String, color: Color, modifier: Modifier 
 }
 
 @Composable
-fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categoryDeltas: List<CategoryDelta> = emptyList()) {
+fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categoryDeltas: List<CategoryDelta> = emptyList(), onNavigateToAllTransactions: (filter: String) -> Unit = {}) {
     val expenses = transactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME && !it.isFeeTransaction }
     val totalExpense = expenses.sumOf { it.amount }
 
@@ -496,7 +501,14 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
 
     Card(modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("Where It Goes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateToAllTransactions("All") },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Where It Goes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = "View all transactions", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Spacer(modifier = Modifier.height(24.dp))
 
             if (totalExpense == 0.0) {
@@ -578,7 +590,15 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
 
             if (selectedCategory != null) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                val navFilter = when (selectedCategory!!.first) {
+                    "Others", "Other" -> "All"
+                    else -> selectedCategory!!.first
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onNavigateToAllTransactions(navFilter) }.padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Column {
                         Text("Selected", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(selectedCategory!!.first, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -586,6 +606,8 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
                     Column(horizontalAlignment = Alignment.End) {
                         Text("KES ${formatCurrency(selectedCategory!!.second)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         Text("${((selectedCategory!!.second / totalExpense) * 100).toInt()}% of expenses", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("View transactions →", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 }
             }

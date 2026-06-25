@@ -27,7 +27,7 @@ object BudgetPlanner
 object Subscription
 
 @Serializable
-object AllTransactions
+data class AllTransactions(val filter: String = "All")
 
 @Serializable
 object FinancialGoals
