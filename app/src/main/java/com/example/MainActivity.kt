@@ -7,10 +7,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -180,7 +183,11 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
 
     Scaffold(
         bottomBar = {
-            if (isTopLevelDestination) {
+            AnimatedVisibility(
+                visible = isTopLevelDestination,
+                enter = slideInVertically(animationSpec = tween(250, easing = FastOutSlowInEasing)) { it },
+                exit = slideOutVertically(animationSpec = tween(200, easing = FastOutSlowInEasing)) { it }
+            ) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface
                 ) {
@@ -196,9 +203,11 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         label = { Text("Home") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Home>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                            indicatorColor = com.pesalytics.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
-                            selectedIconColor = com.pesalytics.ui.theme.AccentGreenDark,
-                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark
+                            indicatorColor = com.pesalytics.ui.theme.AccentGreenDark,
+                            selectedIconColor = Color.White,
+                            selectedTextColor = com.pesalytics.ui.theme.HeroGreen,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
                         onClick = {
                             navController.navigate(Home) {
@@ -222,9 +231,11 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         label = { Text("Analytics") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Analytics>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                            indicatorColor = com.pesalytics.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
-                            selectedIconColor = com.pesalytics.ui.theme.AccentGreenDark,
-                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark
+                            indicatorColor = com.pesalytics.ui.theme.AccentGreenDark,
+                            selectedIconColor = Color.White,
+                            selectedTextColor = com.pesalytics.ui.theme.HeroGreen,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
                         onClick = {
                             navController.navigate(Analytics) {
@@ -248,9 +259,11 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         label = { Text("Bills") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Bills>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                            indicatorColor = com.pesalytics.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
-                            selectedIconColor = com.pesalytics.ui.theme.AccentGreenDark,
-                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark
+                            indicatorColor = com.pesalytics.ui.theme.AccentGreenDark,
+                            selectedIconColor = Color.White,
+                            selectedTextColor = com.pesalytics.ui.theme.HeroGreen,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
                         onClick = {
                             navController.navigate(Bills) {
@@ -274,9 +287,11 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         label = { Text("Settings") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Settings>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                            indicatorColor = com.pesalytics.ui.theme.AccentGreenLight.copy(alpha = 0.2f),
-                            selectedIconColor = com.pesalytics.ui.theme.AccentGreenDark,
-                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark
+                            indicatorColor = com.pesalytics.ui.theme.AccentGreenDark,
+                            selectedIconColor = Color.White,
+                            selectedTextColor = com.pesalytics.ui.theme.HeroGreen,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
                         onClick = {
                             navController.navigate(Settings) {

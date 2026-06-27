@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesalytics.R
 import com.pesalytics.model.Bill
 import com.pesalytics.model.BillCycle
+import com.pesalytics.ui.theme.AccentGreenDark
 import com.pesalytics.ui.theme.AccentGreenLight
 import com.pesalytics.ui.theme.ExpenseRed
 import com.pesalytics.ui.theme.WarningOrange
@@ -173,7 +174,7 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight)
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark)
                         ) {
                             Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
@@ -442,11 +443,11 @@ fun AddBillBottomSheetContent(
                 }
             },
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark),
             shape = RoundedCornerShape(24.dp),
             enabled = name.isNotBlank() && amount.toDoubleOrNull() != null && payee.isNotBlank()
         ) {
-            Text(if (initialBill != null) "Save Bill" else "Add Bill", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+            Text(if (initialBill != null) "Save Bill" else "Add Bill", fontWeight = FontWeight.Bold, color = Color.White)
         }
         Spacer(modifier = Modifier.height(16.dp))
     }

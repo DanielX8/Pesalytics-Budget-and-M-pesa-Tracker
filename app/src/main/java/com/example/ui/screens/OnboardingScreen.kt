@@ -164,27 +164,12 @@ fun OnboardingScreen(
     val nicknamePool = remember { buildNicknamePool() }
     var nicknameIndex by remember { mutableStateOf(-1) }
 
-    // Two separate single-permission launchers chained in sequence so Android shows
-    // both dialogs. RequestMultiplePermissions can silently skip POST_NOTIFICATIONS
-    // when batched with READ_SMS on some Android 13+ builds.
-    val notifPermLauncher = rememberLauncherForActivityResult(
+    val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { _ ->
         val finalName = if (name.isNotBlank()) name.trim() else "User"
         viewModel.completeOnboarding(finalName, selectedAvatar, context)
         onNavigateNext()
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { _ ->
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            val finalName = if (name.isNotBlank()) name.trim() else "User"
-            viewModel.completeOnboarding(finalName, selectedAvatar, context)
-            onNavigateNext()
-        }
     }
 
     Box(

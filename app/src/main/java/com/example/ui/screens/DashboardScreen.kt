@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -122,24 +124,55 @@ fun DashboardScreen(
     }
 
     val trialJustStarted by viewModel.trialJustStarted.collectAsStateWithLifecycle()
-    var showTrialDialog by remember { mutableStateOf(false) }
+    var showTrialSheet by remember { mutableStateOf(false) }
+    val trialSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetScope = rememberCoroutineScope()
     LaunchedEffect(trialJustStarted) {
         if (trialJustStarted) {
-            showTrialDialog = true
+            showTrialSheet = true
             viewModel.consumeTrialStartedEvent()
         }
     }
-    if (showTrialDialog) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showTrialDialog = false },
-            title = { androidx.compose.material3.Text("14-Day Free Trial Started!", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
-            text = { androidx.compose.material3.Text("You now have full access to all Pesalytics Premium features for 14 days — completely free. Enjoy the analytics, budget planner, bill tracker, and data exports. No payment required to start.") },
-            confirmButton = {
-                androidx.compose.material3.Button(onClick = { showTrialDialog = false }) {
-                    androidx.compose.material3.Text("Let's Go!")
+    if (showTrialSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showTrialSheet = false },
+            sheetState = trialSheetState
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("🎉", style = MaterialTheme.typography.displaySmall)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "14-Day Free Trial Started!",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "You now have full access to all Pesalytics Premium features for 14 days — completely free. Enjoy the analytics, budget planner, bill tracker, and data exports. No payment required to start.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = {
+                        sheetScope.launch { trialSheetState.hide() }.invokeOnCompletion {
+                            showTrialSheet = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark)
+                ) {
+                    Text("Let's Go!", fontWeight = FontWeight.SemiBold)
                 }
             }
-        )
+        }
     }
 
     if (showSmsDisclosure) {
@@ -559,7 +592,42 @@ fun DashboardScreen(
 
             item(key = "hero-card") {
                 Box(modifier = Modifier.animateItem()) {
-                    HeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
+                    val pageCount = 1 +
+                        (if (uiState.hasMshwari) 1 else 0) +
+                        (if (uiState.hasPochi) 1 else 0)
+                    if (pageCount > 1) {
+                        val pagerState = rememberPagerState(pageCount = { pageCount })
+                        Column {
+                            HorizontalPager(state = pagerState) { page ->
+                                var idx = 0
+                                when {
+                                    page == idx -> HeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
+                                    uiState.hasMshwari && page == ++idx -> MshwariHeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
+                                    else -> PochiHeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                repeat(pageCount) { index ->
+                                    val selected = pagerState.currentPage == index
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(horizontal = 4.dp)
+                                            .size(if (selected) 8.dp else 6.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (selected) AccentGreenLight
+                                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        HeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
+                    }
                 }
             }
             
@@ -865,6 +933,200 @@ fun HeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
                             ) { text ->
                                 Text(text = text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Color.White)
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MshwariHeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 24.dp,
+                shape = RoundedCornerShape(32.dp),
+                spotColor = Color(0xFF348C55).copy(alpha = 0.4f),
+                ambientColor = Color(0xFF071F16).copy(alpha = 0.3f)
+            ),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        shape = RoundedCornerShape(32.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.linearGradient(listOf(Color(0xFF0B4631), Color(0xFF071F16))))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.08f), Color.Transparent),
+                            radius = 500f
+                        )
+                    )
+            )
+            Column(modifier = Modifier.padding(24.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "M-Shwari Savings",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Medium
+                    )
+                    IconButton(onClick = onToggleVisibility) {
+                        Icon(
+                            imageVector = if (uiState.isBalanceVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+                AnimatedContent(
+                    targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.mshwariBalance)}" else "KES ••••••",
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
+                            slideInVertically(animationSpec = tween(350, easing = FastOutSlowInEasing)) { it / 2 }) togetherWith
+                            (fadeOut(animationSpec = tween(200)) + slideOutVertically(animationSpec = tween(200)) { -it / 2 })
+                    },
+                    label = "MshwariBalance"
+                ) { balanceText ->
+                    Text(text = balanceText, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column {
+                        Text("SAVED", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.ArrowUpward, contentDescription = null, tint = AccentGreenLight, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            AnimatedContent(
+                                targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.mshwariTotalSaved)}" else "••••",
+                                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+                                label = "MshwariSaved"
+                            ) { text -> Text(text = text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Color.White) }
+                        }
+                    }
+                    Column {
+                        Text("WITHDRAWN", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.ArrowDownward, contentDescription = null, tint = WarningOrange, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            AnimatedContent(
+                                targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.mshwariTotalWithdrawn)}" else "••••",
+                                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+                                label = "MshwariWithdrawn"
+                            ) { text -> Text(text = text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Color.White) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PochiHeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 24.dp,
+                shape = RoundedCornerShape(32.dp),
+                spotColor = TransferBlue.copy(alpha = 0.4f),
+                ambientColor = Color(0xFF0D47A1).copy(alpha = 0.25f)
+            ),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        shape = RoundedCornerShape(32.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.linearGradient(listOf(Color(0xFF1565C0), Color(0xFF0D47A1))))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.1f), Color.Transparent),
+                            radius = 500f
+                        )
+                    )
+            )
+            Column(modifier = Modifier.padding(24.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Pochi la Biashara",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Medium
+                    )
+                    IconButton(onClick = onToggleVisibility) {
+                        Icon(
+                            imageVector = if (uiState.isBalanceVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+                AnimatedContent(
+                    targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.pochiBalance)}" else "KES ••••••",
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
+                            slideInVertically(animationSpec = tween(350, easing = FastOutSlowInEasing)) { it / 2 }) togetherWith
+                            (fadeOut(animationSpec = tween(200)) + slideOutVertically(animationSpec = tween(200)) { -it / 2 })
+                    },
+                    label = "PochiBalance"
+                ) { balanceText ->
+                    Text(text = balanceText, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column {
+                        Text("RECEIVED", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.ArrowUpward, contentDescription = null, tint = AccentGreenLight, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            AnimatedContent(
+                                targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.pochiTotalReceived)}" else "••••",
+                                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+                                label = "PochiReceived"
+                            ) { text -> Text(text = text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Color.White) }
+                        }
+                    }
+                    Column {
+                        Text("SENT", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.ArrowDownward, contentDescription = null, tint = ExpenseRed, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            AnimatedContent(
+                                targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.pochiTotalSent)}" else "••••",
+                                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+                                label = "PochiSent"
+                            ) { text -> Text(text = text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Color.White) }
                         }
                     }
                 }

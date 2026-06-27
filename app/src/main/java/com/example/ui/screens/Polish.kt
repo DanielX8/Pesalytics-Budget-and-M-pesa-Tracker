@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.pesalytics.ui.theme.AccentGreenDark
 import com.pesalytics.ui.theme.AccentGreenLight
 import com.pesalytics.ui.theme.HeroCardDarkGreen
+import com.pesalytics.ui.theme.HeroGreen
 
 /**
  * The hero-card mid-green (present in the Dashboard balance gradient in both light and dark
@@ -61,15 +62,15 @@ fun Modifier.clickableScale(pressedScale: Float = 0.97f, onClick: () -> Unit): M
 val interactiveGreen: Color
     @Composable get() {
         val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
-        return if (isLight) AccentGreenLight else HeroCardDarkGreen
+        return if (isLight) HeroGreen else HeroCardDarkGreen
     }
 
 /** The same hero gradient used on the Dashboard balance card (light vs dark aware). */
 @Composable
 fun rememberBrandGradient(): Brush {
     val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val start = if (isLight) Color(0xFF55D687) else Color(0xFF348C55)
-    val end = if (isLight) Color(0xFF348C55) else Color(0xFF1A4D2E)
+    val start = if (isLight) Color(0xFF55D687) else HeroGreen
+    val end = if (isLight) HeroGreen else HeroCardDarkGreen
     return Brush.linearGradient(listOf(start, end))
 }
 

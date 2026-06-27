@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.pesalytics.MainActivity
 import com.pesalytics.R
 
@@ -21,6 +22,13 @@ class NotificationHelper(private val context: Context) {
     // NOT at construction time. Creating them at app launch could surface the system
     // notification-permission prompt before onboarding. Posting only happens after
     // onboarding (workers / budget checks), by which point permission has been requested.
+
+    private fun isMasterEnabled(): Boolean =
+        context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
+            .getBoolean("notif_master_enabled", false)
+
+    private fun areNotificationsPermitted(): Boolean =
+        NotificationManagerCompat.from(context).areNotificationsEnabled()
 
     private fun isPrefEnabled(key: String, default: Boolean = true): Boolean =
         context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
@@ -82,6 +90,7 @@ class NotificationHelper(private val context: Context) {
 
     /** Subscription or trial expiry warning (3 days / 1 day / today) */
     fun showSubscriptionExpiryAlert(isTrial: Boolean, daysLeft: Int) {
+        if (!isMasterEnabled() || !areNotificationsPermitted()) return
         val label = if (isTrial) "trial" else "Premium subscription"
         val message = when {
             daysLeft <= 0 -> "Your $label expires today. Renew to keep full access."
@@ -92,6 +101,7 @@ class NotificationHelper(private val context: Context) {
     }
 
     fun showReportNotification(title: String, message: String) {
+        if (!isMasterEnabled() || !areNotificationsPermitted()) return
         createNotificationChannels()
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -109,6 +119,7 @@ class NotificationHelper(private val context: Context) {
     }
 
     private fun showNotification(channelId: String, id: Int, title: String, message: String) {
+        if (!isMasterEnabled() || !areNotificationsPermitted()) return
         createNotificationChannels()
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

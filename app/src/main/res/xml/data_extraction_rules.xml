@@ -1,19 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
--->
+<?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <!-- Back up trial/subscription state so reinstall doesn't reset the trial timer.
+             Include-only policy: everything else (prefs, databases) is excluded automatically. -->
+        <include domain="sharedpref" path="pesa_subscription.xml"/>
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <include domain="sharedpref" path="pesa_subscription.xml"/>
     </device-transfer>
-    -->
 </data-extraction-rules>
