@@ -80,8 +80,8 @@ class PesaRepository(
         transactionDao.deleteTransaction(id)
     }
 
-    suspend fun enrichFulizaTransaction(ref: String, outstandingBalance: Double, dueDate: String?) {
-        transactionDao.enrichFulizaTransaction(ref, outstandingBalance, dueDate)
+    suspend fun enrichFulizaTransaction(ref: String, outstandingBalance: Double, dueDate: String?, accessFee: Double = 0.0) {
+        transactionDao.enrichFulizaTransaction(ref, outstandingBalance, dueDate, accessFee)
     }
 
     suspend fun getDailyExpense(startOfDay: Long, endOfDay: Long): Double? {

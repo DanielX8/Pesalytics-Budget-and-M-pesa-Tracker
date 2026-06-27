@@ -60,7 +60,15 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
     }
 }
 
-@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class], version = 12, exportSchema = true)
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE transactions ADD COLUMN mshwariBalanceAfter REAL NOT NULL DEFAULT 0.0")
+        db.execSQL("ALTER TABLE transactions ADD COLUMN pochiBalanceAfter REAL NOT NULL DEFAULT 0.0")
+        db.execSQL("ALTER TABLE transactions ADD COLUMN fulizaLimitAfter REAL NOT NULL DEFAULT 0.0")
+    }
+}
+
+@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class], version = 13, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun billDao(): BillDao
@@ -78,7 +86,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "pesalytics_database"
-                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12).build()
+                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13).build()
                 INSTANCE = instance
                 instance
             }

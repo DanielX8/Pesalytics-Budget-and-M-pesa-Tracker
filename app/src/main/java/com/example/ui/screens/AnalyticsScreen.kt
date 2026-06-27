@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -85,10 +86,17 @@ fun AnalyticsScreen(
     val monthTransactions = uiState.transactions.filter { it.timestamp in startTimestamp until endTimestamp && !it.isFeeTransaction }
 
     val totalIncome = monthTransactions.filter { it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME }.sumOf { it.amount }
-    val totalExpense = monthTransactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }.sumOf { it.amount }
+    val totalExpense = monthTransactions.filter {
+        it.type != TransactionType.RECEIVE_MONEY &&
+        it.type != TransactionType.MANUAL_INCOME &&
+        it.type != TransactionType.MANUAL_TRANSFER &&
+        it.type != TransactionType.MSHWARI_TRANSFER &&
+        it.type != TransactionType.POCHI_TRANSFER &&
+        it.type != TransactionType.POCHI_RECEIVE &&
+        it.type != TransactionType.FULIZA
+    }.sumOf { it.amount }
     val totalSaved = totalIncome - totalExpense
     val totalFeesPaid = monthTransactions.sumOf { it.fee }
-    val totalOverdraftDebt = monthTransactions.sumOf { it.usedFulizaAmount }
 
     Scaffold(
         topBar = {
@@ -193,11 +201,10 @@ fun AnalyticsScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SummaryCard("INCOME", formatCurrency(totalIncome), AccentGreenLight, Modifier.weight(1f))
                             SummaryCard("EXPENSES", formatCurrency(totalExpense), ExpenseRed, Modifier.weight(1f))
-                            SummaryCard("SAVED", formatCurrency(totalSaved), TransferBlue, Modifier.weight(1f))
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SummaryCard("SAVED", formatCurrency(totalSaved), TransferBlue, Modifier.weight(1f))
                             SummaryCard("TOTAL FEES", formatCurrency(totalFeesPaid), WarningOrange, Modifier.weight(1f))
-                            SummaryCard("OVERDRAFT", formatCurrency(totalOverdraftDebt), MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                         }
                     }
                 }
@@ -232,6 +239,10 @@ fun AnalyticsScreen(
             // Supporting detail
             item { TransactionFeesCard(monthTransactions) }
 
+            if (uiState.hasFuliza) {
+                item { FulizaAnalyticsCard(uiState, monthTransactions) }
+            }
+
             val budgetsForCard = uiState.budgets
             if (budgetsForCard.isNotEmpty()) {
                 item { BudgetVsActualCard(budgetsForCard, uiState.categorySpent) }
@@ -245,15 +256,6 @@ fun AnalyticsScreen(
             item { NeedsVsWantsCard(monthTransactions, needsWantsClassification, onNavigateToNeedsWants) }
             item {
                 SpendingCalendar(monthTransactions, startTimestamp, displayMonth)
-            }
-
-            // Trends section
-            val fulizaTrend = patternResult?.fulizaTrend ?: emptyList()
-            if (fulizaTrend.isNotEmpty()) {
-                item {
-                    Text("TRENDS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
-                }
-                item { FulizaTrendCard(fulizaTrend) }
             }
 
             item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -399,6 +401,32 @@ fun MonthComparisonCard(comparison: MonthComparison) {
     val isHigher = comparison.delta > 0
     val deltaColor = if (isHigher) ExpenseRed else AccentGreenLight
     val arrow = if (isHigher) "▲" else "▼"
+
+    val currentExpense = comparison.currentMonthExpense
+    val prevExpense = comparison.previousMonthExpense
+    val maxVal = maxOf(currentExpense, prevExpense).takeIf { it > 0 } ?: 1.0
+    val currentFrac = (currentExpense / maxVal).toFloat().coerceIn(0.05f, 1f)
+    val prevFrac = (prevExpense / maxVal).toFloat().coerceIn(0.05f, 1f)
+
+    val currentBarColor = if (isHigher) ExpenseRed else AccentGreenLight
+    val prevBarColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+
+    val animCurrent = remember { Animatable(0f) }
+    val animPrev = remember { Animatable(0f) }
+    LaunchedEffect(currentFrac) {
+        animCurrent.animateTo(currentFrac, animationSpec = tween(900, easing = FastOutSlowInEasing))
+    }
+    LaunchedEffect(prevFrac) {
+        animPrev.animateTo(prevFrac, animationSpec = tween(900, easing = FastOutSlowInEasing))
+    }
+
+    val currentMonthLabel = remember { SimpleDateFormat("MMM", Locale.getDefault()).format(Calendar.getInstance().time) }
+    val prevMonthLabel = remember {
+        SimpleDateFormat("MMM", Locale.getDefault()).format(
+            Calendar.getInstance().apply { add(Calendar.MONTH, -1) }.time
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -407,17 +435,46 @@ fun MonthComparisonCard(comparison: MonthComparison) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text("Month Comparison", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("This Month", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("KES ${formatCurrency(comparison.currentMonthExpense)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+            Canvas(modifier = Modifier.fillMaxWidth().height(140.dp)) {
+                val barW = 80.dp.toPx()
+                val gap = 12.dp.toPx()
+                val total = barW * 2 + gap
+                val startX = (size.width - total) / 2
+
+                val currH = size.height * animCurrent.value
+                drawRoundRect(
+                    color = currentBarColor,
+                    topLeft = Offset(startX, size.height - currH),
+                    size = Size(barW, currH),
+                    cornerRadius = CornerRadius(10f, 10f)
+                )
+
+                val prevH = size.height * animPrev.value
+                drawRoundRect(
+                    color = prevBarColor,
+                    topLeft = Offset(startX + barW + gap, size.height - prevH),
+                    size = Size(barW, prevH),
+                    cornerRadius = CornerRadius(10f, 10f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Column(modifier = Modifier.width(80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(currentMonthLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("KES ${formatCurrency(currentExpense)}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Last Month", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("KES ${formatCurrency(comparison.previousMonthExpense)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.width(80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(prevMonthLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("KES ${formatCurrency(prevExpense)}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(arrow, color = deltaColor, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.width(4.dp))
@@ -427,6 +484,175 @@ fun MonthComparisonCard(comparison: MonthComparison) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(if (isHigher) "more than last month" else "less than last month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+fun FulizaAnalyticsCard(uiState: HomeUiState, monthTransactions: List<com.pesalytics.model.Transaction>) {
+    val borrowedThisMonth = monthTransactions.filter { it.fulizaOutstandingBalance > 0 }.size  // count of Fuliza-backed transactions this month
+    val repaidThisMonth = monthTransactions.filter {
+        it.type == TransactionType.FULIZA && (
+            it.category == "Fuliza Full Repayment" ||
+            it.category == "Fuliza Partial Repayment" ||
+            it.category == "Fuliza Repayment"
+        )
+    }.sumOf { it.amount }
+
+    val barData = remember(uiState.transactions) {
+        (5 downTo 0).map { monthsAgo ->
+            val cal = Calendar.getInstance().apply {
+                add(Calendar.MONTH, -monthsAgo)
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }
+            val monthStart = cal.timeInMillis
+            val monthEnd = Calendar.getInstance().apply {
+                timeInMillis = monthStart; add(Calendar.MONTH, 1)
+            }.timeInMillis
+            val label = SimpleDateFormat("MMM", Locale.getDefault()).format(cal.time)
+            val repaid = uiState.transactions.filter { tx ->
+                tx.timestamp in monthStart until monthEnd &&
+                tx.type == TransactionType.FULIZA && (
+                    tx.category == "Fuliza Full Repayment" ||
+                    tx.category == "Fuliza Partial Repayment" ||
+                    tx.category == "Fuliza Repayment"
+                )
+            }.sumOf { it.amount }
+            label to repaid
+        }
+    }
+    val maxBarValue = barData.maxOfOrNull { it.second }?.takeIf { it > 0 } ?: 1.0
+
+    val utilizationFraction = if (uiState.fulizaLimit > 0)
+        (uiState.fulizaOutstandingBalance / uiState.fulizaLimit).coerceIn(0.0, 1.0).toFloat()
+    else 0f
+    val animatedFraction = remember { Animatable(0f) }
+    LaunchedEffect(utilizationFraction) {
+        animatedFraction.animateTo(utilizationFraction, animationSpec = tween(1000, easing = FastOutSlowInEasing))
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("Fuliza M-PESA", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("Overdraft balance & usage", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            if (uiState.fulizaLimit > 0) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(160.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(modifier = Modifier.size(260.dp, 150.dp)) {
+                        val sw = 22.dp.toPx()
+                        val diameter = size.width - sw
+                        val topLeft = Offset(sw / 2f, sw / 2f)
+                        val arcSize = Size(diameter, diameter)
+                        drawArc(
+                            color = Color(0xFF444444).copy(alpha = 0.12f),
+                            startAngle = 180f, sweepAngle = 180f, useCenter = false,
+                            topLeft = topLeft, size = arcSize,
+                            style = Stroke(width = sw, cap = StrokeCap.Round)
+                        )
+                        drawArc(
+                            color = WarningOrange,
+                            startAngle = 180f, sweepAngle = 180f * animatedFraction.value, useCenter = false,
+                            topLeft = topLeft, size = arcSize,
+                            style = Stroke(width = sw, cap = StrokeCap.Round)
+                        )
+                    }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)
+                    ) {
+                        Text(
+                            "KES ${formatCurrency(uiState.fulizaOutstandingBalance)}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = WarningOrange
+                        )
+                        Text("OUTSTANDING", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
+                        Text("of KES ${formatCurrency(uiState.fulizaLimit)} limit", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            } else if (uiState.fulizaOutstandingBalance > 0) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("KES ${formatCurrency(uiState.fulizaOutstandingBalance)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = WarningOrange)
+                    Text("OUTSTANDING", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Repay once to unlock limit view", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
+            if (barData.any { it.second > 0 }) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Text("Monthly Repayments", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(64.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    barData.forEach { (_, value) ->
+                        val fraction = if (value > 0) (value / maxBarValue).toFloat().coerceAtLeast(0.05f) else 0f
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(fraction.coerceAtLeast(0.02f))
+                                .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                                .background(if (value > 0) WarningOrange else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    barData.forEach { (label, _) ->
+                        Text(
+                            label,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 9.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text(
+                        if (borrowedThisMonth > 0) "$borrowedThisMonth txn${if (borrowedThisMonth > 1) "s" else ""}" else "—",
+                        style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = WarningOrange
+                    )
+                    Text("FULIZA USED", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 0.5.sp)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("KES ${formatCurrency(repaidThisMonth)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    Text("REPAID", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 0.5.sp)
+                }
+                if (uiState.fulizaDueDate.isNotEmpty()) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(uiState.fulizaDueDate, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text("DUE BY", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 0.5.sp)
+                    }
+                }
             }
         }
     }
@@ -474,7 +700,16 @@ fun SummaryCard(title: String, amount: String, color: Color, modifier: Modifier 
 
 @Composable
 fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categoryDeltas: List<CategoryDelta> = emptyList(), onNavigateToAllTransactions: (filter: String) -> Unit = {}) {
-    val expenses = transactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME && !it.isFeeTransaction }
+    val expenses = transactions.filter {
+        it.type != TransactionType.RECEIVE_MONEY &&
+        it.type != TransactionType.MANUAL_INCOME &&
+        it.type != TransactionType.MANUAL_TRANSFER &&
+        it.type != TransactionType.MSHWARI_TRANSFER &&
+        it.type != TransactionType.POCHI_TRANSFER &&
+        it.type != TransactionType.POCHI_RECEIVE &&
+        it.type != TransactionType.FULIZA &&
+        !it.isFeeTransaction
+    }
     val totalExpense = expenses.sumOf { it.amount }
 
     val typeLabels = mapOf(
@@ -618,8 +853,11 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
 @Composable
 fun TransactionFeesCard(transactions: List<com.pesalytics.model.Transaction>) {
     val mainTransactions = transactions.filter { !it.isFeeTransaction }
-    val feeBreakdown = mainTransactions.filter { it.fee > 0 }.groupBy { it.type }.mapValues { entry -> entry.value.sumOf { it.fee } }
-    val totalFees = feeBreakdown.values.sum()
+    // Fuliza-backed transactions have fulizaOutstandingBalance > 0; their fee = Fuliza access fee.
+    // Regular M-PESA fees come from transactions where fulizaOutstandingBalance == 0.
+    val fulizaFeeTotal = mainTransactions.filter { it.fee > 0 && it.fulizaOutstandingBalance > 0 }.sumOf { it.fee }
+    val feeBreakdown = mainTransactions.filter { it.fee > 0 && it.fulizaOutstandingBalance == 0.0 }.groupBy { it.type }.mapValues { entry -> entry.value.sumOf { it.fee } }
+    val totalFees = feeBreakdown.values.sum() + fulizaFeeTotal
     val totalExpense = mainTransactions.filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }.sumOf { it.amount }
     val percentage = if (totalExpense > 0) (totalFees / totalExpense) * 100 else 0.0
 
@@ -652,6 +890,12 @@ fun TransactionFeesCard(transactions: List<com.pesalytics.model.Transaction>) {
                         Text(typeLabels[type] ?: type.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("KES ${formatCurrency(fee)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     }
+                }
+            }
+            if (fulizaFeeTotal > 0) {
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Fuliza Fees", style = MaterialTheme.typography.bodyMedium, color = WarningOrange)
+                    Text("KES ${formatCurrency(fulizaFeeTotal)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = WarningOrange)
                 }
             }
         }

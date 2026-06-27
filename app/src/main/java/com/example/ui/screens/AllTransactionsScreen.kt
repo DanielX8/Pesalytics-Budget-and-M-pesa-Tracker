@@ -47,8 +47,24 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
     var showCategoryEdit by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    // Supported filter chips
-    val filterOptions = listOf("All", "Send Money", "Received", "Paybill", "Buy Goods", "Withdraw", "Airtime", "Fuliza")
+    // Supported filter chips — Fuliza only shown when Fuliza transactions exist
+    val hasFuliza by remember(uiState.transactions) {
+        derivedStateOf {
+            uiState.transactions.any {
+                it.type == com.pesalytics.model.TransactionType.FULIZA ||
+                it.usedFulizaAmount > 0 ||
+                it.fulizaOutstandingBalance > 0
+            }
+        }
+    }
+    val filterOptions by remember(hasFuliza) {
+        derivedStateOf {
+            buildList {
+                addAll(listOf("All", "Send Money", "Received", "Paybill", "Buy Goods", "Withdraw", "Airtime"))
+                if (hasFuliza) add("Fuliza")
+            }
+        }
+    }
     var selectedFilter by remember { mutableStateOf(if (initialFilter in filterOptions) initialFilter else filterOptions[0]) }
     var searchQuery by remember { mutableStateOf("") }
 
@@ -82,7 +98,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                         "Buy Goods" -> transaction.type == com.pesalytics.model.TransactionType.BUY_GOODS
                         "Withdraw" -> transaction.type == com.pesalytics.model.TransactionType.WITHDRAW
                         "Airtime" -> transaction.type == com.pesalytics.model.TransactionType.AIRTIME
-                        "Fuliza" -> transaction.category.equals("Fuliza", ignoreCase = true)
+                        "Fuliza" -> transaction.type == com.pesalytics.model.TransactionType.FULIZA || transaction.usedFulizaAmount > 0 || transaction.fulizaOutstandingBalance > 0
                         else -> true
                     }
                 }
@@ -104,7 +120,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                     "Buy Goods" -> transaction.type == com.pesalytics.model.TransactionType.BUY_GOODS
                     "Withdraw" -> transaction.type == com.pesalytics.model.TransactionType.WITHDRAW
                     "Airtime" -> transaction.type == com.pesalytics.model.TransactionType.AIRTIME
-                    "Fuliza" -> transaction.category.equals("Fuliza", ignoreCase = true)
+                    "Fuliza" -> transaction.type == com.pesalytics.model.TransactionType.FULIZA || transaction.usedFulizaAmount > 0 || transaction.fulizaOutstandingBalance > 0
                     else -> true
                 }
                 val matchesSearch = searchQuery.isEmpty() ||

@@ -1,8 +1,14 @@
 package com.pesalytics.ui.screens
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.draw.alpha
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -70,6 +76,7 @@ fun SettingsScreen(
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
     var notificationsExpanded by remember { mutableStateOf(false) }
 
+    val masterNotifEnabled by viewModel.masterNotifEnabled.collectAsStateWithLifecycle()
     val billAlertsEnabled by viewModel.billAlertsEnabled.collectAsStateWithLifecycle()
     val budgetAlertsEnabled by viewModel.budgetAlertsEnabled.collectAsStateWithLifecycle()
     val goalRemindersEnabled by viewModel.goalRemindersEnabled.collectAsStateWithLifecycle()
@@ -79,6 +86,27 @@ fun SettingsScreen(
     val savedFrequency = context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
         .getString("report_frequency", "Daily") ?: "Daily"
     var notificationFrequency by remember { mutableStateOf(savedFrequency) }
+
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) viewModel.setMasterNotifEnabled(true, context)
+    }
+    val onMasterNotifToggle: (Boolean) -> Unit = { enable ->
+        if (enable) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                val isGranted = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+                if (isGranted) viewModel.setMasterNotifEnabled(true, context)
+                else notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                viewModel.setMasterNotifEnabled(true, context)
+            }
+        } else {
+            viewModel.setMasterNotifEnabled(false, context)
+        }
+    }
 
     val userName by viewModel.userName.collectAsStateWithLifecycle()
     val userAvatarIndex by viewModel.userAvatar.collectAsStateWithLifecycle()
@@ -239,20 +267,44 @@ fun SettingsScreen(
             item { SettingsSection("NOTIFICATIONS") {
                 SettingsCard {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-                        ToggleRow("Upcoming Bill Alerts", billAlertsEnabled) { viewModel.setNotificationPref("bill_alerts", it, context) }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                Text("Enable Notifications", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text("Allow Pesalytics to send alerts", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = masterNotifEnabled,
+                                onCheckedChange = onMasterNotifToggle,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = interactiveGreen,
+                                    checkedTrackColor = interactiveGreen.copy(alpha = 0.5f)
+                                )
+                            )
+                        }
                         SettingsDivider()
-                        ToggleRow("Budget Threshold Alerts", budgetAlertsEnabled) { viewModel.setNotificationPref("budget_alerts", it, context) }
+                        ToggleRow("Upcoming Bill Alerts", billAlertsEnabled, masterNotifEnabled) { viewModel.setNotificationPref("bill_alerts", it, context) }
                         SettingsDivider()
-                        ToggleRow("Goal Reminders", goalRemindersEnabled) { viewModel.setNotificationPref("goal_reminders", it, context) }
+                        ToggleRow("Budget Threshold Alerts", budgetAlertsEnabled, masterNotifEnabled) { viewModel.setNotificationPref("budget_alerts", it, context) }
                         SettingsDivider()
-                        ToggleRow("High Spending Alerts", highSpendingAlertsEnabled) { viewModel.setNotificationPref("high_spending", it, context) }
+                        ToggleRow("Goal Reminders", goalRemindersEnabled, masterNotifEnabled) { viewModel.setNotificationPref("goal_reminders", it, context) }
                         SettingsDivider()
-                        ToggleRow("Smart Alerts", smartAlertsEnabled) { viewModel.setNotificationPref("smart_alerts", it, context) }
+                        ToggleRow("High Spending Alerts", highSpendingAlertsEnabled, masterNotifEnabled) { viewModel.setNotificationPref("high_spending", it, context) }
+                        SettingsDivider()
+                        ToggleRow("Smart Alerts", smartAlertsEnabled, masterNotifEnabled) { viewModel.setNotificationPref("smart_alerts", it, context) }
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Report Frequency", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
-                SegmentedRow(listOf("Daily", "Weekly", "Monthly"), notificationFrequency) { option ->
+                Text(
+                    "Report Frequency",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                    color = if (masterNotifEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+                SegmentedRow(listOf("Daily", "Weekly", "Monthly"), notificationFrequency, masterNotifEnabled) { option ->
                     notificationFrequency = option
                     context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE).edit().putString("report_frequency", option).apply()
                 }
@@ -560,26 +612,38 @@ private fun SettingsDivider(padded: Boolean = false) {
 }
 
 @Composable
-private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
+private fun ToggleRow(label: String, checked: Boolean, enabled: Boolean = true, onToggle: (Boolean) -> Unit) {
     val accent = interactiveGreen
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        )
         Switch(
             checked = checked,
             onCheckedChange = onToggle,
+            enabled = enabled,
             colors = SwitchDefaults.colors(checkedThumbColor = accent, checkedTrackColor = accent.copy(alpha = 0.5f))
         )
     }
 }
 
 @Composable
-internal fun SegmentedRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
+internal fun SegmentedRow(options: List<String>, selected: String, enabled: Boolean = true, onSelect: (String) -> Unit) {
     val accent = interactiveGreen
-    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant), horizontalArrangement = Arrangement.SpaceEvenly) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .alpha(if (enabled) 1f else 0.38f),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
         options.forEach { option ->
             val isSelected = selected == option
             Box(
@@ -587,7 +651,7 @@ internal fun SegmentedRow(options: List<String>, selected: String, onSelect: (St
                     .weight(1f)
                     .clip(RoundedCornerShape(8.dp))
                     .background(if (isSelected) accent else Color.Transparent)
-                    .clickable { onSelect(option) }
+                    .then(if (enabled) Modifier.clickable { onSelect(option) } else Modifier)
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {

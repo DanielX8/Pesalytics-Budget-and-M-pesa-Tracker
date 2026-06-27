@@ -17,7 +17,11 @@ enum class TransactionType {
     AIRTIME,
     MANUAL_INCOME,
     MANUAL_EXPENSE,
-    MANUAL_TRANSFER
+    MANUAL_TRANSFER,
+    MSHWARI_TRANSFER,
+    POCHI_RECEIVE,
+    POCHI_TRANSFER,
+    FULIZA
 }
 
 @Immutable
@@ -38,10 +42,13 @@ data class Transaction(
     val fee: Double = 0.0,
     val balanceAfter: Double = 0.0,
     val isFeeTransaction: Boolean = false, // If this is a split off fee
-    val usedFulizaAmount: Double = 0.0, // Tracks overdraft debt components locally
+    val usedFulizaAmount: Double = 0.0,
     val originalSms: String? = null,
     val fulizaOutstandingBalance: Double = 0.0,
-    val fulizaDueDate: String? = null
+    val fulizaDueDate: String? = null,
+    val mshwariBalanceAfter: Double = 0.0,
+    val pochiBalanceAfter: Double = 0.0,
+    val fulizaLimitAfter: Double = 0.0
 )
 
 @Entity(tableName = "custom_rules")

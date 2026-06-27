@@ -54,7 +54,23 @@ data class HomeUiState(
     val currentBudgetLimit: Double = 0.0,
     val hasBudget: Boolean = false,
     val budgets: List<com.pesalytics.model.Budget> = emptyList(),
-    val categorySpent: Map<String, Double> = emptyMap()
+    val categorySpent: Map<String, Double> = emptyMap(),
+    // Mshwari sub-account (only populated when Mshwari transactions detected)
+    val hasMshwari: Boolean = false,
+    val mshwariBalance: Double = 0.0,
+    val mshwariTotalSaved: Double = 0.0,
+    val mshwariTotalWithdrawn: Double = 0.0,
+    // Pochi business wallet (only populated when Pochi transactions detected)
+    val hasPochi: Boolean = false,
+    val pochiBalance: Double = 0.0,
+    val pochiTotalReceived: Double = 0.0,
+    val pochiTotalSent: Double = 0.0,
+    // Fuliza overdraft (only populated when Fuliza transactions detected)
+    val hasFuliza: Boolean = false,
+    val fulizaOutstandingBalance: Double = 0.0,
+    val fulizaLimit: Double = 0.0,
+    val fulizaTotalBorrowed: Double = 0.0,
+    val fulizaDueDate: String = ""
 )
 
 data class BudgetInsights(
@@ -128,6 +144,7 @@ class PesaViewModel(
     val promoMessage = _promoMessage.asStateFlow()
 
     // ── Notification preferences ─────────────────────────────────────────────
+    val masterNotifEnabled = MutableStateFlow(false)
     val billAlertsEnabled = MutableStateFlow(true)
     val budgetAlertsEnabled = MutableStateFlow(true)
     val goalRemindersEnabled = MutableStateFlow(false)
@@ -195,10 +212,16 @@ class PesaViewModel(
     private fun drainWorkerNotifications(prefs: android.content.SharedPreferences) {
         val raw = prefs.getString("pending_in_app_notifs", "") ?: ""
         if (raw.isBlank()) return
+        val existing = _notifications.value.map { it.message }.toSet()
         val incoming = raw.split("\n")
+            .map { it.trim() }
             .filter { it.isNotBlank() }
+            .distinct()
+            .filter { it !in existing }
             .map { AppNotification(message = it) }
-        _notifications.value = incoming + _notifications.value
+        if (incoming.isNotEmpty()) {
+            _notifications.value = incoming + _notifications.value
+        }
         prefs.edit().remove("pending_in_app_notifs").apply()
     }
 
@@ -247,8 +270,16 @@ class PesaViewModel(
             .apply()
     }
 
+    fun setMasterNotifEnabled(enabled: Boolean, context: android.content.Context) {
+        masterNotifEnabled.value = enabled
+        context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
+            .putBoolean("notif_master_enabled", enabled)
+            .apply()
+    }
+
     private fun loadNotificationPrefs(context: android.content.Context) {
         val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+        masterNotifEnabled.value = prefs.getBoolean("notif_master_enabled", false)
         billAlertsEnabled.value = prefs.getBoolean("notif_bill_alerts", true)
         budgetAlertsEnabled.value = prefs.getBoolean("notif_budget_alerts", true)
         goalRemindersEnabled.value = prefs.getBoolean("notif_goal_reminders", false)
@@ -290,6 +321,7 @@ class PesaViewModel(
 
     // ── Notifications (in-app) ───────────────────────────────────────────────
     fun addNotification(message: String) {
+        if (_notifications.value.any { it.message == message }) return
         _notifications.value = listOf(AppNotification(message = message)) + _notifications.value
     }
 
@@ -327,6 +359,7 @@ class PesaViewModel(
             isFirstSync.value = !hasSyncedBefore
 
             val transactionsList = mutableListOf<Transaction>()
+            val pendingFulizaEnrichments = mutableMapOf<String, Triple<Double, String?, Double>>() // ref → (outstanding, dueDate, accessFee)
             try {
                 val existingTransactions = repository.allTransactions.first()
                 val existingRefs = existingTransactions.map { "${it.remoteRef}_${it.isFeeTransaction}" }.toSet()
@@ -377,7 +410,7 @@ class PesaViewModel(
                             val timestamp = cursor.getLong(dateIndex)
                             if (timestamp > latestTimestamp) latestTimestamp = timestamp
 
-                            val extractedTransactions = parseMpesaSms(body, timestamp, customRules)
+                            val extractedTransactions = parseMpesaSms(body, timestamp, customRules, pendingFulizaEnrichments)
                             for (transaction in extractedTransactions) {
                                 val uniqueKey = "${transaction.remoteRef}_${transaction.isFeeTransaction}"
                                 if (existingRefs.contains(uniqueKey)) continue
@@ -404,8 +437,32 @@ class PesaViewModel(
                 // Update the flag so a repeat call in the same session is treated as subsequent.
                 isFirstSync.value = false
 
+                // Apply Fuliza enrichments to in-memory list before DB insert.
+                // This fixes the timing bug: companion SMS fires enrichFulizaTransaction
+                // before insertTransactions, so the UPDATE finds zero rows.
+                if (pendingFulizaEnrichments.isNotEmpty()) {
+                    for (i in transactionsList.indices) {
+                        val enrichment = pendingFulizaEnrichments[transactionsList[i].remoteRef]
+                        if (enrichment != null && !transactionsList[i].isFeeTransaction) {
+                            transactionsList[i] = transactionsList[i].copy(
+                                fulizaOutstandingBalance = enrichment.first,
+                                fulizaDueDate = enrichment.second,
+                                fee = enrichment.third
+                            )
+                        }
+                    }
+                }
+
                 if (transactionsList.isNotEmpty()) {
                     repository.insertTransactions(transactionsList)
+
+                    // Apply enrichments to DB for transactions from a PREVIOUS sync (cross-batch case).
+                    val newRefs = transactionsList.map { it.remoteRef }.toSet()
+                    for ((ref, enrichment) in pendingFulizaEnrichments) {
+                        if (ref !in newRefs) {
+                            repository.enrichFulizaTransaction(ref, enrichment.first, enrichment.second, enrichment.third)
+                        }
+                    }
 
                     // Auto-match newly synced transactions against tracked bills
                     val currentBills = repository.allBills.first()
@@ -459,22 +516,164 @@ class PesaViewModel(
         val accountRef: String?
     )
 
-    private suspend fun parseMpesaSms(body: String, timestamp: Long, customRules: List<com.pesalytics.model.CustomRule>): List<Transaction> {
+    private suspend fun parseMpesaSms(
+        body: String,
+        timestamp: Long,
+        customRules: List<com.pesalytics.model.CustomRule>,
+        pendingEnrichments: MutableMap<String, Triple<Double, String?, Double>>
+    ): List<Transaction> {
         val results = mutableListOf<Transaction>()
 
-        // Two-pass Fuliza enrichment: detect outstanding-balance SMS and enrich the original transaction
+        // Fuliza companion SMS: captures outstanding balance, access fee, and due date.
+        // Stores in pendingEnrichments map — applied to the paired transaction after all SMS are parsed,
+        // fixing the timing bug where enrichFulizaTransaction fired before insertTransactions.
         if (body.contains("Total Fuliza M-PESA outstanding amount is", ignoreCase = true)) {
             val outstandingRegex = Regex(
-                """([A-Z0-9]+).*?Total Fuliza M-PESA outstanding amount is Ksh([\d,]+\.\d{2}).*?Due on (\d{1,2}/\d{1,2}/\d{4})""",
+                """([A-Z0-9]+).*?Fuliza M-PESA amount is Ksh\s*([\d,]+\.\d{2}).*?Access Fee charged Ksh\s*([\d,]+\.\d{2}).*?Total Fuliza M-PESA outstanding amount is Ksh([\d,]+\.\d{2}).*?[Dd]ue on (\d{1,2}/\d{1,2}/\d{2,4})""",
                 setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
             )
             outstandingRegex.find(body)?.let { match ->
                 val ref = match.groupValues[1]
-                val outstandingBalance = match.groupValues[2].replace(",", "").toDoubleOrNull() ?: 0.0
-                val dueDate = match.groupValues[3]
-                repository.enrichFulizaTransaction(ref, outstandingBalance, dueDate)
+                val accessFee = match.groupValues[3].replace(",", "").toDoubleOrNull() ?: 0.0
+                val outstandingBalance = match.groupValues[4].replace(",", "").toDoubleOrNull() ?: 0.0
+                val dueDate = match.groupValues[5]
+                pendingEnrichments[ref] = Triple(outstandingBalance, dueDate, accessFee)
             }
-            return results // empty — don't create a duplicate transaction
+            return results // empty — no duplicate transaction for the companion SMS
+        }
+
+        // === Fuliza repayment ("has been used to fully/partially pay your outstanding Fuliza M-PESA") ===
+        if (body.contains("has been used to", ignoreCase = true) &&
+            body.contains("pay your outstanding Fuliza", ignoreCase = true)) {
+            val fulizaRepayRegex = Regex(
+                """([A-Z0-9]+)\s+Confirmed\.\s+Ksh\s*([\d,]+\.\d{2})\s+from your M-PESA has been used to (?:fully|partially) pay your outstanding Fuliza M-PESA\.?\s*(?:Your )?[Aa]vailable Fuliza M-PESA limit is Ksh\s*([\d,]+\.\d{2})\.?\s*Your M-PESA balance is\s*(?:Ksh\s*)?([\d,]+\.?\d{0,2})\.?""",
+                RegexOption.IGNORE_CASE
+            )
+            fulizaRepayRegex.find(body)?.let { m ->
+                val receipt = m.groupValues[1]
+                val amount = m.groupValues[2].replace(",", "").toDoubleOrNull() ?: 0.0
+                val availableLimit = m.groupValues[3].replace(",", "").toDoubleOrNull() ?: 0.0
+                val mpesaBalance = m.groupValues[4].replace(",", "").toDoubleOrNull() ?: 0.0
+                results.add(Transaction(
+                    amount = amount,
+                    payee = "Fuliza M-PESA",
+                    timestamp = timestamp,
+                    type = TransactionType.FULIZA,
+                    remoteRef = receipt,
+                    category = if (body.contains("fully pay", ignoreCase = true))
+                        "Fuliza Full Repayment"
+                    else
+                        "Fuliza Partial Repayment",
+                    fee = 0.0,
+                    balanceAfter = mpesaBalance,
+                    fulizaLimitAfter = availableLimit,
+                    fulizaOutstandingBalance = 0.0,
+                    originalSms = body
+                ))
+                return results
+            }
+        }
+
+        // === Mshwari transfer — insert before RECEIVE_MONEY to avoid misclassification ===
+        if (body.contains("M-Shwari", ignoreCase = true) && body.contains("transferred", ignoreCase = true)) {
+            val mshwariWithdrawRegex = Regex(
+                """([A-Z0-9]+)\s+Confirmed\.Ksh([\d,]+\.\d{2})\s+transferred from M-Shwari account on (\d{1,2}/\d{1,2}/\d{2,4}) at (\d{1,2}:\d{2}\s*[APM]{2})\.\s*M-Shwari balance is Ksh([\d,]+\.\d{2})\s*\.?\s*M-PESA balance is Ksh([\d,]+\.\d{2})""",
+                RegexOption.IGNORE_CASE
+            )
+            val mshwariDepositRegex = Regex(
+                """([A-Z0-9]+)\s+Confirmed\.Ksh([\d,]+\.\d{2})\s+transferred to M-Shwari account on (\d{1,2}/\d{1,2}/\d{2,4}) at (\d{1,2}:\d{2}\s*[APM]{2})\.\s*M-PESA balance is Ksh([\d,]+\.\d{2})\s*\.?\s*New M-Shwari saving account balance is Ksh([\d,]+\.\d{2})""",
+                RegexOption.IGNORE_CASE
+            )
+            mshwariWithdrawRegex.find(body)?.let { m ->
+                val amount = m.groupValues[2].replace(",", "").toDoubleOrNull() ?: 0.0
+                val mshwariBalance = m.groupValues[5].replace(",", "").toDoubleOrNull() ?: 0.0
+                val mpesaBalance = m.groupValues[6].replace(",", "").toDoubleOrNull() ?: 0.0
+                results.add(Transaction(
+                    amount = amount, payee = "M-Shwari", timestamp = timestamp,
+                    type = TransactionType.MSHWARI_TRANSFER, remoteRef = m.groupValues[1],
+                    category = "Mshwari Withdrawal", fee = 0.0,
+                    balanceAfter = mpesaBalance, mshwariBalanceAfter = mshwariBalance, originalSms = body
+                ))
+                return results
+            }
+            mshwariDepositRegex.find(body)?.let { m ->
+                val amount = m.groupValues[2].replace(",", "").toDoubleOrNull() ?: 0.0
+                val mpesaBalance = m.groupValues[5].replace(",", "").toDoubleOrNull() ?: 0.0
+                val mshwariBalance = m.groupValues[6].replace(",", "").toDoubleOrNull() ?: 0.0
+                results.add(Transaction(
+                    amount = amount, payee = "M-Shwari", timestamp = timestamp,
+                    type = TransactionType.MSHWARI_TRANSFER, remoteRef = m.groupValues[1],
+                    category = "Mshwari Deposit", fee = 0.0,
+                    balanceAfter = mpesaBalance, mshwariBalanceAfter = mshwariBalance, originalSms = body
+                ))
+                return results
+            }
+        }
+
+        // === Pochi la Biashara (business wallet owner) ===
+        // P2/P3: internal M-PESA ↔ Pochi transfers ("has been moved from your X account to your Y account")
+        if (body.contains("has been moved from your", ignoreCase = true) &&
+            body.contains("account to your", ignoreCase = true)) {
+            val pochiTransferRegex = Regex(
+                """([A-Z0-9]+)\s+Confirmed,\s+Ksh([\d,]+\.\d{2})\s+has been moved from your (M-PESA|Pochi|business) account to your (M-PESA|Pochi|business) account on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.+\s*New (?:business|Pochi) balance is Ksh([\d,]+\.\d{2})\.?\s*New M-PESA balance is Ksh([\d,]+\.\d{2})""",
+                RegexOption.IGNORE_CASE
+            )
+            pochiTransferRegex.find(body)?.let { m ->
+                val sourceAccount = m.groupValues[3]
+                val amount = m.groupValues[2].replace(",", "").toDoubleOrNull() ?: 0.0
+                val pochiBalance = m.groupValues[7].replace(",", "").toDoubleOrNull() ?: 0.0
+                val mpesaBalance = m.groupValues[8].replace(",", "").toDoubleOrNull() ?: 0.0
+                val category = if (sourceAccount.equals("M-PESA", ignoreCase = true)) "Pochi Deposit" else "Pochi Withdrawal"
+                results.add(Transaction(
+                    amount = amount, payee = "Pochi la Biashara", timestamp = timestamp,
+                    type = TransactionType.POCHI_TRANSFER, remoteRef = m.groupValues[1],
+                    category = category, fee = 0.0,
+                    balanceAfter = mpesaBalance, pochiBalanceAfter = pochiBalance, originalSms = body
+                ))
+                return results
+            }
+        }
+
+        // P4: customer payment received into Pochi ("You have received...New Pochi balance is")
+        if (body.contains("New Pochi balance is", ignoreCase = true) &&
+            body.contains("You have received", ignoreCase = true)) {
+            val pochiReceiveRegex = Regex(
+                """([A-Z0-9]+)\s+Confirmed\.You have received Ksh([\d,]+\.\d{2})\s+from\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\s+New Pochi balance is Ksh([\d,]+\.\d{2})""",
+                RegexOption.IGNORE_CASE
+            )
+            pochiReceiveRegex.find(body)?.let { m ->
+                val amount = m.groupValues[2].replace(",", "").toDoubleOrNull() ?: 0.0
+                val payer = m.groupValues[3].trim().replace(Regex("\\s+"), " ")
+                val pochiBalance = m.groupValues[6].replace(",", "").toDoubleOrNull() ?: 0.0
+                results.add(Transaction(
+                    amount = amount, payee = payer, timestamp = timestamp,
+                    type = TransactionType.POCHI_RECEIVE, remoteRef = m.groupValues[1],
+                    category = "Pochi", fee = 0.0,
+                    balanceAfter = 0.0, pochiBalanceAfter = pochiBalance, originalSms = body
+                ))
+                return results
+            }
+        }
+
+        // P1: send from business wallet to a person ("Confirmed. Ksh...sent to...New business balance is")
+        if (body.contains("New business balance is", ignoreCase = true) &&
+            body.contains("sent to", ignoreCase = true)) {
+            val pochiSendRegex = Regex(
+                """([A-Z0-9]+)\s+Confirmed\.\s+Ksh([\d,]+\.\d{2})\s+sent to\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.\s*New business balance is Ksh([\d,]+\.\d{2})""",
+                RegexOption.IGNORE_CASE
+            )
+            pochiSendRegex.find(body)?.let { m ->
+                val amount = m.groupValues[2].replace(",", "").toDoubleOrNull() ?: 0.0
+                val payee = m.groupValues[3].trim()
+                val pochiBalance = m.groupValues[6].replace(",", "").toDoubleOrNull() ?: 0.0
+                results.add(Transaction(
+                    amount = amount, payee = payee, timestamp = timestamp,
+                    type = TransactionType.POCHI, remoteRef = m.groupValues[1],
+                    category = "Pochi", fee = 0.0,
+                    balanceAfter = 0.0, pochiBalanceAfter = pochiBalance, originalSms = body
+                ))
+                return results
+            }
         }
 
         // Secondary Fuliza Overdraft Match
@@ -669,10 +868,75 @@ class PesaViewModel(
                     it.type != TransactionType.RECEIVE_MONEY &&
                     it.type != TransactionType.MANUAL_INCOME &&
                     it.type != TransactionType.MANUAL_TRANSFER &&
+                    it.type != TransactionType.MSHWARI_TRANSFER &&
+                    it.type != TransactionType.POCHI_TRANSFER &&
+                    it.type != TransactionType.POCHI_RECEIVE &&
+                    it.type != TransactionType.FULIZA &&
                     !it.isFeeTransaction
             }
             .groupBy { it.category }
             .mapValues { e -> e.value.sumOf { it.amount } }
+
+        // Mshwari sub-account state (all-time wallet view)
+        val mshwariTxns = transactions.filter { it.type == TransactionType.MSHWARI_TRANSFER }
+        val hasMshwari = mshwariTxns.isNotEmpty()
+        val mshwariBalance = mshwariTxns.maxByOrNull { it.timestamp }?.mshwariBalanceAfter ?: 0.0
+        val mshwariTotalSaved = mshwariTxns.filter { it.category == "Mshwari Deposit" }.sumOf { it.amount }
+        val mshwariTotalWithdrawn = mshwariTxns.filter { it.category == "Mshwari Withdrawal" }.sumOf { it.amount }
+
+        // Pochi business wallet state (all-time wallet view)
+        val pochiTxns = transactions.filter {
+            it.type == TransactionType.POCHI_RECEIVE || it.type == TransactionType.POCHI_TRANSFER
+        }
+        val hasPochi = pochiTxns.isNotEmpty()
+        val pochiBalance = pochiTxns.maxByOrNull { it.timestamp }?.pochiBalanceAfter ?: 0.0
+        val pochiTotalReceived = pochiTxns.filter { it.type == TransactionType.POCHI_RECEIVE }.sumOf { it.amount }
+        val pochiTotalSent = pochiTxns.filter { it.category == "Pochi Withdrawal" }.sumOf { it.amount }
+
+        // Fuliza overdraft state — read from most recent Fuliza SMS, no limit arithmetic for full repayments
+        val allFulizaTxns = transactions.filter { it.type == TransactionType.FULIZA }
+        val hasFuliza = allFulizaTxns.isNotEmpty() || transactions.any { it.fulizaOutstandingBalance > 0 }
+
+        val allRepayments = allFulizaTxns.filter {
+            it.category == "Fuliza Full Repayment" ||
+            it.category == "Fuliza Partial Repayment" ||
+            it.category == "Fuliza Repayment" // backward compat for data from pre-fix builds
+        }
+        val fullRepayments = allFulizaTxns.filter { it.category == "Fuliza Full Repayment" }
+        // Total limit from full repayments only (available == total on a full repayment, so reliable).
+        // Fall back to old "Fuliza Repayment" records for users upgrading from pre-fix data.
+        val fulizaTotalLimit = fullRepayments.maxOfOrNull { it.fulizaLimitAfter }
+            ?: allFulizaTxns.filter { it.category == "Fuliza Repayment" }.maxOfOrNull { it.fulizaLimitAfter }
+            ?: 0.0
+
+        // Usage txns: original SEND_MONEY/PAYBILL/etc. enriched with companion SMS outstanding
+        val fulizaUsageTxns = transactions.filter { it.fulizaOutstandingBalance > 0 }
+
+        val latestRepayment = allRepayments.maxByOrNull { it.timestamp }
+        val latestUsageTxn  = fulizaUsageTxns.maxByOrNull { it.timestamp }
+        val latestRepaymentTime = latestRepayment?.timestamp ?: 0L
+        val latestUsageTime     = latestUsageTxn?.timestamp  ?: 0L
+
+        val fulizaOutstandingBalance = when {
+            // Usage companion SMS is most recent → read outstanding directly, no math needed
+            latestUsageTime > latestRepaymentTime ->
+                latestUsageTxn?.fulizaOutstandingBalance ?: 0.0
+            // Full repayment is most recent → outstanding = 0, no math
+            latestRepayment?.category == "Fuliza Full Repayment" ||
+            (latestRepayment?.category == "Fuliza Repayment" && fulizaTotalLimit > 0 &&
+             latestRepayment.fulizaLimitAfter >= fulizaTotalLimit) ->
+                0.0
+            // Partial repayment most recent AND total limit known → compute outstanding
+            fulizaTotalLimit > 0 ->
+                (fulizaTotalLimit - (latestRepayment?.fulizaLimitAfter ?: 0.0)).coerceAtLeast(0.0)
+            // No repayment ever — fall back to latest usage outstanding
+            else ->
+                latestUsageTxn?.fulizaOutstandingBalance ?: 0.0
+        }
+        val fulizaTotalBorrowed = allFulizaTxns.filter {
+            it.category != "Fuliza Full Repayment" && it.category != "Fuliza Partial Repayment" && it.category != "Fuliza Repayment"
+        }.sumOf { it.amount }
+        val fulizaDueDate = fulizaUsageTxns.maxByOrNull { it.timestamp }?.fulizaDueDate ?: ""
 
         HomeUiState(
             transactions = transactions,
@@ -684,7 +948,20 @@ class PesaViewModel(
             currentBudgetLimit = globalBudget?.limitAmount ?: 0.0,
             hasBudget = globalBudget != null,
             budgets = budgets,
-            categorySpent = categorySpent
+            categorySpent = categorySpent,
+            hasMshwari = hasMshwari,
+            mshwariBalance = mshwariBalance,
+            mshwariTotalSaved = mshwariTotalSaved,
+            mshwariTotalWithdrawn = mshwariTotalWithdrawn,
+            hasPochi = hasPochi,
+            pochiBalance = pochiBalance,
+            pochiTotalReceived = pochiTotalReceived,
+            pochiTotalSent = pochiTotalSent,
+            hasFuliza = hasFuliza,
+            fulizaOutstandingBalance = fulizaOutstandingBalance,
+            fulizaLimit = fulizaTotalLimit,
+            fulizaTotalBorrowed = fulizaTotalBorrowed,
+            fulizaDueDate = fulizaDueDate ?: ""
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
@@ -714,7 +991,11 @@ class PesaViewModel(
             val expense = monthTxns.filter {
                 it.type != TransactionType.RECEIVE_MONEY &&
                     it.type != TransactionType.MANUAL_INCOME &&
-                    it.type != TransactionType.MANUAL_TRANSFER
+                    it.type != TransactionType.MANUAL_TRANSFER &&
+                    it.type != TransactionType.MSHWARI_TRANSFER &&
+                    it.type != TransactionType.POCHI_TRANSFER &&
+                    it.type != TransactionType.POCHI_RECEIVE &&
+                    it.type != TransactionType.FULIZA
             }.sumOf { it.amount }
             savingsByMonth.add(labelFmt.format(Date(start)) to (income - expense))
         }
