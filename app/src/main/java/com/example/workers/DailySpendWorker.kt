@@ -17,19 +17,19 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
         val repository = (applicationContext as PesalyticsApplication).repository
         val notif = NotificationHelper(applicationContext)
         val prefs = applicationContext.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
-        val frequency = prefs.getString("report_frequency", "Daily") ?: "Daily"
 
-        // ── Yesterday's spending summary (only for Daily frequency) ─────────
-        if (frequency == "Daily") {
+        // ── Yesterday's spending summary ─────────────────────────────────────
+        run {
             val cal = Calendar.getInstance().apply {
                 add(Calendar.DAY_OF_YEAR, -1)
                 set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             }
             val startYesterday = cal.timeInMillis
-            cal.set(Calendar.HOUR_OF_DAY, 23); cal.set(Calendar.MINUTE, 59)
-            cal.set(Calendar.SECOND, 59); cal.set(Calendar.MILLISECOND, 999)
-            val endYesterday = cal.timeInMillis
+            val endYesterday = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
 
             val expense = repository.getDailyExpense(startYesterday, endYesterday) ?: 0.0
             if (expense > 0) {
@@ -38,7 +38,15 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
                     .filter { it.timestamp in startYesterday..endYesterday && !it.isFeeTransaction }
                 val txnCount = yesterdayTxns.size
                 val topCat = yesterdayTxns
-                    .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
+                    .filter {
+                        it.type != TransactionType.RECEIVE_MONEY &&
+                        it.type != TransactionType.MANUAL_INCOME &&
+                        it.type != TransactionType.MANUAL_TRANSFER &&
+                        it.type != TransactionType.FULIZA &&
+                        it.type != TransactionType.MSHWARI_TRANSFER &&
+                        it.type != TransactionType.POCHI_TRANSFER &&
+                        it.type != TransactionType.POCHI_RECEIVE
+                    }
                     .groupBy { it.category ?: "Other" }
                     .mapValues { e -> e.value.sumOf { it.amount } }
                     .maxByOrNull { it.value }?.key
@@ -60,7 +68,7 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
             .filter { !it.isPaid && it.nextDueDate in now..(now + threeDays) }
 
         if (dueSoon.isNotEmpty()) {
-            val summary = dueSoon.joinToString("\n") { bill ->
+            val summary = dueSoon.joinToString(" • ") { bill ->
                 val days = ((bill.nextDueDate - now) / (1000 * 60 * 60 * 24)).toInt()
                 val when_ = if (days == 0) "TODAY" else if (days == 1) "TOMORROW" else "in $days days"
                 "${bill.name} due $when_ — KES ${"%.2f".format(bill.amount)}"

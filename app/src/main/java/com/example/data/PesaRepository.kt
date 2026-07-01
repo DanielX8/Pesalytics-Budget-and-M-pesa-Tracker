@@ -92,6 +92,23 @@ class PesaRepository(
         billDao.updateBill(bill)
     }
 
+    suspend fun getCustomRulesOnce(): List<CustomRule> = customRuleDao.getCustomRulesOnce()
+
+    suspend fun reanalyseMerchantCategories(customRules: List<CustomRule>) {
+        val transactions = transactionDao.getAllTransactionsOnce()
+        for (transaction in transactions) {
+            if (transaction.isFeeTransaction) continue
+            val newCategory = customRules.find {
+                transaction.payee.contains(it.payeePattern, ignoreCase = true)
+            }?.mappedCategory
+                ?: MerchantCategoryEngine.categorize(transaction.payee)
+                ?: continue
+            if (newCategory != transaction.category) {
+                transactionDao.updateTransactionCategory(transaction.id, newCategory)
+            }
+        }
+    }
+
     /** Wipes every table — used by the "Delete All Data" action. */
     suspend fun deleteAllData() {
         transactionDao.deleteAllTransactions()

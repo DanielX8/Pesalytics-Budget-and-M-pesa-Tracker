@@ -23,7 +23,7 @@ private val DarkColorScheme = darkColorScheme(
     onTertiary = Color.White,
     onBackground = TextPrimary,
     onSurface = TextPrimary,
-    onSurfaceVariant = TextPrimary,
+    onSurfaceVariant = TextSecondary,
     error = ExpenseRed
 )
 

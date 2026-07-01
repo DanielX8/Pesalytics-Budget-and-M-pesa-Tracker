@@ -55,8 +55,17 @@ interface TransactionDao {
     @Query("UPDATE transactions SET fulizaOutstandingBalance = :outstandingBalance, fulizaDueDate = :dueDate, fee = :accessFee WHERE remoteRef = :ref AND isFeeTransaction = 0")
     suspend fun enrichFulizaTransaction(ref: String, outstandingBalance: Double, dueDate: String?, accessFee: Double = 0.0)
 
-    @Query("SELECT SUM(amount) FROM transactions WHERE type NOT IN ('RECEIVE_MONEY', 'MANUAL_INCOME', 'MANUAL_TRANSFER') AND timestamp >= :startOfDay AND timestamp <= :endOfDay")
+    @Query("""
+        SELECT SUM(amount) FROM transactions
+        WHERE type NOT IN ('RECEIVE_MONEY', 'MANUAL_INCOME', 'MANUAL_TRANSFER',
+                           'MSHWARI_TRANSFER', 'POCHI_TRANSFER', 'POCHI_RECEIVE', 'FULIZA')
+        AND isFeeTransaction = 0
+        AND timestamp >= :startOfDay AND timestamp < :endOfDay
+    """)
     suspend fun getDailyExpense(startOfDay: Long, endOfDay: Long): Double?
+
+    @Query("SELECT * FROM transactions")
+    suspend fun getAllTransactionsOnce(): List<Transaction>
 
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
@@ -69,6 +78,9 @@ interface CustomRuleDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRule(rule: CustomRule)
+
+    @Query("SELECT * FROM custom_rules")
+    suspend fun getCustomRulesOnce(): List<CustomRule>
 
     @Query("DELETE FROM custom_rules")
     suspend fun deleteAllRules()

@@ -53,6 +53,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
@@ -79,6 +80,7 @@ private val currencyFormat = java.text.NumberFormat.getInstance().apply {
     maximumFractionDigits = 2
 }
 private val timeFormat = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+private val dateTimeFormat = java.text.SimpleDateFormat("dd MMM · HH:mm", java.util.Locale.getDefault())
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -519,12 +521,13 @@ fun DashboardScreen(
             uiState.recentTransactions.groupBy {
                 val cal = Calendar.getInstance().apply { timeInMillis = it.timestamp }
                 val currentCal = Calendar.getInstance()
+                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
                 val format = SimpleDateFormat("dd MMM", Locale.getDefault())
                 val dayFormat = SimpleDateFormat("EEEE", Locale.getDefault())
-                
+
                 when {
                     cal.get(Calendar.YEAR) == currentCal.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == currentCal.get(Calendar.DAY_OF_YEAR) -> "TODAY"
-                    cal.get(Calendar.YEAR) == currentCal.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == currentCal.get(Calendar.DAY_OF_YEAR) - 1 -> "YESTERDAY"
+                    cal.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) && cal.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR) -> "YESTERDAY"
                     currentCal.get(Calendar.DAY_OF_YEAR) - cal.get(Calendar.DAY_OF_YEAR) < 7 -> dayFormat.format(cal.time).uppercase(Locale.getDefault())
                     else -> format.format(cal.time).uppercase(Locale.getDefault())
                 }
@@ -558,9 +561,13 @@ fun DashboardScreen(
             item(key = "month-selector") {
                 val months = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
                 val selectedMonthIndex by viewModel.selectedMonthIndex.collectAsStateWithLifecycle()
+                val selectedYear by viewModel.selectedYear.collectAsStateWithLifecycle()
                 val selectedMonth = months.getOrNull(selectedMonthIndex) ?: months.first()
                 val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = maxOf(0, selectedMonthIndex - 1))
                 val monthAccent = interactiveGreen
+                val nowCalendar = java.util.Calendar.getInstance()
+                val realCurrentYear = nowCalendar.get(java.util.Calendar.YEAR)
+                val realCurrentMonth = nowCalendar.get(java.util.Calendar.MONTH)
 
                 androidx.compose.foundation.lazy.LazyRow(
                     state = lazyListState,
@@ -570,12 +577,17 @@ fun DashboardScreen(
                     items(months.size) { index ->
                         val month = months[index]
                         val isSelected = index == selectedMonthIndex
+                        // A chip is only "future" when it belongs to the real current year
+                        // and its month is after the real current month — same-year past
+                        // months and any month in a prior year remain selectable.
+                        val isFuture = selectedYear == realCurrentYear && index > realCurrentMonth
                         Box(
                             modifier = Modifier
                                 .shadow(2.dp, RoundedCornerShape(24.dp))
                                 .clip(RoundedCornerShape(24.dp))
                                 .background(if (isSelected) monthAccent else MaterialTheme.colorScheme.surface)
-                                .clickable { viewModel.setSelectedMonth(index) }
+                                .alpha(if (isFuture) 0.4f else 1f)
+                                .clickable(enabled = !isFuture) { viewModel.setSelectedMonth(index) }
                                 .padding(horizontal = 20.dp, vertical = 10.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -1141,7 +1153,8 @@ fun TransactionDetailsSheet(
     transaction: Transaction,
     onDismiss: () -> Unit,
     onEditCategory: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    onViewPayeeHistory: (() -> Unit)? = null
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
@@ -1309,6 +1322,16 @@ fun TransactionDetailsSheet(
                     shape = RoundedCornerShape(12.dp)
                 )
             }
+
+            if (onViewPayeeHistory != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = onViewPayeeHistory,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("View all transactions from ${transaction.payee}")
+                }
+            }
         }
     }
 }
@@ -1349,7 +1372,7 @@ fun getIconForTransaction(transaction: Transaction): androidx.compose.ui.graphic
 }
 
 @Composable
-fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null) {
+fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null, onPayeeTap: (() -> Unit)? = null, showDate: Boolean = false) {
     // Skip rendering fee-only records (legacy data from before the fix)
     if (transaction.isFeeTransaction) return
 
@@ -1374,12 +1397,12 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null) {
         ) {
             Icon(imageVector = icon, contentDescription = null, tint = color)
         }
-        
+
         Spacer(modifier = Modifier.width(16.dp))
-        
-        val timeStr = timeFormat.format(Date(transaction.timestamp))
+
+        val timeStr = if (showDate) dateTimeFormat.format(Date(transaction.timestamp)) else timeFormat.format(Date(transaction.timestamp))
         val typeStr = transaction.type.name.replace("_", " ").lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-        
+
         val subtitleStr = buildString {
             append(typeStr)
             if (transaction.category.isNotEmpty() && !transaction.category.equals("Other", ignoreCase = true) && !transaction.category.equals(typeStr, ignoreCase = true)) {
@@ -1389,7 +1412,13 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null) {
         }
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = transaction.payee, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(
+                text = transaction.payee,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                modifier = if (onPayeeTap != null) Modifier.clickable { onPayeeTap() } else Modifier
+            )
             Spacer(modifier = Modifier.height(2.dp))
             Text(text = subtitleStr, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (transaction.usedFulizaAmount > 0.0) {

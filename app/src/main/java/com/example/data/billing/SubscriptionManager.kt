@@ -352,12 +352,15 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
         }
 
         val hash = sha256(code)
-        val redeemed = prefs.getStringSet("redeemed_codes", emptySet()) ?: emptySet()
-        if (hash in redeemed) return PromoResult.AlreadyRedeemed
-        val entry = codeRegistry[hash] ?: return PromoResult.Invalid
-        prefs.edit().putStringSet("redeemed_codes", redeemed + hash).apply()
-        grantFromPromo(entry.grant)
-        return PromoResult.Success(entry.grant, entry.label)
+        val result: PromoResult = synchronized(this) {
+            val redeemed = prefs.getStringSet("redeemed_codes", emptySet()) ?: emptySet()
+            if (hash in redeemed) return@synchronized PromoResult.AlreadyRedeemed
+            val entry = codeRegistry[hash] ?: return@synchronized PromoResult.Invalid
+            prefs.edit().putStringSet("redeemed_codes", redeemed + hash).apply()
+            PromoResult.Success(entry.grant, entry.label)
+        }
+        if (result is PromoResult.Success) grantFromPromo(result.grant)
+        return result
     }
 
     private fun sha256(input: String): String {

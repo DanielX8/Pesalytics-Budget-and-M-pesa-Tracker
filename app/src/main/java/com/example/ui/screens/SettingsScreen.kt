@@ -82,6 +82,9 @@ fun SettingsScreen(
     val goalRemindersEnabled by viewModel.goalRemindersEnabled.collectAsStateWithLifecycle()
     val highSpendingAlertsEnabled by viewModel.highSpendingAlertsEnabled.collectAsStateWithLifecycle()
     val smartAlertsEnabled by viewModel.smartAlertsEnabled.collectAsStateWithLifecycle()
+    val dailySummaryEnabled by viewModel.dailySummaryEnabled.collectAsStateWithLifecycle()
+    val weeklyReportEnabled by viewModel.weeklyReportEnabled.collectAsStateWithLifecycle()
+    val monthlyReportEnabled by viewModel.monthlyReportEnabled.collectAsStateWithLifecycle()
 
     val savedFrequency = context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
         .getString("report_frequency", "Daily") ?: "Daily"
@@ -90,7 +93,10 @@ fun SettingsScreen(
     val notifPermLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) viewModel.setMasterNotifEnabled(true, context)
+        if (granted) {
+            viewModel.setMasterNotifEnabled(true, context)
+            android.widget.Toast.makeText(context, "Notifications enabled", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
     val onMasterNotifToggle: (Boolean) -> Unit = { enable ->
         if (enable) {
@@ -98,13 +104,17 @@ fun SettingsScreen(
                 val isGranted = ContextCompat.checkSelfPermission(
                     context, Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED
-                if (isGranted) viewModel.setMasterNotifEnabled(true, context)
-                else notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                if (isGranted) {
+                    viewModel.setMasterNotifEnabled(true, context)
+                    android.widget.Toast.makeText(context, "Notifications enabled", android.widget.Toast.LENGTH_SHORT).show()
+                } else notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
                 viewModel.setMasterNotifEnabled(true, context)
+                android.widget.Toast.makeText(context, "Notifications enabled", android.widget.Toast.LENGTH_SHORT).show()
             }
         } else {
             viewModel.setMasterNotifEnabled(false, context)
+            android.widget.Toast.makeText(context, "Notifications disabled", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -295,6 +305,12 @@ fun SettingsScreen(
                         ToggleRow("High Spending Alerts", highSpendingAlertsEnabled, masterNotifEnabled) { viewModel.setNotificationPref("high_spending", it, context) }
                         SettingsDivider()
                         ToggleRow("Smart Alerts", smartAlertsEnabled, masterNotifEnabled) { viewModel.setNotificationPref("smart_alerts", it, context) }
+                        SettingsDivider()
+                        ToggleRow("Daily Spend Summary", dailySummaryEnabled, masterNotifEnabled) { viewModel.setNotificationPref("daily_summary", it, context) }
+                        SettingsDivider()
+                        ToggleRow("Weekly Report", weeklyReportEnabled, masterNotifEnabled) { viewModel.setNotificationPref("weekly_report", it, context) }
+                        SettingsDivider()
+                        ToggleRow("Monthly Report", monthlyReportEnabled, masterNotifEnabled) { viewModel.setNotificationPref("monthly_report", it, context) }
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -338,6 +354,14 @@ fun SettingsScreen(
                                 }
                             }
                         }
+                    }
+                }
+            } }
+
+            item { SettingsSection("DATA TOOLS") {
+                SettingsCard {
+                    SupportListItem(Icons.Rounded.Refresh, "Re-analyse transaction categories", "Apply smart merchant categories to existing transactions") {
+                        viewModel.reanalyseMerchantCategories()
                     }
                 }
             } }

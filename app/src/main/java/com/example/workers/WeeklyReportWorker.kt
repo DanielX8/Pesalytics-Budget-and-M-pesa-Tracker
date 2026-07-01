@@ -14,7 +14,6 @@ class WeeklyReportWorker(appContext: Context, workerParams: WorkerParameters) :
 
     override suspend fun doWork(): Result {
         val prefs = applicationContext.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
-        if (prefs.getString("report_frequency", "Daily") == "Monthly") return Result.success()
 
         val repository = (applicationContext as PesalyticsApplication).repository
         val notif = NotificationHelper(applicationContext)
@@ -37,7 +36,15 @@ class WeeklyReportWorker(appContext: Context, workerParams: WorkerParameters) :
             it.timestamp in prevWeekStart..prevWeekEnd && !it.isFeeTransaction
         }
         val weekExpense = weekTxns
-            .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME && it.type != TransactionType.MANUAL_TRANSFER }
+            .filter {
+                it.type != TransactionType.RECEIVE_MONEY &&
+                it.type != TransactionType.MANUAL_INCOME &&
+                it.type != TransactionType.MANUAL_TRANSFER &&
+                it.type != TransactionType.MSHWARI_TRANSFER &&
+                it.type != TransactionType.POCHI_TRANSFER &&
+                it.type != TransactionType.POCHI_RECEIVE &&
+                it.type != TransactionType.FULIZA
+            }
             .sumOf { it.amount }
         val weekIncome = weekTxns
             .filter { it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME }
@@ -73,7 +80,7 @@ class WeeklyReportWorker(appContext: Context, workerParams: WorkerParameters) :
         if (dueSoon.isNotEmpty()) {
             val total = dueSoon.sumOf { it.amount }
             val names = dueSoon.joinToString(", ") { it.name }
-            notif.showBillAlert("Bills Due This Week", "$names — total KES ${"%.2f".format(total)}")
+            notif.showBillAlert("Bills Due This Week", "$names — total KES ${"%.2f".format(total)}", notifId = 1007)
             appendInAppNotification(prefs, "Bills due this week: $names (KES ${"%.0f".format(total)} total)")
         }
 

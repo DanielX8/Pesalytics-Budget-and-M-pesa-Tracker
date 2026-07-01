@@ -25,7 +25,7 @@ class NotificationHelper(private val context: Context) {
 
     private fun isMasterEnabled(): Boolean =
         context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
-            .getBoolean("notif_master_enabled", false)
+            .getBoolean("notif_master_enabled", true)
 
     private fun areNotificationsPermitted(): Boolean =
         NotificationManagerCompat.from(context).areNotificationsEnabled()
@@ -55,37 +55,37 @@ class NotificationHelper(private val context: Context) {
     /** Budget threshold crossed (80 % / 100 %) */
     fun showBudgetAlert(title: String, message: String) {
         if (!isPrefEnabled("budget_alerts")) return
-        showNotification(ALERTS_CHANNEL_ID, 1001, title, message)
+        showNotification(ALERTS_CHANNEL_ID, 1001, title, message, "budget_planner")
     }
 
     /** Bill due within 3 days */
-    fun showBillAlert(title: String, message: String) {
+    fun showBillAlert(title: String, message: String, notifId: Int = 1002) {
         if (!isPrefEnabled("bill_alerts")) return
-        showNotification(ALERTS_CHANNEL_ID, 1002, title, message)
+        showNotification(ALERTS_CHANNEL_ID, notifId, title, message, "bills")
     }
 
     /** Monthly goal contribution reminder */
-    fun showGoalReminder(title: String, message: String) {
+    fun showGoalReminder(title: String, message: String, notifId: Int = 1003) {
         if (!isPrefEnabled("goal_reminders", default = false)) return
-        showNotification(ALERTS_CHANNEL_ID, 1003, title, message)
+        showNotification(ALERTS_CHANNEL_ID, notifId, title, message, "goals")
     }
 
     /** Daily "yesterday you spent X" summary */
     fun showDailySpendSummary(title: String, message: String) {
-        if (!isPrefEnabled("high_spending")) return
-        showNotification(REPORTS_CHANNEL_ID, 1004, title, message)
+        if (!isPrefEnabled("daily_summary")) return
+        showNotification(REPORTS_CHANNEL_ID, 1004, title, message, "all_transactions")
     }
 
     /** Weekly spending wrap-up */
     fun showWeeklyReport(title: String, message: String) {
-        if (!isPrefEnabled("high_spending")) return
-        showNotification(REPORTS_CHANNEL_ID, 2002, title, message)
+        if (!isPrefEnabled("weekly_report")) return
+        showNotification(REPORTS_CHANNEL_ID, 2002, title, message, "all_transactions")
     }
 
     /** Monthly financial summary */
     fun showMonthlyReport(title: String, message: String) {
-        if (!isPrefEnabled("budget_alerts")) return
-        showNotification(REPORTS_CHANNEL_ID, 2003, title, message)
+        if (!isPrefEnabled("monthly_report")) return
+        showNotification(REPORTS_CHANNEL_ID, 2003, title, message, "all_transactions")
     }
 
     /** Subscription or trial expiry warning (3 days / 1 day / today) */
@@ -97,34 +97,21 @@ class NotificationHelper(private val context: Context) {
             daysLeft == 1 -> "Your $label expires tomorrow."
             else          -> "Your $label expires in $daysLeft days."
         }
-        showNotification(ALERTS_CHANNEL_ID, 1005, "Premium Expiring Soon", message)
+        showNotification(ALERTS_CHANNEL_ID, 1005, "Premium Expiring Soon", message, "settings")
     }
 
-    fun showReportNotification(title: String, message: String) {
+    private fun showNotification(channelId: String, id: Int, title: String, message: String, deepLinkTarget: String = "") {
         if (!isMasterEnabled() || !areNotificationsPermitted()) return
         createNotificationChannels()
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("navigate_to", "report")
+            if (deepLinkTarget.isNotEmpty()) putExtra("navigate_to", deepLinkTarget)
         }
-        val pi = PendingIntent.getActivity(context, 0, intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        NotificationCompat.Builder(context, REPORTS_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(title).setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(pi).setAutoCancel(true)
-            .build()
-            .let { (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(2001, it) }
-    }
-
-    private fun showNotification(channelId: String, id: Int, title: String, message: String) {
-        if (!isMasterEnabled() || !areNotificationsPermitted()) return
-        createNotificationChannels()
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pi = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_IMMUTABLE)
+        val piFlags = if (deepLinkTarget.isNotEmpty())
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        else
+            PendingIntent.FLAG_IMMUTABLE
+        val pi = PendingIntent.getActivity(context, id, intent, piFlags)
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title).setContentText(message)

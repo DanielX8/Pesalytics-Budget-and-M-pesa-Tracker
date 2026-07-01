@@ -5,11 +5,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -40,7 +45,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -81,15 +89,42 @@ private val NavPopExitTransition = slideOutHorizontally(
     animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)
 ) + fadeOut(animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing))
 
+private val TabEnterTransition = fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing))
+private val TabExitTransition = fadeOut(animationSpec = tween(150, easing = FastOutSlowInEasing))
+
+// Payee History: the "View all transactions" item in the transaction bottom sheet should feel
+// like the sheet itself rising up to cover the screen in one continuous motion. Pure translateY,
+// no accompanying fade — a fade on top of the slide finishes on a different timeline than the
+// position animation and reads as a laggy/hazy start instead of an instant, crisp rise. The
+// outgoing screen underneath doesn't animate at all; it just gets covered as the new screen
+// slides over it, so there's no separate "close, then open" step.
+private val PayeeHistoryEnterTransition = slideInVertically(
+    initialOffsetY = { fullHeight -> fullHeight },
+    animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing)
+)
+
+private val PayeeHistoryExitTransition = ExitTransition.None
+
+private val PayeeHistoryPopEnterTransition = EnterTransition.None
+
+private val PayeeHistoryPopExitTransition = slideOutVertically(
+    targetOffsetY = { fullHeight -> fullHeight },
+    animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+)
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val notifDeepLink = intent.getStringExtra("navigate_to")
         setContent {
             val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as PesalyticsApplication
             val notificationHelper = remember { com.pesalytics.notifications.NotificationHelper(app) }
             val factory = remember { PesaViewModelFactory(app.repository, notificationHelper, app.subscriptionManager) }
             val viewModel: PesaViewModel = viewModel(factory = factory)
+            LaunchedEffect(notifDeepLink) {
+                if (notifDeepLink != null) viewModel.pendingDeepLink.value = notifDeepLink
+            }
             
             val themeMode by viewModel.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
             
@@ -115,11 +150,11 @@ class MainActivity : ComponentActivity() {
                     // Capture old-theme background and tap origin before switching
                     overlayColor = if (previousDark) Color(0xFF000000) else Color(0xFFF8F9FA)
                     animOrigin = revealOrigin
-                    revealAnim.snapTo(1f)               // instantly cover the screen
-                    currentRenderDark = targetDarkTheme // Switch the rendering theme NOW that the overlay is up
-                    revealAnim.animateTo(               // then contract to the tap point
-                        targetValue = 0f,
-                        animationSpec = tween(500, easing = FastOutSlowInEasing)
+                    revealAnim.snapTo(0f)               // start with no hole (fully covered)
+                    currentRenderDark = targetDarkTheme // switch theme under the overlay
+                    revealAnim.animateTo(               // expand hole to reveal new theme
+                        targetValue = 1f,
+                        animationSpec = tween(800, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))
                     )
                     previousDark = targetDarkTheme
                 } else {
@@ -129,28 +164,35 @@ class MainActivity : ComponentActivity() {
 
             Box(modifier = Modifier.fillMaxSize()) {
                 MyApplicationTheme(darkTheme = currentRenderDark) {
-                    androidx.compose.material3.ProvideTextStyle(
-                        value = androidx.compose.ui.text.TextStyle(fontFamily = com.pesalytics.ui.theme.SpaceGroteskFontFamily)
-                    ) {
-                        PesalyticsApp(viewModel = viewModel, navController = navController)
-                    }
+                    PesalyticsApp(viewModel = viewModel, navController = navController)
                 }
 
-                // Contracting overlay — visible only during the reveal animation
-                if (revealAnim.value > 0f) {
+                // Expanding reveal overlay — old theme shrinks away as hole grows from tap point
+                if (revealAnim.value < 1f) {
                     val capturedColor = overlayColor
                     val capturedOrigin = animOrigin
-                    Canvas(modifier = Modifier.fillMaxSize()) {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    ) {
+                        drawRect(color = capturedColor)
                         val maxRadius = sqrt(size.width * size.width + size.height * size.height)
                         drawCircle(
-                            color = capturedColor,
+                            color = Color.Black,
                             radius = maxRadius * revealAnim.value,
-                            center = capturedOrigin
+                            center = capturedOrigin,
+                            blendMode = BlendMode.Clear
                         )
                     }
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 
     override fun onStart() {
@@ -173,6 +215,19 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
+    val pendingDeepLink by viewModel.pendingDeepLink.collectAsState()
+    LaunchedEffect(pendingDeepLink) {
+        val target = pendingDeepLink ?: return@LaunchedEffect
+        viewModel.pendingDeepLink.value = null
+        when (target) {
+            "budget_planner"    -> navController.navigate(BudgetPlanner)
+            "bills"             -> navController.navigate(Bills)
+            "goals"             -> navController.navigate(FinancialGoals)
+            "all_transactions"  -> navController.navigate(AllTransactions())
+            "settings"          -> navController.navigate(Settings)
+        }
+    }
+
 
     val isTopLevelDestination = currentDestination?.hierarchy?.any {
         it.hasRoute<Home>() ||
@@ -185,27 +240,38 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
         bottomBar = {
             AnimatedVisibility(
                 visible = isTopLevelDestination,
-                enter = slideInVertically(animationSpec = tween(250, easing = FastOutSlowInEasing)) { it },
-                exit = slideOutVertically(animationSpec = tween(200, easing = FastOutSlowInEasing)) { it }
+                enter = slideInVertically(animationSpec = tween(200, easing = FastOutSlowInEasing)) { it } +
+                        fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing)),
+                exit = slideOutVertically(animationSpec = tween(200, easing = FastOutSlowInEasing)) { it } +
+                        fadeOut(animationSpec = tween(150, easing = FastOutSlowInEasing))
             ) {
                 NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp
                 ) {
                     NavigationBarItem(
-                        icon = { 
+                        icon = {
                             val isSelected = currentDestination?.hierarchy?.any { it.hasRoute<Home>() } == true
-                            Icon(
-                                painter = androidx.compose.ui.res.painterResource(id = if (isSelected) R.drawable.ic_nav_home_filled else R.drawable.ic_nav_home), 
-                                contentDescription = "Home",
-                                modifier = Modifier.size(24.dp)
-                            ) 
+                            AnimatedContent(
+                                targetState = isSelected,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(150))
+                                },
+                                label = "NavIcon"
+                            ) { selected ->
+                                Icon(
+                                    painter = androidx.compose.ui.res.painterResource(id = if (selected) R.drawable.ic_nav_home_filled else R.drawable.ic_nav_home),
+                                    contentDescription = "Home",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         },
                         label = { Text("Home") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Home>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                             indicatorColor = com.pesalytics.ui.theme.AccentGreenDark,
                             selectedIconColor = Color.White,
-                            selectedTextColor = com.pesalytics.ui.theme.HeroGreen,
+                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark,
                             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
@@ -220,20 +286,28 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         }
                     )
                     NavigationBarItem(
-                        icon = { 
-                            val isSelected = currentDestination?.hierarchy?.any { it.route == Analytics::class.qualifiedName } == true
-                            Icon(
-                                imageVector = if (isSelected) Icons.Filled.Analytics else Icons.Outlined.Analytics, 
-                                contentDescription = "Analytics",
-                                modifier = Modifier.size(24.dp)
-                            ) 
+                        icon = {
+                            val isSelected = currentDestination?.hierarchy?.any { it.hasRoute<Analytics>() } == true
+                            AnimatedContent(
+                                targetState = isSelected,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(150))
+                                },
+                                label = "NavIcon"
+                            ) { selected ->
+                                Icon(
+                                    imageVector = if (selected) Icons.Filled.Analytics else Icons.Outlined.Analytics,
+                                    contentDescription = "Analytics",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         },
                         label = { Text("Analytics") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Analytics>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                             indicatorColor = com.pesalytics.ui.theme.AccentGreenDark,
                             selectedIconColor = Color.White,
-                            selectedTextColor = com.pesalytics.ui.theme.HeroGreen,
+                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark,
                             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
@@ -248,20 +322,28 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         }
                     )
                     NavigationBarItem(
-                        icon = { 
+                        icon = {
                             val isSelected = currentDestination?.hierarchy?.any { it.hasRoute<Bills>() } == true
-                            Icon(
-                                painter = androidx.compose.ui.res.painterResource(id = if (isSelected) R.drawable.ic_nav_bills_filled else R.drawable.ic_nav_bills), 
-                                contentDescription = "Bills",
-                                modifier = Modifier.size(24.dp)
-                            ) 
+                            AnimatedContent(
+                                targetState = isSelected,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(150))
+                                },
+                                label = "NavIcon"
+                            ) { selected ->
+                                Icon(
+                                    painter = androidx.compose.ui.res.painterResource(id = if (selected) R.drawable.ic_nav_bills_filled else R.drawable.ic_nav_bills),
+                                    contentDescription = "Bills",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         },
                         label = { Text("Bills") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Bills>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                             indicatorColor = com.pesalytics.ui.theme.AccentGreenDark,
                             selectedIconColor = Color.White,
-                            selectedTextColor = com.pesalytics.ui.theme.HeroGreen,
+                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark,
                             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
@@ -276,20 +358,28 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         }
                     )
                     NavigationBarItem(
-                        icon = { 
+                        icon = {
                             val isSelected = currentDestination?.hierarchy?.any { it.hasRoute<Settings>() } == true
-                            Icon(
-                                painter = androidx.compose.ui.res.painterResource(id = if (isSelected) R.drawable.ic_nav_settings_filled else R.drawable.ic_nav_settings), 
-                                contentDescription = "Settings",
-                                modifier = Modifier.size(24.dp)
-                            ) 
+                            AnimatedContent(
+                                targetState = isSelected,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(150))
+                                },
+                                label = "NavIcon"
+                            ) { selected ->
+                                Icon(
+                                    painter = androidx.compose.ui.res.painterResource(id = if (selected) R.drawable.ic_nav_settings_filled else R.drawable.ic_nav_settings),
+                                    contentDescription = "Settings",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         },
                         label = { Text("Settings") },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute<Settings>() } == true,
                         colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                             indicatorColor = com.pesalytics.ui.theme.AccentGreenDark,
                             selectedIconColor = Color.White,
-                            selectedTextColor = com.pesalytics.ui.theme.HeroGreen,
+                            selectedTextColor = com.pesalytics.ui.theme.AccentGreenDark,
                             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
@@ -342,7 +432,12 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         }
                     )
                 }
-                composable<Home> {
+                composable<Home>(
+                    enterTransition = { TabEnterTransition },
+                    exitTransition = { TabExitTransition },
+                    popEnterTransition = { TabEnterTransition },
+                    popExitTransition = { TabExitTransition }
+                ) {
                     DashboardScreen(
                         viewModel = viewModel,
                         onNavigateToAllTransactions = { navController.navigate(AllTransactions()) },
@@ -352,7 +447,12 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         onNavigateToGoals = { navController.navigate(FinancialGoals) }
                     )
                 }
-                composable<Analytics> {
+                composable<Analytics>(
+                    enterTransition = { TabEnterTransition },
+                    exitTransition = { TabExitTransition },
+                    popEnterTransition = { TabEnterTransition },
+                    popExitTransition = { TabExitTransition }
+                ) {
                     AnalyticsScreen(
                         viewModel = viewModel,
                         onNavigateBack = { navController.popBackStack() },
@@ -361,13 +461,24 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         onNavigateToAllTransactions = { filter -> navController.navigate(AllTransactions(filter)) }
                     )
                 }
-                composable<Bills> {
+                composable<Bills>(
+                    enterTransition = { TabEnterTransition },
+                    exitTransition = { TabExitTransition },
+                    popEnterTransition = { TabEnterTransition },
+                    popExitTransition = { TabExitTransition }
+                ) {
                     BillsScreen(
                         viewModel = viewModel,
+                        navController = navController,
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
-                composable<Settings> {
+                composable<Settings>(
+                    enterTransition = { TabEnterTransition },
+                    exitTransition = { TabExitTransition },
+                    popEnterTransition = { TabEnterTransition },
+                    popExitTransition = { TabExitTransition }
+                ) {
                     SettingsScreen(
                         viewModel = viewModel,
                         onNavigateBack = { navController.popBackStack() },
@@ -396,17 +507,25 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
-                composable<Report> {
-                    ReportScreen(
-                        viewModel = viewModel,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
                 composable<AllTransactions> { backStackEntry ->
                     val dest: AllTransactions = backStackEntry.toRoute()
                     AllTransactionsScreen(
                         viewModel = viewModel,
                         initialFilter = dest.filter,
+                        navController = navController,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable<PayeeHistory>(
+                    enterTransition = { PayeeHistoryEnterTransition },
+                    exitTransition = { PayeeHistoryExitTransition },
+                    popEnterTransition = { PayeeHistoryPopEnterTransition },
+                    popExitTransition = { PayeeHistoryPopExitTransition }
+                ) { backStackEntry ->
+                    val dest: PayeeHistory = backStackEntry.toRoute()
+                    PayeeHistoryScreen(
+                        payee = dest.payee,
+                        viewModel = viewModel,
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
