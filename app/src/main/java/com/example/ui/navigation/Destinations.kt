@@ -40,3 +40,6 @@ object Report
 
 @Serializable
 object NeedsWants
+
+@Serializable
+data class PayeeHistory(val payee: String)

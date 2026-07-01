@@ -166,7 +166,8 @@ fun OnboardingScreen(
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { _ ->
+    ) { granted ->
+        if (granted) viewModel.setMasterNotifEnabled(true, context)
         val finalName = if (name.isNotBlank()) name.trim() else "User"
         viewModel.completeOnboarding(finalName, selectedAvatar, context)
         onNavigateNext()

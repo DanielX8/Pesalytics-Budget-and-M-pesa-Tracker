@@ -37,10 +37,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.navigation.NavController
+import com.pesalytics.ui.navigation.PayeeHistory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All", onNavigateBack: () -> Unit) {
+fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All", navController: NavController? = null, onNavigateBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTransaction by remember { mutableStateOf<com.pesalytics.model.Transaction?>(null) }
     var showTransactionDetails by remember { mutableStateOf(false) }
@@ -65,6 +67,10 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
             }
         }
     }
+    val expenseFilterOptions = remember(filterOptions) {
+        filterOptions.filter { it != "Received" }
+    }
+    var selectedCategory by remember { mutableStateOf("All") }
     var selectedFilter by remember { mutableStateOf(if (initialFilter in filterOptions) initialFilter else filterOptions[0]) }
     var searchQuery by remember { mutableStateOf("") }
 
@@ -82,18 +88,26 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
         }
     }
 
-    val filterCounts by remember(uiState.transactions, selectedMonth) {
+    val filterCounts by remember(uiState.transactions, selectedCategory, selectedMonth) {
         derivedStateOf {
-            val transactionsInMonth = uiState.transactions.filter { 
-                 monthFormat.format(java.util.Date(it.timestamp)) == selectedMonth 
+            val transactionsInMonth = uiState.transactions.filter { t ->
+                !t.isFeeTransaction &&
+                monthFormat.format(java.util.Date(t.timestamp)) == selectedMonth &&
+                when (selectedCategory) {
+                    "Income" -> t.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY ||
+                                t.type == com.pesalytics.model.TransactionType.MANUAL_INCOME ||
+                                t.type == com.pesalytics.model.TransactionType.POCHI_RECEIVE
+                    "Expenses" -> t.type != com.pesalytics.model.TransactionType.RECEIVE_MONEY &&
+                                  t.type != com.pesalytics.model.TransactionType.MANUAL_INCOME &&
+                                  t.type != com.pesalytics.model.TransactionType.POCHI_RECEIVE
+                    else -> true
+                }
             }
-            filterOptions.associateWith { filter ->
+            expenseFilterOptions.associateWith { filter ->
                 transactionsInMonth.count { transaction ->
-                    if (transaction.isFeeTransaction) return@count false
                     when (filter) {
                         "All" -> true
                         "Send Money" -> transaction.type == com.pesalytics.model.TransactionType.SEND_MONEY
-                        "Received" -> transaction.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY || transaction.type == com.pesalytics.model.TransactionType.MANUAL_INCOME
                         "Paybill" -> transaction.type == com.pesalytics.model.TransactionType.PAYBILL
                         "Buy Goods" -> transaction.type == com.pesalytics.model.TransactionType.BUY_GOODS
                         "Withdraw" -> transaction.type == com.pesalytics.model.TransactionType.WITHDRAW
@@ -106,23 +120,36 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
         }
     }
 
-    val filteredTransactions by remember(uiState.transactions, selectedFilter, selectedMonth, searchQuery) {
+    val filteredTransactions by remember(uiState.transactions, selectedCategory, selectedFilter, selectedMonth, searchQuery) {
         derivedStateOf {
             uiState.transactions.filter { transaction ->
                 if (transaction.isFeeTransaction) return@filter false
                 if (monthFormat.format(java.util.Date(transaction.timestamp)) != selectedMonth) return@filter false
 
-                val matchesFilter = when (selectedFilter) {
+                val matchesCategory = when (selectedCategory) {
+                    "Income" -> transaction.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY ||
+                                transaction.type == com.pesalytics.model.TransactionType.MANUAL_INCOME ||
+                                transaction.type == com.pesalytics.model.TransactionType.POCHI_RECEIVE
+                    "Expenses" -> transaction.type != com.pesalytics.model.TransactionType.RECEIVE_MONEY &&
+                                  transaction.type != com.pesalytics.model.TransactionType.MANUAL_INCOME &&
+                                  transaction.type != com.pesalytics.model.TransactionType.POCHI_RECEIVE
+                    else -> true
+                }
+                if (!matchesCategory) return@filter false
+
+                val matchesFilter = if (selectedCategory != "Expenses") true else when (selectedFilter) {
                     "All" -> true
                     "Send Money" -> transaction.type == com.pesalytics.model.TransactionType.SEND_MONEY
-                    "Received" -> transaction.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY || transaction.type == com.pesalytics.model.TransactionType.MANUAL_INCOME
                     "Paybill" -> transaction.type == com.pesalytics.model.TransactionType.PAYBILL
                     "Buy Goods" -> transaction.type == com.pesalytics.model.TransactionType.BUY_GOODS
                     "Withdraw" -> transaction.type == com.pesalytics.model.TransactionType.WITHDRAW
                     "Airtime" -> transaction.type == com.pesalytics.model.TransactionType.AIRTIME
-                    "Fuliza" -> transaction.type == com.pesalytics.model.TransactionType.FULIZA || transaction.usedFulizaAmount > 0 || transaction.fulizaOutstandingBalance > 0
+                    "Fuliza" -> transaction.type == com.pesalytics.model.TransactionType.FULIZA ||
+                                transaction.usedFulizaAmount > 0 ||
+                                transaction.fulizaOutstandingBalance > 0
                     else -> true
                 }
+
                 val matchesSearch = searchQuery.isEmpty() ||
                     transaction.payee.contains(searchQuery, ignoreCase = true) ||
                     transaction.remoteRef.contains(searchQuery, ignoreCase = true) ||
@@ -186,6 +213,12 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
             transaction = selectedTransaction!!,
             onDismiss = { showTransactionDetails = false },
             onEditCategory = { showCategoryEdit = true },
+            onViewPayeeHistory = if (navController != null) {
+                {
+                    showTransactionDetails = false
+                    navController.navigate(PayeeHistory(payee = selectedTransaction!!.payee))
+                }
+            } else null,
             onShare = {
                 val sendIntent: android.content.Intent = android.content.Intent().apply {
                     action = android.content.Intent.ACTION_SEND
@@ -314,26 +347,52 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
             )
 
-            // Filter Chips
+            // Category filter row — All / Income / Expenses
             val chipAccent = interactiveGreen
             androidx.compose.foundation.lazy.LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(filterOptions) { filter ->
-                    val isSelected = filter == selectedFilter
+                items(listOf("All", "Income", "Expenses")) { category ->
                     FilterChip(
-                        selected = isSelected,
-                        onClick = { selectedFilter = filter },
-                        label = { Text("$filter ${filterCounts[filter] ?: 0}") },
+                        selected = selectedCategory == category,
+                        onClick = {
+                            selectedCategory = category
+                            selectedFilter = "All"
+                        },
+                        label = { Text(category, style = MaterialTheme.typography.labelMedium) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = chipAccent,
                             selectedLabelColor = Color.White
                         ),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
                     )
+                }
+            }
+
+            // Expense type sub-filter chips — only shown when Expenses is selected
+            if (selectedCategory == "Expenses") {
+                androidx.compose.foundation.lazy.LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(expenseFilterOptions) { filter ->
+                        val isSelected = filter == selectedFilter
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedFilter = filter },
+                            label = { Text("$filter ${filterCounts[filter] ?: 0}") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = chipAccent,
+                                selectedLabelColor = Color.White
+                            ),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                        )
+                    }
                 }
             }
 
@@ -352,16 +411,16 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                 }
             }
 
-            // AnimatedContent keyed on selectedFilter — crossfades when user taps a chip
+            // AnimatedContent keyed on category + filter — crossfades when user taps a chip
             AnimatedContent(
-                targetState = Pair(selectedFilter, groupedTransactions),
+                targetState = Triple(selectedCategory, selectedFilter, groupedTransactions),
                 transitionSpec = {
                     fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) togetherWith
                         fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing))
                 },
                 label = "FilteredTransactions",
                 modifier = Modifier.weight(1f)
-            ) { (_, grouped) ->
+            ) { (_, _, grouped) ->
                 if (grouped.isEmpty()) {
                     Box(
                         modifier = Modifier
@@ -371,7 +430,12 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                "No $selectedFilter transactions",
+                                text = when {
+                                    selectedCategory == "Income" -> "No income transactions"
+                                    selectedCategory == "Expenses" && selectedFilter != "All" -> "No $selectedFilter expenses"
+                                    selectedCategory == "Expenses" -> "No expense transactions"
+                                    else -> "No transactions"
+                                },
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -412,10 +476,16 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                                 ) {
                                     Column {
                                         transactionsForDate.forEachIndexed { index, transaction ->
-                                            TransactionItem(transaction = transaction, onClick = {
-                                                selectedTransaction = transaction
-                                                showTransactionDetails = true
-                                            })
+                                            TransactionItem(
+                                                transaction = transaction,
+                                                onClick = {
+                                                    selectedTransaction = transaction
+                                                    showTransactionDetails = true
+                                                },
+                                                onPayeeTap = if (navController != null) {
+                                                    { navController.navigate(PayeeHistory(payee = transaction.payee)) }
+                                                } else null
+                                            )
                                             if (index < transactionsForDate.size - 1) {
                                                 HorizontalDivider(
                                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),

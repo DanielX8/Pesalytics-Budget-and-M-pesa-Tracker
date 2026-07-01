@@ -54,6 +54,10 @@ import com.pesalytics.ui.theme.AccentGreenDark
 import com.pesalytics.ui.theme.AccentGreenLight
 import com.pesalytics.ui.theme.ExpenseRed
 import com.pesalytics.ui.theme.WarningOrange
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.ui.draw.alpha
+import androidx.navigation.NavController
+import com.pesalytics.ui.navigation.PayeeHistory
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.text.SimpleDateFormat
@@ -61,11 +65,24 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
+fun BillsScreen(viewModel: PesaViewModel, navController: NavController, onNavigateBack: () -> Unit) {
     val bills by viewModel.bills.collectAsStateWithLifecycle()
     var showAddBillDialog by remember { mutableStateOf(false) }
     var selectedBill by remember { mutableStateOf<Bill?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
+
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("All", "Active", "Paused")
+    val displayedBills = when (selectedTab) {
+        1 -> bills.filter { !it.isPaused }.sortedWith(compareByDescending<Bill> {
+            !it.isPaid && it.nextDueDate < System.currentTimeMillis()
+        }.thenBy { it.nextDueDate })
+        2 -> bills.filter { it.isPaused }
+        else -> bills
+    }
+
+    var showPauseDialog by remember { mutableStateOf(false) }
+    var pauseFreezeDueDateChoice by remember { mutableStateOf(true) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -110,6 +127,46 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                 }
             )
         }
+    }
+
+    if (showPauseDialog && selectedBill != null) {
+        AlertDialog(
+            onDismissRequest = { showPauseDialog = false },
+            title = { Text("Pause this bill?") },
+            text = {
+                Column {
+                    Text("What should happen to the due date while paused?", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { pauseFreezeDueDateChoice = true }) {
+                        RadioButton(selected = pauseFreezeDueDateChoice, onClick = { pauseFreezeDueDateChoice = true })
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("Freeze due date", fontWeight = FontWeight.Medium)
+                            Text("Resume exactly where you left off", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { pauseFreezeDueDateChoice = false }) {
+                        RadioButton(selected = !pauseFreezeDueDateChoice, onClick = { pauseFreezeDueDateChoice = false })
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("Keep counting", fontWeight = FontWeight.Medium)
+                            Text("Due date advances normally while paused", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.pauseBill(selectedBill!!, pauseFreezeDueDateChoice)
+                    showPauseDialog = false
+                    showBottomSheet = false
+                }) { Text("Pause Bill") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPauseDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 
     var isEditingBill by remember { mutableStateOf(false) }
@@ -181,6 +238,40 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                             Text("Mark as Paid", color = Color.White)
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (!selectedBill!!.isPaused) {
+                        OutlinedButton(
+                            onClick = { showPauseDialog = true },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = WarningOrange),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, WarningOrange)
+                        ) {
+                            Text("Pause Bill")
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.resumeBill(selectedBill!!)
+                                coroutineScope.launch {
+                                    sheetState.hide()
+                                    showBottomSheet = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentGreenLight),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, AccentGreenLight)
+                        ) {
+                            Text("Resume Bill")
+                        }
+                    }
+                    if (selectedBill!!.isAutoPay) {
+                        Text(
+                            "Auto-pay is a reminder tag only — Pesalytics does not initiate payments.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         OutlinedButton(onClick = { isEditingBill = true }, modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                             Text("Edit")
@@ -198,6 +289,15 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                         ) {
                             Text("Remove", color = Color.White)
                         }
+                    }
+                    TextButton(
+                        onClick = {
+                            navController.navigate(PayeeHistory(payee = selectedBill!!.payee))
+                            showBottomSheet = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("View Payment History")
                     }
                     Spacer(modifier = Modifier.height(32.dp))
                 }
@@ -262,16 +362,45 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text("Due This Week", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("KES ${formatCurrency(dueThisWeek)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                        if (selectedTab == 2) {
+                            Column {
+                                Text("Bills Paused", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("${displayedBills.size} bills paused", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("On Hold", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("KES ${formatCurrency(displayedBills.sumOf { it.amount })}/month on hold", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        } else {
+                            Column {
+                                Text("Due This Week", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("KES ${formatCurrency(dueThisWeek)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Total Bills", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("KES ${formatCurrency(totalBillsAmount)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Total Bills", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("KES ${formatCurrency(totalBillsAmount)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                    }
+                }
+            }
+
+            item {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = { Text(title, style = MaterialTheme.typography.labelLarge) }
+                        )
                     }
                 }
             }
@@ -280,7 +409,7 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
 
             item {
                 AnimatedContent(
-                    targetState = bills.isEmpty(),
+                    targetState = displayedBills.isEmpty(),
                     transitionSpec = {
                         fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)) togetherWith
                             fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing))
@@ -297,11 +426,13 @@ fun BillsScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                         }
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            bills.sortedBy { it.nextDueDate }.forEach { bill ->
-                                BillItem(bill = bill, onClick = {
-                                    selectedBill = bill
-                                    showBottomSheet = true
-                                })
+                            displayedBills.forEach { bill ->
+                                Box(modifier = Modifier.alpha(if (bill.isPaused) 0.5f else 1f)) {
+                                    BillItem(bill = bill, onClick = {
+                                        selectedBill = bill
+                                        showBottomSheet = true
+                                    })
+                                }
                             }
                         }
                     }
@@ -500,6 +631,28 @@ fun BillItem(bill: Bill, onClick: () -> Unit) {
 
         Column(modifier = Modifier.weight(1f)) {
             Text(text = bill.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            val isOverdueBadge = !bill.isPaid && !bill.isPaused && bill.nextDueDate < System.currentTimeMillis()
+            val hasBadge = isOverdueBadge || bill.isPaused || bill.isAutoPay
+            if (hasBadge) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (isOverdueBadge) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(ExpenseRed).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                            Text(text = "Overdue", style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    if (bill.isPaused) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(WarningOrange).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                            Text(text = "Paused", style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    if (bill.isAutoPay) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(AccentGreenDark).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                            Text(text = "Auto-pay", style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Paybill ${bill.payee}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

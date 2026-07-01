@@ -5,6 +5,85 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.6] — 2026-07-01 · Payee History, Bill Pausing & Smart Categorization
+
+### Added
+- **Payee History screen** — tap any payee/merchant name from a transaction row, the transaction
+  details sheet, or a bill's action sheet to open a dedicated full-screen history of every
+  transaction with that payee, with a running total paid. Opens with a full-screen "rise up"
+  transition rather than the standard slide-and-fade used elsewhere, so it reads as the sheet
+  itself extending rather than a new screen opening.
+- **Pause/Resume for Bills** — bills can now be paused from the bill action sheet. Pausing
+  prompts a choice: freeze the due date (resume exactly where you left off) or keep counting
+  (due date advances normally while paused). Paused bills are visually dimmed and tagged with a
+  "Paused" badge; a "Resume Bill" action reverses it.
+- **Bills tab filters** — Bills screen now has All / Active / Paused tabs. Active sorts
+  overdue-and-unpaid bills to the top; Paused shows only paused bills with a total "on hold"
+  amount. Overdue and Auto-pay status badges added to each bill row (Auto-pay includes a
+  disclaimer that it's a reminder tag only — Pesalytics does not initiate payments).
+- **Income / Expenses split on All Transactions** — the transaction list filter is now
+  two-tiered: a top-level All/Income/Expenses selector, with the existing type filters (Send
+  Money, Paybill, Buy Goods, Withdraw, Airtime, Fuliza) appearing only under Expenses.
+- **Smart merchant categorization engine** — new keyword-based engine that auto-categorizes
+  common Kenyan merchants (supermarkets, fuel stations, restaurants, etc.) by name, applied
+  automatically to new transactions and available on-demand via a new "Re-analyse transaction
+  categories" tool in Settings → Data Tools to retroactively re-categorize existing transactions.
+- **Granular report notification toggles** — Daily Spend Summary, Weekly Report, and Monthly
+  Report now have independent on/off switches in Settings, decoupled from the unrelated High
+  Spending Alerts / Budget Alerts toggles they previously piggybacked on.
+- **Notification tap deep-linking** — tapping a notification (budget alert, bill alert, goal
+  reminder, daily/weekly/monthly report, subscription expiry) now opens the app directly to the
+  relevant screen instead of just the home screen.
+- **New typeface** — Poppins replaces Space Grotesk as the app-wide font, bundled locally as font
+  resources instead of fetched via Google Fonts Provider (removes a runtime dependency on Google
+  Play Services Fonts).
+
+### Changed
+- **Expense calculations exclude internal transfers** — daily/weekly/monthly spend totals, the
+  top-spending-category calculation, and pattern detection now consistently exclude M-Shwari
+  transfers, Pochi la Biashara transfers/receipts, and Fuliza, in addition to the existing
+  exclusions (receive money, manual income/transfer). Previously some workers only excluded a
+  subset, which could inflate reported "spend."
+- **Displayed account balance** now ignores Pochi/M-Shwari transfer transactions and zero/blank
+  balances when picking the most recent balance, avoiding a stale or incorrect figure from a
+  transaction type that doesn't reflect the main M-PESA balance.
+- **Promo code redemption made thread-safe** — redemption check-and-write is now synchronized,
+  closing a race window where two near-simultaneous redemption attempts of the same code could
+  both pass the "already redeemed" check.
+- **Marking a bill as paid** now always advances it to the next due date based on its billing
+  cycle, regardless of auto-pay status (previously non-auto-pay bills stayed on the same due
+  date after being marked paid).
+- **Dark-mode secondary text** — `onSurfaceVariant` now uses the secondary text color instead of
+  the primary text color, giving muted text proper visual hierarchy in dark mode.
+- Goal reminder and weekly bill-alert notifications now use distinct per-goal / per-alert
+  notification IDs so multiple goals no longer overwrite each other's notification.
+- Notifications are now enabled by default for new installs, matching the onboarding flow which
+  already grants the permission and turns it on.
+
+### Fixed
+- **Dashboard month selector year bug** — selecting a month "ahead" of the current month no
+  longer incorrectly assumed the previous year; the app now tracks year and month together and
+  only rolls the year when actually scrolling across a Dec↔Jan boundary.
+- **Notification toggle confirmation** — toggling notifications on/off in Settings now shows a
+  toast confirming the new state.
+- **Daily/weekly reports silently blocked** — the Settings and Export screens were writing and
+  reading the same SharedPreferences key for two unrelated purposes, which silently suppressed
+  daily/weekly report notifications for some users regardless of their notification toggles.
+  Resolved by giving each report type its own dedicated preference (see Added: granular report
+  toggles) and removing the now-dead `ReportWorker.kt`, whose only job — a generic placeholder
+  notification — was already superseded by `DailySpendWorker`, `WeeklyReportWorker`, and
+  `MonthlyReportWorker`.
+- **"Yesterday" grouping on the Dashboard recent-transactions list** — was computed via a
+  fragile day-of-year comparison that broke across year boundaries (e.g. Jan 1 vs Dec 31); now
+  compares against an actual "yesterday" date.
+
+### Database
+- Room schema bumped to version 14 (migration 13→14, additive/non-destructive). Adds two columns
+  to the `bills` table: `isPaused` and `pauseFreezeDueDate`. No data loss — existing bill rows get
+  default values and remain fully intact.
+
+---
+
 ## [1.4.3] — 2026-06-25 · Analytics Navigation, Card Reorder & Subscription Polish
 
 ### Added

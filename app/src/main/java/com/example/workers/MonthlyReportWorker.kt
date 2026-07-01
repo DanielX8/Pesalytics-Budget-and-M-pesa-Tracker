@@ -43,7 +43,11 @@ class MonthlyReportWorker(appContext: Context, workerParams: WorkerParameters) :
             .filter {
                 it.type != TransactionType.RECEIVE_MONEY &&
                 it.type != TransactionType.MANUAL_INCOME &&
-                it.type != TransactionType.MANUAL_TRANSFER
+                it.type != TransactionType.MANUAL_TRANSFER &&
+                it.type != TransactionType.MSHWARI_TRANSFER &&
+                it.type != TransactionType.POCHI_TRANSFER &&
+                it.type != TransactionType.POCHI_RECEIVE &&
+                it.type != TransactionType.FULIZA
             }
             .sumOf { it.amount }
         val savings = income - expense
@@ -72,11 +76,11 @@ class MonthlyReportWorker(appContext: Context, workerParams: WorkerParameters) :
 
         // ── Goal progress reminders ─────────────────────────────────────────
         val goals = repository.allGoals.first()
-        goals.forEach { goal ->
+        goals.forEachIndexed { index, goal ->
             val pct = if (goal.targetAmount > 0) (goal.savedAmount / goal.targetAmount * 100).toInt() else 0
             val remaining = goal.targetAmount - goal.savedAmount
             val goalMsg = "$pct% complete. KES ${"%.0f".format(remaining)} remaining. Keep contributing KES ${"%.0f".format(goal.monthlyContribution)}/month."
-            notif.showGoalReminder("Goal Update: ${goal.name}", goalMsg)
+            notif.showGoalReminder("Goal Update: ${goal.name}", goalMsg, notifId = 1003 + index)
             appendInAppNotification(prefs, "Goal '${goal.name}': $goalMsg")
         }
 

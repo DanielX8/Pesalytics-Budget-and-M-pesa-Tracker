@@ -80,7 +80,9 @@ data class Bill(
     val nextDueDate: Long,
     val isAutoPay: Boolean = false,
     val isPaid: Boolean = false,
-    val lastPaidDate: Long? = null
+    val lastPaidDate: Long? = null,
+    val isPaused: Boolean = false,
+    val pauseFreezeDueDate: Boolean = false
 )
 
 @Entity(

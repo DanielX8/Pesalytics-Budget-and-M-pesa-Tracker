@@ -70,6 +70,7 @@ class PatternEngine {
         t.type != TransactionType.RECEIVE_MONEY &&
         t.type != TransactionType.MANUAL_INCOME &&
         t.type != TransactionType.MANUAL_TRANSFER &&
+        t.type != TransactionType.FULIZA &&
         !t.isFeeTransaction
 
     private fun monthStart(monthsAgo: Int): Long {

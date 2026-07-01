@@ -33,6 +33,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import com.pesalytics.data.MerchantCategoryEngine
 import com.pesalytics.data.billing.SubscriptionManager
 import com.pesalytics.data.billing.PromoResult
 import androidx.compose.runtime.Immutable
@@ -87,19 +88,33 @@ class PesaViewModel(
 ) : ViewModel() {
 
     // ── Month selection ──────────────────────────────────────────────────────
-    private val _selectedMonthIndex = MutableStateFlow(Calendar.getInstance().get(Calendar.MONTH))
-    val selectedMonthIndex = _selectedMonthIndex.asStateFlow()
+    // Tracks year alongside month so the selected month is never re-derived by guessing
+    // (e.g. "ahead of today's month index must mean last year") — that heuristic breaks
+    // once a month ahead of today in the SAME year can be selected.
+    private val _selectedYearMonth = MutableStateFlow(
+        Calendar.getInstance().get(Calendar.YEAR) to Calendar.getInstance().get(Calendar.MONTH)
+    )
+    val selectedMonthIndex = _selectedYearMonth.map { it.second }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), _selectedYearMonth.value.second)
+    val selectedYear = _selectedYearMonth.map { it.first }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), _selectedYearMonth.value.first)
 
     fun setSelectedMonth(index: Int) {
-        _selectedMonthIndex.value = index
+        // Callers pass an absolute 0-11 month-of-year. Resolve the year by rolling
+        // forward/back from the CURRENTLY SELECTED year+month (calendar-scroll semantics):
+        // crossing from December to January moves a year forward, crossing from January
+        // to December moves a year back. Selecting the same month index again is a no-op year-wise.
+        val (currentYear, currentMonth) = _selectedYearMonth.value
+        val targetYear = when {
+            currentMonth == 11 && index == 0 -> currentYear + 1
+            currentMonth == 0 && index == 11 -> currentYear - 1
+            else -> currentYear
+        }
+        _selectedYearMonth.value = targetYear to index
     }
 
-    val currentMonthStart: StateFlow<Long> = _selectedMonthIndex.map { monthIndex ->
+    val currentMonthStart: StateFlow<Long> = _selectedYearMonth.map { (targetYear, monthIndex) ->
         val calendar = Calendar.getInstance()
-        val currentMonth = calendar.get(Calendar.MONTH)
-        val currentYear = calendar.get(Calendar.YEAR)
-        // If the selected month is ahead of today's month it belongs to the previous year
-        val targetYear = if (monthIndex > currentMonth) currentYear - 1 else currentYear
         calendar.set(Calendar.YEAR, targetYear)
         calendar.set(Calendar.MONTH, monthIndex)
         calendar.set(Calendar.DAY_OF_MONTH, 1)
@@ -108,7 +123,13 @@ class PesaViewModel(
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
         calendar.timeInMillis
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), 0L)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), run {
+        Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    })
 
     val currentMonthYearString: StateFlow<String> = currentMonthStart.map { start ->
         val format = SimpleDateFormat("MM/yyyy", Locale.getDefault())
@@ -150,6 +171,12 @@ class PesaViewModel(
     val goalRemindersEnabled = MutableStateFlow(false)
     val highSpendingAlertsEnabled = MutableStateFlow(true)
     val smartAlertsEnabled = MutableStateFlow(false)
+    val dailySummaryEnabled = MutableStateFlow(true)
+    val weeklyReportEnabled = MutableStateFlow(true)
+    val monthlyReportEnabled = MutableStateFlow(true)
+
+    // ── Deep-link from notification tap ─────────────────────────────────────
+    val pendingDeepLink = MutableStateFlow<String?>(null)
 
     // ── SMS sync progress ────────────────────────────────────────────────────
     val isSyncing = MutableStateFlow(false)
@@ -264,6 +291,9 @@ class PesaViewModel(
             "goal_reminders" -> goalRemindersEnabled.value = enabled
             "high_spending" -> highSpendingAlertsEnabled.value = enabled
             "smart_alerts" -> smartAlertsEnabled.value = enabled
+            "daily_summary" -> dailySummaryEnabled.value = enabled
+            "weekly_report" -> weeklyReportEnabled.value = enabled
+            "monthly_report" -> monthlyReportEnabled.value = enabled
         }
         context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
             .putBoolean("notif_$key", enabled)
@@ -279,12 +309,15 @@ class PesaViewModel(
 
     private fun loadNotificationPrefs(context: android.content.Context) {
         val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
-        masterNotifEnabled.value = prefs.getBoolean("notif_master_enabled", false)
+        masterNotifEnabled.value = prefs.getBoolean("notif_master_enabled", true)
         billAlertsEnabled.value = prefs.getBoolean("notif_bill_alerts", true)
         budgetAlertsEnabled.value = prefs.getBoolean("notif_budget_alerts", true)
         goalRemindersEnabled.value = prefs.getBoolean("notif_goal_reminders", false)
         highSpendingAlertsEnabled.value = prefs.getBoolean("notif_high_spending", true)
         smartAlertsEnabled.value = prefs.getBoolean("notif_smart_alerts", false)
+        dailySummaryEnabled.value = prefs.getBoolean("notif_daily_summary", true)
+        weeklyReportEnabled.value = prefs.getBoolean("notif_weekly_report", true)
+        monthlyReportEnabled.value = prefs.getBoolean("notif_monthly_report", true)
     }
 
     // ── Needs vs Wants classification ─────────────────────────────────────────
@@ -743,6 +776,7 @@ class PesaViewModel(
             val payeeRaw = fields.payee.replace(Regex("\\s+\\d{4,}$"), "").trim()
 
             var category = customRules.find { payeeRaw.contains(it.payeePattern, ignoreCase = true) }?.mappedCategory
+                ?: MerchantCategoryEngine.categorize(payeeRaw)
             if (category == null) {
                 category = when (matchedType) {
                     TransactionType.BUY_GOODS -> "Shopping"
@@ -859,7 +893,14 @@ class PesaViewModel(
         isBalanceVisible,
         currentMonthYearString.flatMapLatest { repository.getBudgetsForMonth(it) }
     ) { transactions, stats, isVisible, budgets ->
-        val balance = transactions.maxByOrNull { it.timestamp }?.balanceAfter ?: 0.0
+        val balance = transactions
+            .filter {
+                it.type != TransactionType.POCHI_TRANSFER &&
+                it.type != TransactionType.POCHI_RECEIVE &&
+                it.type != TransactionType.MSHWARI_TRANSFER &&
+                it.balanceAfter > 0.0
+            }
+            .maxByOrNull { it.timestamp }?.balanceAfter ?: 0.0
         val globalBudget = budgets.find { it.category == "Overall" }
 
         val categorySpent = transactions
@@ -1026,14 +1067,23 @@ class PesaViewModel(
         viewModelScope.launch { repository.deleteBill(bill) }
     }
 
+    fun pauseBill(bill: Bill, freezeDueDate: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateBill(bill.copy(isPaused = true, pauseFreezeDueDate = freezeDueDate))
+        }
+    }
+
+    fun resumeBill(bill: Bill) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateBill(bill.copy(isPaused = false, pauseFreezeDueDate = false))
+        }
+    }
+
     fun markBillAsPaid(bill: Bill) {
         viewModelScope.launch {
             val now = System.currentTimeMillis()
-            val updated = if (bill.isAutoPay) {
-                bill.copy(isPaid = true, lastPaidDate = now, nextDueDate = calculateNextDueDate(bill.cycle, bill.nextDueDate))
-            } else {
-                bill.copy(isPaid = true, lastPaidDate = now)
-            }
+            val nextDue = calculateNextDueDate(bill.cycle, bill.nextDueDate)
+            val updated = bill.copy(isPaid = true, lastPaidDate = now, nextDueDate = nextDue)
             repository.updateBill(updated)
         }
     }
@@ -1177,6 +1227,13 @@ class PesaViewModel(
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 android.widget.Toast.makeText(context, "All data deleted", android.widget.Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    fun reanalyseMerchantCategories() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val rules = repository.getCustomRulesOnce()
+            repository.reanalyseMerchantCategories(rules)
         }
     }
 
