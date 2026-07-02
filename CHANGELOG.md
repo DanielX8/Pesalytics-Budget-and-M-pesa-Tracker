@@ -76,6 +76,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **"Yesterday" grouping on the Dashboard recent-transactions list** — was computed via a
   fragile day-of-year comparison that broke across year boundaries (e.g. Jan 1 vs Dec 31); now
   compares against an actual "yesterday" date.
+- **Support the Developer no longer exposes a personal phone number** — the tip jar now opens a
+  Buy Me a Soda link instead of showing a dialog with a personal M-PESA number.
+- **Privacy Policy / Terms of Service** now link to the live GitHub Pages site instead of
+  placeholder `pesalytics.app` URLs.
 
 ### Database
 - Room schema bumped to version 14 (migration 13→14, additive/non-destructive). Adds two columns
