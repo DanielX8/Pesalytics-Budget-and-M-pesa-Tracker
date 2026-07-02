@@ -139,7 +139,6 @@ fun SettingsScreen(
     }
     var showExportGateDialog by remember { mutableStateOf(false) }
     var showDeleteAllDialog by remember { mutableStateOf(false) }
-    var showTipJarDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -394,7 +393,7 @@ fun SettingsScreen(
 
             item { SettingsSection("SUPPORT") {
                 SettingsCard {
-                    SupportListItem(Icons.Rounded.VolunteerActivism, "Support the Developer", "Tip jar") { showTipJarDialog = true }
+                    SupportListItem(Icons.Rounded.VolunteerActivism, "Support the Developer", "Buy me a soda") { openUrl(context, AppLinks.TIP_JAR_URL) }
                 }
             } }
 
@@ -591,16 +590,6 @@ fun SettingsScreen(
                 ) { Text("Delete Everything", color = Color.White) }
             },
             dismissButton = { TextButton(onClick = { showDeleteAllDialog = false }) { Text("Cancel") } }
-        )
-    }
-
-    if (showTipJarDialog) {
-        AlertDialog(
-            onDismissRequest = { showTipJarDialog = false },
-            icon = { Icon(Icons.Rounded.VolunteerActivism, contentDescription = null, tint = HeroGreen) },
-            title = { Text("Support the Developer") },
-            text = { Text("If Pesalytics helps you, you can send a tip via M-PESA to:\n\n${AppLinks.TIP_JAR_MPESA}\n\nThank you! 💚") },
-            confirmButton = { Button(onClick = { showTipJarDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight)) { Text("Close", color = Color.White) } }
         )
     }
 }
