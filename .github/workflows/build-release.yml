@@ -77,6 +77,25 @@ jobs:
             echo "value=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Extract changelog section
+        id: changelog
+        run: |
+          VERSION="${{ steps.tag.outputs.value }}"
+          VERSION="${VERSION#v}"
+          NOTES=$(awk -v ver="[$VERSION]" '
+            $0 ~ "^## \\" ver {p=1; print; next}
+            p && /^## \[/ {exit}
+            p
+          ' CHANGELOG.md | sed -e '/^---$/d' -e '${/^$/d}')
+          if [ -z "$NOTES" ]; then
+            NOTES="_No changelog entry found for $VERSION in CHANGELOG.md — add one before tagging next time._"
+          fi
+          {
+            echo "notes<<CHANGELOG_EOF"
+            echo "$NOTES"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -86,14 +105,7 @@ jobs:
           prerelease: false
           files: app/build/outputs/apk/release/${{ steps.apk.outputs.name }}
           body: |
-            ## Pesalytics ${{ steps.tag.outputs.value }}
-
-            ### What's new
-            - **Bottom sheet dialogs** — name edit, category edit, and global budget setup now open as smooth Material 3 bottom sheets instead of modal dialogs
-            - **Profile editor with avatars & nicknames** — edit your display name from Settings with the same avatar picker and nickname generator from the onboarding screen
-            - **Dark mode accent fixes** — month selector, budget toggle, needs/wants toggle, and category filter chips now all use the correct dark-green accent (`#1A4D2E`) in dark mode instead of bright green
-            - **Branch unification** — master now contains all commits from both development lines, so cloning the repo always builds the latest version
-            - **README download guide** — added a clear step-by-step APK download section for non-developers
+            ${{ steps.changelog.outputs.notes }}
 
             ### Installation
             Download the APK from the **Assets** section below. Enable *Install from unknown sources* on your Android device, then open the file to install.
