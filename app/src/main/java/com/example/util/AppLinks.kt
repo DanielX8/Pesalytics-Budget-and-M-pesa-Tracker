@@ -5,17 +5,18 @@ package com.pesalytics.util
  * Pesalytics website is deployed — no other code changes needed.
  */
 object AppLinks {
-    // TODO: replace with the live URLs once the website is deployed.
-    const val PRIVACY_POLICY_URL = "https://Pesalytics.app/privacy"
-    const val TERMS_OF_SERVICE_URL = "https://Pesalytics.app/terms"
+    // Served via GitHub Pages until the pesalytics.app custom domain is wired up —
+    // swap these back to https://pesalytics.app/... once DNS is configured.
+    const val PRIVACY_POLICY_URL = "https://danielx8.github.io/pesalytics-web/privacy-policy/"
+    const val TERMS_OF_SERVICE_URL = "https://danielx8.github.io/pesalytics-web/terms-of-service/"
 
     // Play Store listing (uses the release applicationId).
     const val PLAY_STORE_ID = "com.pesalytics.xmqs"
     const val PLAY_STORE_WEB_URL = "https://play.google.com/store/apps/details?id=$PLAY_STORE_ID"
     const val PLAY_STORE_MARKET_URI = "market://details?id=$PLAY_STORE_ID"
 
-    // Tip Jar — M-PESA number to send a tip to.
-    const val TIP_JAR_MPESA = "0719713362"
+    // Buy Me a Soda tip page.
+    const val TIP_JAR_URL = "https://buymesoda.com/IFFDNKRkT2ZcNVkYJ6CZHruvpF62"
 
     // Message shared via "Share App" / "Refer a Friend".
     const val SHARE_MESSAGE =
