@@ -25,13 +25,7 @@ import com.pesalytics.ui.theme.AccentGreenLight
 import com.pesalytics.ui.theme.HeroCardDarkGreen
 import com.pesalytics.ui.theme.HeroGreen
 
-/**
- * The hero-card mid-green (present in the Dashboard balance gradient in both light and dark
- * modes). Readable on both AMOLED black (~5:1) and the light surface (~3.8:1), so it works as
- * an accent on the Settings/Subscription screens — unlike the deep forest [AccentGreenDark],
- * which is reserved for the Goals/Budget screens and is near-invisible on dark backgrounds.
- */
-val HeroGreen = Color(0xFF348C55)
+
 
 /**
  * Shared visual-polish + motion helpers so secondary screens (Settings, Subscription,
@@ -69,8 +63,8 @@ val interactiveGreen: Color
 @Composable
 fun rememberBrandGradient(): Brush {
     val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val start = if (isLight) Color(0xFF55D687) else HeroGreen
-    val end = if (isLight) HeroGreen else HeroCardDarkGreen
+    val start = if (isLight) com.pesalytics.ui.theme.HeroGradientStartLight else com.pesalytics.ui.theme.HeroGradientStartDark
+    val end = if (isLight) com.pesalytics.ui.theme.HeroGradientEndLight else com.pesalytics.ui.theme.HeroGradientEndDark
     return Brush.linearGradient(listOf(start, end))
 }
 

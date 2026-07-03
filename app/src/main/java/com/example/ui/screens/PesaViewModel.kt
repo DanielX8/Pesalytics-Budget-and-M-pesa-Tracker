@@ -1282,6 +1282,25 @@ class PesaViewModel(
     fun startTrial() {
         subscriptionManager?.startTrialIfNotStarted()
     }
+
+    fun addManualExpense(category: String, amount: Double, description: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val transaction = Transaction(
+                amount = amount,
+                payee = if (description.isNotBlank()) description else "Manual Entry",
+                timestamp = System.currentTimeMillis(),
+                type = TransactionType.MANUAL_EXPENSE,
+                remoteRef = "MANUAL_" + java.util.UUID.randomUUID().toString().take(8),
+                category = category,
+                fee = 0.0,
+                balanceAfter = 0.0
+            )
+            repository.insertTransaction(transaction)
+            kotlinx.coroutines.withContext(Dispatchers.Main) {
+                addNotification("Added manual expense to $category")
+            }
+        }
+    }
 }
 
 class PesaViewModelFactory(

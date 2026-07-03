@@ -101,8 +101,9 @@ fun AnalyticsScreen(
     Scaffold(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
-                CenterAlignedTopAppBar(
-                    title = {
+                com.pesalytics.ui.components.PesalyticsTopBar(
+                    viewModel = viewModel,
+                    titleContent = {
                         Image(
                             painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
                             contentDescription = "Pesalytics",
@@ -110,38 +111,7 @@ fun AnalyticsScreen(
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                         )
                     },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    actions = {
-                        Box {
-                            Box(
-                                modifier = Modifier.padding(end = 16.dp).size(40.dp).clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .clickable { notificationsExpanded = true },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
-                                if (notifications.isNotEmpty()) {
-                                    Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(8.dp).clip(CircleShape).background(ExpenseRed))
-                                }
-                            }
-                            DropdownMenu(expanded = notificationsExpanded, onDismissRequest = { notificationsExpanded = false }, modifier = Modifier.width(280.dp), shape = RoundedCornerShape(16.dp), containerColor = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
-                                if (notifications.isEmpty()) {
-                                    DropdownMenuItem(text = { Text("No new notifications", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }, onClick = {})
-                                } else {
-                                    notifications.forEach { notif ->
-                                        DropdownMenuItem(text = { Text(notif.message, style = MaterialTheme.typography.bodyMedium) }, onClick = { viewModel.dismissNotification(notif.id) })
-                                    }
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                                    DropdownMenuItem(text = { Text("Clear All", style = MaterialTheme.typography.bodyMedium, color = ExpenseRed) }, onClick = { viewModel.clearNotifications() })
-                                }
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+                    onNavigateBack = onNavigateBack
                 )
             }
         },
@@ -249,7 +219,7 @@ fun AnalyticsScreen(
             }
 
             item {
-                Text("PATTERNS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 0.dp))
+                Text("PATTERNS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 0.dp))
             }
 
             item { SpendingRhythmChart(monthTransactions) }
@@ -730,7 +700,7 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
         top4 + listOf("Others" to othersTotal)
     } else rawTypeTotals
 
-    val colors = listOf(ExpenseRed, TransferBlue, AccentGreenLight, AccentGreenDark, Color(0xFFFF9800), Color(0xFF9C27B0), Color(0xFF00BCD4))
+    val colors = ChartColors
 
     var selectedCategory by remember { mutableStateOf<Pair<String, Double>?>(null) }
 
@@ -1465,7 +1435,7 @@ fun BudgetVsActualCard(budgets: List<Budget>, categorySpent: Map<String, Double>
             }
 
             categoryBudgets.forEachIndexed { index, budget ->
-                val spent = categorySpent[budget.category] ?: 0.0
+                val spent = categorySpent.entries.find { it.key.equals(budget.category, ignoreCase = true) }?.value ?: 0.0
                 BudgetProgressRow(label = budget.category, spent = spent, limit = budget.limitAmount, isOverall = false)
                 if (index < categoryBudgets.lastIndex) HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
             }

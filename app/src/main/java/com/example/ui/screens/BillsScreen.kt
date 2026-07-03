@@ -308,8 +308,9 @@ fun BillsScreen(viewModel: PesaViewModel, navController: NavController, onNaviga
     Scaffold(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
-                CenterAlignedTopAppBar(
-                    title = {
+                com.pesalytics.ui.components.PesalyticsTopBar(
+                    viewModel = viewModel,
+                    titleContent = {
                         Image(
                             painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
                             contentDescription = "Pesalytics",
@@ -317,17 +318,12 @@ fun BillsScreen(viewModel: PesaViewModel, navController: NavController, onNaviga
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                         )
                     },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
+                    onNavigateBack = onNavigateBack,
                     actions = {
                         IconButton(onClick = { showAddBillDialog = true }) {
                             Icon(Icons.Default.Add, contentDescription = "Add Bill", tint = MaterialTheme.colorScheme.primary)
                         }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+                    }
                 )
             }
         },
@@ -393,7 +389,8 @@ fun BillsScreen(viewModel: PesaViewModel, navController: NavController, onNaviga
                 TabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.primary
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    divider = { HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant) }
                 ) {
                     tabs.forEachIndexed { index, title ->
                         Tab(

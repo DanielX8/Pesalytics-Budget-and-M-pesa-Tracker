@@ -63,8 +63,9 @@ fun FinancialGoalsScreen(
     Scaffold(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
-                CenterAlignedTopAppBar(
-                    title = { 
+                com.pesalytics.ui.components.PesalyticsTopBar(
+                    viewModel = viewModel,
+                    titleContent = { 
                         Image(
                             painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
                             contentDescription = "Pesalytics",
@@ -72,41 +73,26 @@ fun FinancialGoalsScreen(
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                         )
                     },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                    },
+                    onNavigateBack = onNavigateBack,
                     actions = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Notifications,
-                                contentDescription = "Notifications",
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                                    .size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .padding(end = 16.dp)
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(AccentGreenDark) // Deep Emerald
-                                    .clickable {
-                                        if (!isPremium && goals.size >= 1) {
-                                            showUpgradeDialog = true
-                                        } else {
-                                            showCreateGoalSheet = true
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.Add, contentDescription = "Add Goal", tint = Color.White, modifier = Modifier.size(20.dp))
-                            }
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(AccentGreenDark) // Deep Emerald
+                                .clickable {
+                                    if (!isPremium && goals.size >= 1) {
+                                        showUpgradeDialog = true
+                                    } else {
+                                        showCreateGoalSheet = true
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Goal", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+                    }
                 )
             }
         },
@@ -312,7 +298,7 @@ fun CreateGoalBottomSheet(
     var targetDate by remember { mutableStateOf<Long?>(null) }
     var monthlyContribution by remember { mutableStateOf("") }
 
-    val colors = listOf(Color(0xFF00C853), Color(0xFF2962FF), Color(0xFFFFAB00), Color(0xFFD50000), Color(0xFFAA00FF), Color(0xFFC51162), Color(0xFF00BFA5), Color(0xFFFF6D00))
+    val colors = com.pesalytics.ui.theme.ChartColors
     var selectedColor by remember { mutableStateOf(colors[0]) }
 
     val icons = listOf("🎯", "🏠", "✈️", "🎓", "🚗", "💍", "💻", "📱", "🏋️", "💰", "🌍", "⛵")
@@ -375,10 +361,10 @@ fun CreateGoalBottomSheet(
                     Row(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(24.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .clickable { selectedType = GoalType.SAVINGS }
                             .background(if (savingsSelected) AccentGreenLight.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface)
-                            .border(1.dp, if (savingsSelected) AccentGreenLight else MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
+                            .border(1.dp, if (savingsSelected) AccentGreenLight else MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                             .padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
@@ -391,10 +377,10 @@ fun CreateGoalBottomSheet(
                     Row(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(24.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .clickable { selectedType = GoalType.DEBT }
                             .background(if (debtSelected) ExpenseRed.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface)
-                            .border(1.dp, if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
+                            .border(1.dp, if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                             .padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically

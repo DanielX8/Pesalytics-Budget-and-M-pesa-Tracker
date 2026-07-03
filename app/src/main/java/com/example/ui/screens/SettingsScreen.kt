@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import com.pesalytics.BuildConfig
 import com.pesalytics.R
 import com.pesalytics.ui.theme.AccentGreenLight
+import com.pesalytics.ui.theme.AccentGreenDark
 import com.pesalytics.ui.theme.WarningOrange
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesalytics.model.ThemeMode
@@ -142,73 +143,9 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Image(
-                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
-                        contentDescription = "Pesalytics",
-                        modifier = Modifier.height(32.dp),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    Box {
-                        Box(
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .clickable { notificationsExpanded = true },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
-                            if (notifications.isNotEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(8.dp)
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(ExpenseRed)
-                                )
-                            }
-                        }
-                        DropdownMenu(
-                            expanded = notificationsExpanded,
-                            onDismissRequest = { notificationsExpanded = false },
-                            modifier = Modifier.width(280.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            shadowElevation = 8.dp
-                        ) {
-                            if (notifications.isEmpty()) {
-                                DropdownMenuItem(
-                                    text = { Text("No new notifications", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                    onClick = { }
-                                )
-                            } else {
-                                notifications.forEach { notif ->
-                                    DropdownMenuItem(
-                                        text = { Text(notif.message, style = MaterialTheme.typography.bodyMedium) },
-                                        onClick = { viewModel.dismissNotification(notif.id) }
-                                    )
-                                }
-                                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                                DropdownMenuItem(
-                                    text = { Text("Clear All", style = MaterialTheme.typography.bodyMedium, color = ExpenseRed) },
-                                    onClick = { viewModel.clearNotifications() }
-                                )
-                            }
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+            com.pesalytics.ui.components.PesalyticsTopBar(
+                viewModel = viewModel,
+                onNavigateBack = onNavigateBack
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -328,8 +265,8 @@ fun SettingsScreen(
             item { SettingsSection("DATA EXPORT") {
                 SettingsCard {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(HeroGreen.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.Upload, contentDescription = null, tint = HeroGreen)
+                        Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(AccentGreenDark.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.Upload, contentDescription = null, tint = AccentGreenDark)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -558,10 +495,10 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(12.dp),
                     enabled = editTempName.isNotBlank()
                 ) {
-                    Text("Save Profile", fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Save Profile", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }
@@ -599,7 +536,7 @@ fun SettingsScreen(
 @Composable
 private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(title, style = MaterialTheme.typography.labelSmall, color = HeroGreen, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
+        Text(title, style = MaterialTheme.typography.labelSmall, color = AccentGreenDark, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
         content()
     }
 }
@@ -678,7 +615,7 @@ internal fun SegmentedRow(options: List<String>, selected: String, enabled: Bool
 private fun ExportChip(label: String, onClick: () -> Unit) {
     val accent = interactiveGreen
     Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(accent.copy(alpha = 0.15f)).clickable { onClick() }.padding(horizontal = 10.dp, vertical = 6.dp)) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = HeroGreen, fontWeight = FontWeight.SemiBold)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = AccentGreenDark, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -690,17 +627,17 @@ private fun ProfileCard(userName: String, avatarIndex: Int, onEdit: () -> Unit) 
     val currentAvatar = avatarIcons.getOrNull(avatarIndex) ?: Icons.Rounded.Person
     SettingsCard {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(HeroGreen.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                Icon(currentAvatar, contentDescription = null, modifier = Modifier.size(30.dp), tint = HeroGreen)
+            Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(AccentGreenDark.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
+                Icon(currentAvatar, contentDescription = null, modifier = Modifier.size(30.dp), tint = AccentGreenDark)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("FINANCIAL IDENTITY", style = MaterialTheme.typography.labelSmall, color = HeroGreen, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("FINANCIAL IDENTITY", style = MaterialTheme.typography.labelSmall, color = AccentGreenDark, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(userName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = onEdit, colors = ButtonDefaults.buttonColors(containerColor = HeroGreen), shape = RoundedCornerShape(8.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
+            Button(onClick = onEdit, colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark), shape = RoundedCornerShape(8.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
                 Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Edit", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
@@ -767,12 +704,12 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
                 Text(planLabel, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
                 Spacer(modifier = Modifier.height(16.dp))
                 Surface(
-                    color = Color.White,
-                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(modifier = Modifier.fillMaxWidth().height(44.dp), contentAlignment = Alignment.Center) {
-                        Text(if (isPremium) "Manage Plan" else "Upgrade to Premium", fontWeight = FontWeight.Bold, color = HeroGreen)
+                        Text(if (isPremium) "Manage Plan" else "Upgrade to Premium", fontWeight = FontWeight.Bold, color = AccentGreenDark)
                     }
                 }
             }
@@ -830,7 +767,7 @@ private fun FrameworkCard(title: String, subtitle: String, icon: ImageVector, ba
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = title, tint = HeroGreen, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = title, tint = AccentGreenDark, modifier = Modifier.size(24.dp))
                 Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(badgeColor.copy(alpha = 0.12f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
                     Text(badgeText, style = MaterialTheme.typography.labelSmall, color = badgeColor, fontWeight = FontWeight.SemiBold, fontSize = 10.sp)
                 }
@@ -857,7 +794,7 @@ private fun AppearanceSection(viewModel: PesaViewModel, context: Context) {
                         ThemeMode.DARK -> Icons.Default.Nightlight
                         ThemeMode.SYSTEM -> Icons.Default.DesktopMac
                     }
-                    val contentColor = if (isSelected) HeroGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                    val contentColor = if (isSelected) AccentGreenDark else MaterialTheme.colorScheme.onSurfaceVariant
                     val borderColor = if (isSelected) AccentGreenLight.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant
                     var buttonCenter by remember(mode) { mutableStateOf(Offset.Zero) }
                     Box(
@@ -894,9 +831,9 @@ private fun FooterBanner() {
                     // Brand-aligned diagonal glow: deep brand green → bright accent → deep green.
                     brush = androidx.compose.ui.graphics.Brush.linearGradient(
                         0.0f to Color(0xFF031006),
-                        0.3f to HeroGreen,
+                        0.3f to AccentGreenDark,
                         0.5f to AccentGreenLight,
-                        0.7f to HeroGreen,
+                        0.7f to AccentGreenDark,
                         1.0f to Color(0xFF031006),
                         start = Offset(0f, Float.POSITIVE_INFINITY),
                         end = Offset(Float.POSITIVE_INFINITY, 0f)
@@ -936,10 +873,10 @@ private fun SubscriptionTierBadge(tier: com.pesalytics.domain.model.Subscription
     // Rendered on the green gradient hero card, so the chip is an opaque white pill with
     // strong-colored text for clear contrast in both light and dark mode.
     val (text, contentColor) = when (tier) {
-        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_MONTHLY   -> "Monthly ✓"   to HeroGreen
-        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_QUARTERLY -> "Quarterly ✓" to HeroGreen
-        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_YEARLY    -> "Yearly ✓"    to HeroGreen
-        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_LIFETIME  -> "Lifetime ✓"  to HeroGreen
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_MONTHLY   -> "Monthly ✓"   to AccentGreenDark
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_QUARTERLY -> "Quarterly ✓" to AccentGreenDark
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_YEARLY    -> "Yearly ✓"    to AccentGreenDark
+        com.pesalytics.domain.model.SubscriptionTier.PREMIUM_LIFETIME  -> "Lifetime ✓"  to AccentGreenDark
         com.pesalytics.domain.model.SubscriptionTier.TRIAL             -> "Trial — $trialDaysLeft days left" to WarningOrange
         else                                                            -> "Free plan"   to Color(0xFF444444)
     }

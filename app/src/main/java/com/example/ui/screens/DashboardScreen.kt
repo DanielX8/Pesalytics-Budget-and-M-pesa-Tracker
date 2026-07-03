@@ -365,7 +365,7 @@ fun DashboardScreen(
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(12.dp),
                     enabled = newCategoryName.isNotBlank()
                 ) {
                     Text("Save Category", fontWeight = FontWeight.Bold, color = Color.White)
@@ -394,65 +394,12 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
           Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Pesalytics", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
-                
-                Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surface)
-                            .clickable { notificationsExpanded = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = MaterialTheme.colorScheme.onSurface)
-                        if (notifications.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(ExpenseRed)
-                            )
-                        }
-                    }
-                    
-                    DropdownMenu(
-                        expanded = notificationsExpanded,
-                        onDismissRequest = { notificationsExpanded = false },
-                        modifier = Modifier.width(280.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        shadowElevation = 8.dp
-                    ) {
-                        if (notifications.isEmpty()) {
-                            DropdownMenuItem(
-                                text = { Text("No new notifications", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                onClick = { }
-                            )
-                        } else {
-                            notifications.forEach { notif ->
-                                DropdownMenuItem(
-                                    text = { Text(notif.message, style = MaterialTheme.typography.bodyMedium) },
-                                    onClick = { viewModel.dismissNotification(notif.id) }
-                                )
-                            }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                            DropdownMenuItem(
-                                text = { Text("Clear All", style = MaterialTheme.typography.bodyMedium, color = ExpenseRed) },
-                                onClick = { viewModel.clearNotifications() }
-                            )
-                        }
-                    }
+            com.pesalytics.ui.components.PesalyticsTopBar(
+                viewModel = viewModel,
+                titleContent = {
+                    Text("Pesalytics", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
                 }
-            }
+            )
             if (isSyncing) {
                 val firstSyncFraction = if (isFirstSync && syncTotalMessages > 0)
                     (syncProgress.toFloat() / syncTotalMessages.toFloat()).coerceIn(0f, 1f)
@@ -583,8 +530,7 @@ fun DashboardScreen(
                         val isFuture = selectedYear == realCurrentYear && index > realCurrentMonth
                         Box(
                             modifier = Modifier
-                                .shadow(2.dp, RoundedCornerShape(24.dp))
-                                .clip(RoundedCornerShape(24.dp))
+                                .clip(RoundedCornerShape(50))
                                 .background(if (isSelected) monthAccent else MaterialTheme.colorScheme.surface)
                                 .alpha(if (isFuture) 0.4f else 1f)
                                 .clickable(enabled = !isFuture) { viewModel.setSelectedMonth(index) }
@@ -723,17 +669,27 @@ fun DashboardScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    "No transactions yet",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    "Sync your M-PESA SMS to get started",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
+                                if (isSyncing) {
+                                    CircularProgressIndicator(color = AccentGreenLight, modifier = Modifier.size(32.dp))
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        "Syncing your M-PESA history...",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                } else {
+                                    Text(
+                                        "No transactions yet",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "Sync your M-PESA SMS to get started",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                }
                             }
                         }
                     } else {
@@ -815,9 +771,7 @@ fun QuickNavButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label:
 
 @Composable
 fun HeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
-    val isLightMode = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val startColor = if (isLightMode) androidx.compose.ui.graphics.Color(0xFF55D687) else androidx.compose.ui.graphics.Color(0xFF348C55)
-    val endColor = if (isLightMode) androidx.compose.ui.graphics.Color(0xFF348C55) else androidx.compose.ui.graphics.Color(0xFF1A4D2E)
+    val gradient = rememberBrandGradient()
 
     Card(
         modifier = Modifier
@@ -825,18 +779,18 @@ fun HeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
             // Glowing card shadow — the single biggest visual upgrade
             .shadow(
                 elevation = 24.dp,
-                shape = RoundedCornerShape(32.dp),
+                shape = RoundedCornerShape(16.dp),
                 spotColor = AccentGreenLight.copy(alpha = 0.4f),
                 ambientColor = AccentGreenDark.copy(alpha = 0.25f)
             ),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.linearGradient(listOf(startColor, endColor)))
+                .background(gradient)
         ) {
             // Radial glow overlay for mesh-gradient depth
             Box(
@@ -960,12 +914,12 @@ fun MshwariHeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
             .fillMaxWidth()
             .shadow(
                 elevation = 24.dp,
-                shape = RoundedCornerShape(32.dp),
+                shape = RoundedCornerShape(16.dp),
                 spotColor = Color(0xFF348C55).copy(alpha = 0.4f),
                 ambientColor = Color(0xFF071F16).copy(alpha = 0.3f)
             ),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
@@ -1057,12 +1011,12 @@ fun PochiHeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
             .fillMaxWidth()
             .shadow(
                 elevation = 24.dp,
-                shape = RoundedCornerShape(32.dp),
+                shape = RoundedCornerShape(16.dp),
                 spotColor = TransferBlue.copy(alpha = 0.4f),
                 ambientColor = Color(0xFF0D47A1).copy(alpha = 0.25f)
             ),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(

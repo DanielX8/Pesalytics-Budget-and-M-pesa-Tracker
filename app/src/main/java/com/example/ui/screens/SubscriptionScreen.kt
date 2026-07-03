@@ -52,8 +52,9 @@ fun SubscriptionScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
+            com.pesalytics.ui.components.PesalyticsTopBar(
+                viewModel = viewModel,
+                titleContent = {
                     Image(
                         painter = androidx.compose.ui.res.painterResource(id = R.drawable.header_logo),
                         contentDescription = "Pesalytics",
@@ -61,12 +62,7 @@ fun SubscriptionScreen(
                         contentScale = androidx.compose.ui.layout.ContentScale.Fit
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+                onNavigateBack = onNavigateBack
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -141,7 +137,8 @@ fun SubscriptionScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(2.dp)
+                        elevation = CardDefaults.cardElevation(2.dp),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("Free Plan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -164,8 +161,8 @@ fun SubscriptionScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .brandGlow(elevation = 18.dp, radius = 20.dp)
-                            .clip(RoundedCornerShape(20.dp))
+                            .brandGlow(elevation = 18.dp, radius = 16.dp)
+                            .clip(RoundedCornerShape(16.dp))
                             .background(gradient)
                     ) {
                         Box(
@@ -221,7 +218,7 @@ fun SubscriptionScreen(
                 Text("Feature Comparison", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(2.dp)
                 ) {
@@ -251,13 +248,13 @@ fun SubscriptionScreen(
             }
             item {
                 if (monthlyBills.isEmpty()) {
-                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(12.dp)) {
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
                         Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                             Text("No monthly subscriptions tracked yet.\nAdd them in the Bills tab.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                         }
                     }
                 } else {
-                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(2.dp)) {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             monthlyBills.forEachIndexed { index, bill ->
                                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -311,13 +308,14 @@ fun PricingCard(title: String, price: String, badge: String? = null, isSelected:
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = if (badge != null) 8.dp else 0.dp)
-                .then(if (isSelected) Modifier.brandGlow(elevation = 12.dp, radius = 12.dp) else Modifier)
+                .then(if (isSelected) Modifier.brandGlow(elevation = 12.dp, radius = 16.dp) else Modifier)
                 .border(
                     width = if (isSelected) 2.dp else 1.dp,
                     color = if (isSelected) AccentGreenLight else MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(16.dp)
                 )
                 .clickableScale { onClick() },
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = if (isSelected) AccentGreenLight.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface)
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
