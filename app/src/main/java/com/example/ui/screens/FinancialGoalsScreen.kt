@@ -184,10 +184,15 @@ fun FinancialGoalsScreen(
                 var goalForDelete by remember { mutableStateOf<Goal?>(null) }
 
                 goals.forEach { goal ->
+                    val transactions by viewModel.getTransactionsForGoal(goal.id).collectAsStateWithLifecycle(initialValue = emptyList())
                     GoalCard(
                         goal = goal,
+                        transactions = transactions,
                         onAddContribution = { goalForContribution = goal },
-                        onDelete = { goalForDelete = goal }
+                        onDelete = { goalForDelete = goal },
+                        onDeleteTransaction = { tx ->
+                            viewModel.deleteGoalTransaction(tx.id, tx.amount, goal.id)
+                        }
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -567,16 +572,25 @@ fun CreateGoalBottomSheet(
 }
 
 @Composable
-fun GoalCard(goal: Goal, onAddContribution: () -> Unit = {}, onDelete: () -> Unit = {}) {
+fun GoalCard(
+    goal: Goal,
+    transactions: List<com.pesalytics.model.GoalTransaction> = emptyList(),
+    onAddContribution: () -> Unit = {},
+    onDelete: () -> Unit = {},
+    onDeleteTransaction: (com.pesalytics.model.GoalTransaction) -> Unit = {}
+) {
     val dateFormat = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+    val txDateFormat = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
     val formattedDate = dateFormat.format(java.util.Date(goal.targetDate))
 
     val tagText = if (goal.type == GoalType.SAVINGS) "SAVINGS" else "DEBT"
     val subtitleText = if (goal.type == GoalType.SAVINGS) "Savings Goal" else "Paying Off Debt"
     val savedAmount = goal.savedAmount
+    
+    var expanded by remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(2.dp, Color(value = goal.color.toULong()))
@@ -678,6 +692,31 @@ fun GoalCard(goal: Goal, onAddContribution: () -> Unit = {}, onDelete: () -> Uni
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete goal", tint = ExpenseRed, modifier = Modifier.size(20.dp))
+                }
+            }
+
+            if (expanded && transactions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Recent Contributions", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    transactions.forEach { tx ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("+KES ${"%,.2f".format(tx.amount)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = typeColor)
+                                Text(txDateFormat.format(java.util.Date(tx.timestamp)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            IconButton(onClick = { onDeleteTransaction(tx) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ExpenseRed, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
                 }
             }
         }

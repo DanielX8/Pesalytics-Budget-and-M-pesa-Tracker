@@ -130,7 +130,9 @@ class PatternEngine {
     }
 
     private fun computeFulizaTrend(transactions: List<Transaction>): List<FulizaMonthPoint> {
-        val monthFmt = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+        val monthFmt = SimpleDateFormat("yyyy-MM", Locale.ROOT).apply {
+            timeZone = java.util.TimeZone.getTimeZone("Africa/Nairobi")
+        }
         return transactions
             .filter { it.usedFulizaAmount > 0 || it.category.equals("Fuliza", ignoreCase = true) }
             .groupBy { monthFmt.format(Date(it.timestamp)) }

@@ -113,7 +113,8 @@ fun PayeeHistoryScreen(payee: String, viewModel: PesaViewModel, onNavigateBack: 
     }
 
     if (showCategoryEdit && selectedTransaction != null) {
-        var newCategoryName by remember { mutableStateOf(selectedTransaction!!.category) }
+        val txn = selectedTransaction!!
+        var newCategoryName by remember { mutableStateOf(txn.category) }
         val predefinedCategories = listOf("Groceries", "Utilities", "Food & Dining", "Transport", "Shopping", "Entertainment", "Health", "Airtime", "Other")
         AlertDialog(
             onDismissRequest = { showCategoryEdit = false },
@@ -121,7 +122,7 @@ fun PayeeHistoryScreen(payee: String, viewModel: PesaViewModel, onNavigateBack: 
             text = {
                 Column {
                     Text("Change category for all past and future transactions from:", style = MaterialTheme.typography.bodySmall)
-                    Text(selectedTransaction!!.payee, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(txn.payee, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                     @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
                     FlowRow(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -148,8 +149,8 @@ fun PayeeHistoryScreen(payee: String, viewModel: PesaViewModel, onNavigateBack: 
             confirmButton = {
                 TextButton(onClick = {
                     if (newCategoryName.isNotBlank()) {
-                        viewModel.updateTransactionCategory(selectedTransaction!!, newCategoryName.trim())
-                        selectedTransaction = selectedTransaction!!.copy(category = newCategoryName.trim())
+                        viewModel.updateTransactionCategory(txn, newCategoryName.trim())
+                        selectedTransaction = txn.copy(category = newCategoryName.trim())
                     }
                     showCategoryEdit = false
                 }) { Text("Save", color = MaterialTheme.colorScheme.primary) }

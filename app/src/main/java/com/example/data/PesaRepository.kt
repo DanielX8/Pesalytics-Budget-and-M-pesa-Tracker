@@ -43,8 +43,8 @@ class PesaRepository(
         budgetDao.insertBudget(budget)
     }
 
-    suspend fun deleteBudget(budget: Budget) {
-        budgetDao.deleteBudget(budget)
+    suspend fun deleteBudgetByCategory(category: String, monthYear: String) {
+        budgetDao.deleteBudgetByCategory(category, monthYear)
     }
     
     suspend fun insertCustomRule(rule: CustomRule) {
@@ -57,6 +57,18 @@ class PesaRepository(
 
     suspend fun addGoalContribution(goalId: Int, amount: Double) {
         goalDao.addGoalContribution(goalId, amount)
+        goalDao.insertGoalTransaction(com.pesalytics.model.GoalTransaction(
+            goalId = goalId,
+            amount = amount,
+            timestamp = System.currentTimeMillis()
+        ))
+    }
+
+    fun getTransactionsForGoal(goalId: Int) = goalDao.getTransactionsForGoal(goalId)
+
+    suspend fun deleteGoalTransaction(transactionId: Int, amountToRevert: Double, goalId: Int) {
+        goalDao.deleteGoalTransaction(transactionId)
+        goalDao.addGoalContribution(goalId, -amountToRevert)
     }
 
     suspend fun deleteGoal(goalId: Int) {

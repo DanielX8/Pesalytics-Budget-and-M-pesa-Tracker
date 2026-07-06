@@ -63,14 +63,29 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
 
         // ── Bills due within 3 days (always fires) ──────────────────────────
         val now = System.currentTimeMillis()
-        val threeDays = 3L * 24 * 60 * 60 * 1000
+        val startOfToday = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val endOfThreeDays = Calendar.getInstance().apply {
+            timeInMillis = startOfToday
+            add(Calendar.DAY_OF_YEAR, 3)
+            set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+
         val dueSoon = repository.allBills.first()
-            .filter { !it.isPaid && it.nextDueDate in now..(now + threeDays) }
+            .filter { !it.isPaid && it.nextDueDate in startOfToday..endOfThreeDays }
 
         if (dueSoon.isNotEmpty()) {
             val summary = dueSoon.joinToString(" • ") { bill ->
-                val days = ((bill.nextDueDate - now) / (1000 * 60 * 60 * 24)).toInt()
-                val when_ = if (days == 0) "TODAY" else if (days == 1) "TOMORROW" else "in $days days"
+                val calDue = Calendar.getInstance().apply {
+                    timeInMillis = bill.nextDueDate
+                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                }
+                val days = ((calDue.timeInMillis - startOfToday) / (1000 * 60 * 60 * 24)).toInt()
+                val when_ = if (days <= 0) "TODAY" else if (days == 1) "TOMORROW" else "in $days days"
                 "${bill.name} due $when_ — KES ${"%.2f".format(bill.amount)}"
             }
             val title = if (dueSoon.size == 1) "Bill Due Soon" else "${dueSoon.size} Bills Due Soon"
@@ -126,7 +141,31 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
             }
         }
 
+        // Reschedule for next day 7:30 PM
+        val nextDelay = delayUntilTime(19, 30)
+        val workRequest = androidx.work.OneTimeWorkRequestBuilder<DailySpendWorker>()
+            .setInitialDelay(nextDelay, TimeUnit.MILLISECONDS)
+            .addTag("daily_spend_notification")
+            .build()
+        androidx.work.WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            "daily_spend_notification",
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            workRequest
+        )
+
         return Result.success()
+    }
+
+    private fun delayUntilTime(hour: Int, minute: Int): Long {
+        val now = Calendar.getInstance()
+        val target = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            if (timeInMillis <= now.timeInMillis) add(Calendar.DAY_OF_YEAR, 1)
+        }
+        return target.timeInMillis - now.timeInMillis
     }
 
     private fun appendInAppNotification(

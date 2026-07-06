@@ -110,8 +110,8 @@ class MonthlyReportWorker(appContext: Context, workerParams: WorkerParameters) :
     private fun delayUntilFirstOfNextMonth(hour: Int, minute: Int): Long {
         val now = Calendar.getInstance()
         val target = Calendar.getInstance().apply {
-            add(Calendar.MONTH, 1)
             set(Calendar.DAY_OF_MONTH, 1)
+            add(Calendar.MONTH, 1)
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)

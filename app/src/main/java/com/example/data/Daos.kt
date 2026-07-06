@@ -112,8 +112,8 @@ interface BudgetDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBudget(budget: Budget)
 
-    @Delete
-    suspend fun deleteBudget(budget: Budget)
+    @Query("DELETE FROM budgets WHERE category = :category AND monthYear = :monthYear")
+    suspend fun deleteBudgetByCategory(category: String, monthYear: String)
 
     @Query("DELETE FROM budgets")
     suspend fun deleteAllBudgets()
@@ -135,4 +135,13 @@ interface GoalDao {
 
     @Query("DELETE FROM goals")
     suspend fun deleteAllGoals()
+
+    @Query("SELECT * FROM goal_transactions WHERE goalId = :goalId ORDER BY timestamp DESC")
+    fun getTransactionsForGoal(goalId: Int): Flow<List<com.pesalytics.model.GoalTransaction>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGoalTransaction(transaction: com.pesalytics.model.GoalTransaction)
+
+    @Query("DELETE FROM goal_transactions WHERE id = :transactionId")
+    suspend fun deleteGoalTransaction(transactionId: Int)
 }

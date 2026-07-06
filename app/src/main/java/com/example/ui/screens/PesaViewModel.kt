@@ -115,9 +115,9 @@ class PesaViewModel(
 
     val currentMonthStart: StateFlow<Long> = _selectedYearMonth.map { (targetYear, monthIndex) ->
         val calendar = Calendar.getInstance()
+        calendar.set(Calendar.DAY_OF_MONTH, 1) // Set day to 1 FIRST to prevent leap month overflow
         calendar.set(Calendar.YEAR, targetYear)
         calendar.set(Calendar.MONTH, monthIndex)
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
@@ -1132,6 +1132,16 @@ class PesaViewModel(
         viewModelScope.launch { repository.deleteGoal(goalId) }
     }
 
+    fun getTransactionsForGoal(goalId: Int): kotlinx.coroutines.flow.Flow<List<com.pesalytics.model.GoalTransaction>> {
+        return repository.getTransactionsForGoal(goalId)
+    }
+
+    fun deleteGoalTransaction(transactionId: Int, amountToRevert: Double, goalId: Int) {
+        viewModelScope.launch {
+            repository.deleteGoalTransaction(transactionId, amountToRevert, goalId)
+        }
+    }
+
     // ── Transactions ─────────────────────────────────────────────────────────
     fun deleteTransaction(id: Int) {
         viewModelScope.launch { repository.deleteTransaction(id) }
@@ -1179,7 +1189,7 @@ class PesaViewModel(
         viewModelScope.launch {
             val monthYear = currentMonthYearString.value
             if (monthYear.isNotEmpty()) {
-                repository.deleteBudget(Budget(category = category, limitAmount = 0.0, monthYear = monthYear))
+                repository.deleteBudgetByCategory(category = category, monthYear = monthYear)
             }
         }
     }
@@ -1259,8 +1269,6 @@ class PesaViewModel(
         viewModelScope.launch(Dispatchers.Default) {
             val result = manager.redeemPromoCode(code)
             val msg = when (result) {
-                is PromoResult.EarlybirdLifetime  -> "🎉 EARLYBIRD accepted! Lifetime Premium unlocked."
-                is PromoResult.EarlybirdSunset    -> "EARLYBIRD has ended — you've been given a 14-day free trial instead."
                 is PromoResult.Success            -> when (result.grant) {
                     is com.pesalytics.data.billing.PromoGrant.Lifetime    -> "🎉 Lifetime Premium unlocked!"
                     is com.pesalytics.data.billing.PromoGrant.Monthly     -> "✅ 1 month Premium granted!"

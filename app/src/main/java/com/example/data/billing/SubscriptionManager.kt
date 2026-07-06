@@ -40,7 +40,7 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
 
     fun disconnect() {
         billingClient.endConnection()  // stop incoming events before cancelling inflight coroutines
-        scope.cancel()
+        scope.coroutineContext.cancelChildren()
     }
 
     override fun onBillingSetupFinished(result: BillingResult) {
@@ -193,7 +193,11 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
     }
 
     fun grantReferralBonus() {
-        prefs.edit().putLong("referral_expiry_ms", System.currentTimeMillis() + TimeUnit.DAYS.toMillis(30)).apply()
+        val now = System.currentTimeMillis()
+        val currentExpiry = prefs.getLong("referral_expiry_ms", 0L)
+        val startPoint = if (currentExpiry > now) currentExpiry else now
+        val newExpiry = startPoint + TimeUnit.DAYS.toMillis(30)
+        prefs.edit().putLong("referral_expiry_ms", newExpiry).apply()
         _state.value = loadStateFromPrefs()
     }
 
@@ -327,29 +331,8 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
         "6bc073c9318655592768b77f3bf71b4c5e8a5396a530a9e978a53a21f4950fcc" to PromoCodeEntry(PromoGrant.Monthly, "Monthly-50"),
     )
 
-    private val MAX_EARLYBIRD = 300
-    private val EARLYBIRD_WINDOW_DAYS = 90L
-
     fun redeemPromoCode(rawCode: String): PromoResult {
         val code = rawCode.trim().uppercase()
-
-        if (code == "EARLYBIRD") {
-            val alreadyRedeemed = prefs.getBoolean("earlybird_redeemed", false)
-            if (alreadyRedeemed) return PromoResult.AlreadyRedeemed
-
-            val count = prefs.getInt("earlybird_count", 0)
-            val daysSince = (System.currentTimeMillis() - BillingConfig.PLAY_STORE_LAUNCH_MS) / TimeUnit.DAYS.toMillis(1)
-            val sunset = count >= MAX_EARLYBIRD || daysSince >= EARLYBIRD_WINDOW_DAYS
-
-            return if (sunset) {
-                grantFromPromo(PromoGrant.Trial14Days)
-                PromoResult.EarlybirdSunset
-            } else {
-                prefs.edit().putInt("earlybird_count", count + 1).putBoolean("earlybird_redeemed", true).apply()
-                grantFromPromo(PromoGrant.Lifetime)
-                PromoResult.EarlybirdLifetime
-            }
-        }
 
         val hash = sha256(code)
         val result: PromoResult = synchronized(this) {

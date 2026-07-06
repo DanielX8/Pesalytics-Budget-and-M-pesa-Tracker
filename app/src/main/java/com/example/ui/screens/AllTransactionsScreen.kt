@@ -161,7 +161,8 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
     }
 
     if (showCategoryEdit && selectedTransaction != null) {
-        var newCategoryName by remember { mutableStateOf(selectedTransaction!!.category) }
+        val txn = selectedTransaction!!
+        var newCategoryName by remember { mutableStateOf(txn.category) }
         val predefinedCategories = listOf("Groceries", "Utilities", "Food & Dining", "Transport", "Shopping", "Entertainment", "Health", "Airtime", "Other")
         AlertDialog(
             onDismissRequest = { showCategoryEdit = false },
@@ -169,7 +170,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
             text = {
                 Column {
                     Text("Change category for all past and future transactions from:", style = MaterialTheme.typography.bodySmall)
-                    Text(selectedTransaction!!.payee, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(txn.payee, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                     @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
                     FlowRow(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -196,8 +197,8 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
             confirmButton = {
                 TextButton(onClick = {
                     if (newCategoryName.isNotBlank()) {
-                        viewModel.updateTransactionCategory(selectedTransaction!!, newCategoryName.trim())
-                        selectedTransaction = selectedTransaction!!.copy(category = newCategoryName.trim())
+                        viewModel.updateTransactionCategory(txn, newCategoryName.trim())
+                        selectedTransaction = txn.copy(category = newCategoryName.trim())
                     }
                     showCategoryEdit = false
                 }) { Text("Save", color = MaterialTheme.colorScheme.primary) }
@@ -209,20 +210,21 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
     }
 
     if (showTransactionDetails && selectedTransaction != null) {
+        val txn = selectedTransaction!!
         TransactionDetailsSheet(
-            transaction = selectedTransaction!!,
+            transaction = txn,
             onDismiss = { showTransactionDetails = false },
             onEditCategory = { showCategoryEdit = true },
             onViewPayeeHistory = if (navController != null) {
                 {
                     showTransactionDetails = false
-                    navController.navigate(PayeeHistory(payee = selectedTransaction!!.payee))
+                    navController.navigate(PayeeHistory(payee = txn.payee))
                 }
             } else null,
             onShare = {
                 val sendIntent: android.content.Intent = android.content.Intent().apply {
                     action = android.content.Intent.ACTION_SEND
-                    putExtra(android.content.Intent.EXTRA_TEXT, "Pesalytics Transaction Receipt:\nRef: ${selectedTransaction!!.remoteRef}\nPayee: ${selectedTransaction!!.payee}\nAmount: KES ${formatCurrency(selectedTransaction!!.amount)}")
+                    putExtra(android.content.Intent.EXTRA_TEXT, "Pesalytics Transaction Receipt:\nRef: ${txn.remoteRef}\nPayee: ${txn.payee}\nAmount: KES ${formatCurrency(txn.amount)}")
                     type = "text/plain"
                 }
                 val shareIntent = android.content.Intent.createChooser(sendIntent, null)

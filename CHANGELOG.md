@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.7] — 2026-07-06 · Bug Fixes
+
+### Fixed
+- **Referral Bonus Expiry Bug** — Fixed an issue where consecutive referral bonuses overrode each other. They now stack correctly.
+- **Calendar Overflow Bug in Month Selector** — Fixed navigation to a shorter month on the 31st day to avoid silently overflowing to the subsequent month.
+- **DailySpendWorker Timezone Bug** — Fixed the calculation of the "due in N days" bill string to accurately compute the number of full calendar days remaining instead of raw millisecond differences.
+
 ## [1.4.6] — 2026-07-01 · Payee History, Bill Pausing & Smart Categorization
 
 ### Added

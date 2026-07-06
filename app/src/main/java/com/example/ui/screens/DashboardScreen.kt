@@ -288,9 +288,10 @@ fun DashboardScreen(
     }
 
     if (showCategoryEdit && selectedTransaction != null) {
+        val txn = selectedTransaction!!
         val categorySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val categoryScope = rememberCoroutineScope()
-        var newCategoryName by remember { mutableStateOf(selectedTransaction!!.category) }
+        var newCategoryName by remember { mutableStateOf(txn.category) }
         val predefinedCategories = listOf("Groceries", "Utilities", "Food & Dining", "Transport", "Shopping", "Entertainment", "Health", "Airtime", "Other")
 
         ModalBottomSheet(
@@ -324,7 +325,7 @@ fun DashboardScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    selectedTransaction!!.payee,
+                    txn.payee,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -358,8 +359,8 @@ fun DashboardScreen(
                 Button(
                     onClick = {
                         if (newCategoryName.isNotBlank()) {
-                            viewModel.updateTransactionCategory(selectedTransaction!!, newCategoryName.trim())
-                            selectedTransaction = selectedTransaction!!.copy(category = newCategoryName.trim())
+                            viewModel.updateTransactionCategory(txn, newCategoryName.trim())
+                            selectedTransaction = txn.copy(category = newCategoryName.trim())
                         }
                         categoryScope.launch { categorySheetState.hide() }.invokeOnCompletion { showCategoryEdit = false }
                     },
@@ -375,14 +376,15 @@ fun DashboardScreen(
     }
 
     if (showTransactionDetails && selectedTransaction != null) {
+        val txn = selectedTransaction!!
         TransactionDetailsSheet(
-            transaction = selectedTransaction!!,
+            transaction = txn,
             onDismiss = { showTransactionDetails = false },
             onEditCategory = { showCategoryEdit = true },
             onShare = {
                 val sendIntent: android.content.Intent = android.content.Intent().apply {
                     action = android.content.Intent.ACTION_SEND
-                    putExtra(android.content.Intent.EXTRA_TEXT, "Pesalytics Transaction Receipt:\nRef: ${selectedTransaction!!.remoteRef}\nPayee: ${selectedTransaction!!.payee}\nAmount: KES ${formatCurrency(selectedTransaction!!.amount)}")
+                    putExtra(android.content.Intent.EXTRA_TEXT, "Pesalytics Transaction Receipt:\nRef: ${txn.remoteRef}\nPayee: ${txn.payee}\nAmount: KES ${formatCurrency(txn.amount)}")
                     type = "text/plain"
                 }
                 val shareIntent = android.content.Intent.createChooser(sendIntent, null)

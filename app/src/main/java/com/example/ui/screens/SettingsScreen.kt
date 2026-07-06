@@ -110,8 +110,17 @@ fun SettingsScreen(
                     android.widget.Toast.makeText(context, "Notifications enabled", android.widget.Toast.LENGTH_SHORT).show()
                 } else notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
-                viewModel.setMasterNotifEnabled(true, context)
-                android.widget.Toast.makeText(context, "Notifications enabled", android.widget.Toast.LENGTH_SHORT).show()
+                val isSystemEnabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+                if (isSystemEnabled) {
+                    viewModel.setMasterNotifEnabled(true, context)
+                    android.widget.Toast.makeText(context, "Notifications enabled", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    }
+                    context.startActivity(intent)
+                    android.widget.Toast.makeText(context, "Please allow notifications in system settings", android.widget.Toast.LENGTH_LONG).show()
+                }
             }
         } else {
             viewModel.setMasterNotifEnabled(false, context)

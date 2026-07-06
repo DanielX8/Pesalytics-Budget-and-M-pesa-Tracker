@@ -33,11 +33,12 @@ class PesalyticsApplication : Application() {
     private fun scheduleWorkers() {
         val wm = WorkManager.getInstance(this)
 
-        // Daily at 7:30 PM — spend summary + bill alerts + budget check
-        wm.enqueueUniquePeriodicWork(
+        // Daily at 7:30 PM — spend summary + bill alerts + budget check.
+        // Uses a OneTimeWorkRequest to avoid DST drift (re-schedules itself in doWork).
+        wm.enqueueUniqueWork(
             "daily_spend_notification",
-            ExistingPeriodicWorkPolicy.KEEP,
-            PeriodicWorkRequestBuilder<DailySpendWorker>(24, TimeUnit.HOURS)
+            androidx.work.ExistingWorkPolicy.KEEP,
+            androidx.work.OneTimeWorkRequestBuilder<DailySpendWorker>()
                 .setInitialDelay(delayUntilTime(19, 30), TimeUnit.MILLISECONDS)
                 .addTag("daily_spend_notification")
                 .build()
@@ -96,8 +97,8 @@ class PesalyticsApplication : Application() {
     private fun delayUntilFirstOfNextMonth(hour: Int, minute: Int): Long {
         val now = Calendar.getInstance()
         val target = Calendar.getInstance().apply {
-            add(Calendar.MONTH, 1)
             set(Calendar.DAY_OF_MONTH, 1)
+            add(Calendar.MONTH, 1)
             set(Calendar.HOUR_OF_DAY, hour); set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }

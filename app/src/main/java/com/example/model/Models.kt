@@ -115,3 +115,23 @@ data class Goal(
     val color: Long = 0xFF4CAF50,
     val savedAmount: Double = 0.0
 )
+
+@Entity(
+    tableName = "goal_transactions",
+    foreignKeys = [
+        androidx.room.ForeignKey(
+            entity = Goal::class,
+            parentColumns = ["id"],
+            childColumns = ["goalId"],
+            onDelete = androidx.room.ForeignKey.CASCADE
+        )
+    ],
+    indices = [androidx.room.Index("goalId")]
+)
+@Serializable
+data class GoalTransaction(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val goalId: Int,
+    val amount: Double,
+    val timestamp: Long
+)

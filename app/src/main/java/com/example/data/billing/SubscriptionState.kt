@@ -26,8 +26,6 @@ data class PromoCodeEntry(val grant: PromoGrant, val label: String)
 
 sealed class PromoResult {
     data class Success(val grant: PromoGrant, val label: String) : PromoResult()
-    object EarlybirdLifetime : PromoResult()
-    object EarlybirdSunset   : PromoResult()
     object AlreadyRedeemed   : PromoResult()
     object Invalid           : PromoResult()
 }
