@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.8] — 2026-07-07 · UI Enhancements
+
+### Added
+- **Day-level Filtering Carousel** — A polished, reusable `DayCarousel` component has been added to the Analytics Dashboard and All Transactions screen. It allows for slicing data into specific 24-hour windows.
+- **Analytics Dashboard Integration** — Tapping a day instantly filters the Income, Expenses, Balance Trajectory, and Needs vs. Wants views to represent only that specific day.
+- **All Transactions Integration** — Tapping a day filters the transactions list live with a smooth fade-in/fade-out animation. Tapping the selected day again toggles back to the full month view.
+
+---
+
 ## [1.4.7] — 2026-07-06 · Bug Fixes
 
 ### Fixed
