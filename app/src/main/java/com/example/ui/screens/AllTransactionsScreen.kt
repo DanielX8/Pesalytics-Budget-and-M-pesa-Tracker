@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -77,6 +79,17 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
     val monthFormat = remember { java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault()) }
     val currentMonth = remember { monthFormat.format(java.util.Date()) }
     var selectedMonth by remember { mutableStateOf(currentMonth) }
+    
+    var selectedDay by remember { mutableStateOf<Int?>(null) }
+    androidx.compose.runtime.LaunchedEffect(selectedMonth) {
+        selectedDay = null
+    }
+
+    val parsedMonthYear = remember(selectedMonth) {
+        val date = monthFormat.parse(selectedMonth) ?: java.util.Date()
+        val cal = java.util.Calendar.getInstance().apply { time = date }
+        cal.get(java.util.Calendar.MONTH) to cal.get(java.util.Calendar.YEAR)
+    }
 
     val availableMonths by remember(uiState.transactions) {
         derivedStateOf {
@@ -120,11 +133,16 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
         }
     }
 
-    val filteredTransactions by remember(uiState.transactions, selectedCategory, selectedFilter, selectedMonth, searchQuery) {
+    val filteredTransactions by remember(uiState.transactions, selectedCategory, selectedFilter, selectedMonth, selectedDay, searchQuery) {
         derivedStateOf {
             uiState.transactions.filter { transaction ->
                 if (transaction.isFeeTransaction) return@filter false
                 if (monthFormat.format(java.util.Date(transaction.timestamp)) != selectedMonth) return@filter false
+                
+                if (selectedDay != null) {
+                    val txCal = java.util.Calendar.getInstance().apply { timeInMillis = transaction.timestamp }
+                    if (txCal.get(java.util.Calendar.DAY_OF_MONTH) != selectedDay) return@filter false
+                }
 
                 val matchesCategory = when (selectedCategory) {
                     "Income" -> transaction.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY ||
@@ -289,6 +307,8 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
             val amtColor = if (filteredAmount >= 0) com.pesalytics.ui.theme.AccentGreenLight else com.pesalytics.ui.theme.ExpenseRed
             val amtPrefix = if (filteredAmount >= 0) "+KES " else "-KES "
             
+            val listState = rememberLazyListState()
+
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Text(
                     text = "$amtPrefix${formatCurrency(kotlin.math.abs(filteredAmount))}",
@@ -413,6 +433,15 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                 }
             }
 
+            // Day Carousel for day-level filtering
+            com.pesalytics.ui.components.DayCarousel(
+                selectedMonth = parsedMonthYear.first,
+                selectedYear = parsedMonthYear.second,
+                selectedDay = selectedDay,
+                onDaySelected = { selectedDay = it },
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
             // AnimatedContent keyed on category + filter — crossfades when user taps a chip
             AnimatedContent(
                 targetState = Triple(selectedCategory, selectedFilter, groupedTransactions),
@@ -451,18 +480,24 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                     }
                 } else {
                     LazyColumn(
+                        state = listState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                         contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
                         grouped.forEach { (dateString, transactionsForDate) ->
-                            item(key = "header_$dateString") {
+                            @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+                            stickyHeader(key = "header_$dateString") {
                                 Text(
                                     text = dateString.uppercase(java.util.Locale.getDefault()),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp, start = 8.dp).animateItem()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f))
+                                        .padding(top = 16.dp, bottom = 8.dp)
+                                        .animateItem()
                                 )
                             }
                             

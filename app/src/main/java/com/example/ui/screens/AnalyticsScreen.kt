@@ -73,17 +73,34 @@ fun AnalyticsScreen(
     val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
     val selectedMonthIndex by viewModel.selectedMonthIndex.collectAsStateWithLifecycle()
     val currentCalendarMonth = Calendar.getInstance().get(Calendar.MONTH)
+    val selectedYear by viewModel.selectedYear.collectAsStateWithLifecycle()
+    var selectedDay by remember { mutableStateOf<Int?>(null) }
+    
+    LaunchedEffect(selectedMonthIndex, selectedYear) { 
+        selectedDay = null 
+    }
 
-    // Use the ViewModel's year-aware currentMonthStart so December in January
-    // correctly resolves to the previous year rather than a future month.
-    val startTimestamp by viewModel.currentMonthStart.collectAsStateWithLifecycle()
-    val endTimestamp = Calendar.getInstance().apply {
-        timeInMillis = startTimestamp
-        add(Calendar.MONTH, 1)
-    }.timeInMillis
-    val displayMonth = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date(startTimestamp))
+    // Use the ViewModel's year-aware currentMonthStart
+    val monthStartTimestamp by viewModel.currentMonthStart.collectAsStateWithLifecycle()
+    
+    val (analyticsStartTimestamp, analyticsEndTimestamp) = remember(monthStartTimestamp, selectedDay) {
+        val cal = Calendar.getInstance().apply { timeInMillis = monthStartTimestamp }
+        val sDay = selectedDay
+        if (sDay != null) {
+            cal.set(Calendar.DAY_OF_MONTH, sDay)
+            val start = cal.timeInMillis
+            cal.add(Calendar.DAY_OF_MONTH, 1)
+            start to cal.timeInMillis
+        } else {
+            val start = cal.timeInMillis
+            cal.add(Calendar.MONTH, 1)
+            start to cal.timeInMillis
+        }
+    }
+    
+    val displayMonth = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date(monthStartTimestamp))
 
-    val monthTransactions = uiState.transactions.filter { it.timestamp in startTimestamp until endTimestamp && !it.isFeeTransaction }
+    val monthTransactions = uiState.transactions.filter { it.timestamp in analyticsStartTimestamp until analyticsEndTimestamp && !it.isFeeTransaction }
 
     val totalIncome = monthTransactions.filter { it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME }.sumOf { it.amount }
     val totalExpense = monthTransactions.filter {
@@ -157,6 +174,15 @@ fun AnalyticsScreen(
             }
 
             item {
+                com.pesalytics.ui.components.DayCarousel(
+                    selectedMonth = selectedMonthIndex,
+                    selectedYear = selectedYear,
+                    selectedDay = selectedDay,
+                    onDaySelected = { selectedDay = it }
+                )
+            }
+
+            item {
                 androidx.compose.animation.AnimatedContent(
                     targetState = selectedMonthIndex,
                     transitionSpec = {
@@ -200,7 +226,7 @@ fun AnalyticsScreen(
             item { IncomeSourcesCard(monthTransactions) }
 
             // Trajectory
-            item { BalanceProgressionChart(monthTransactions, startTimestamp) }
+            item { BalanceProgressionChart(monthTransactions, monthStartTimestamp) }
 
             patternResult?.spendVelocity?.let { velocity ->
                 item { SpendVelocityBanner(velocity, uiState.transactions) }
@@ -225,7 +251,7 @@ fun AnalyticsScreen(
             item { SpendingRhythmChart(monthTransactions) }
             item { NeedsVsWantsCard(monthTransactions, needsWantsClassification, onNavigateToNeedsWants) }
             item {
-                SpendingCalendar(monthTransactions, startTimestamp, displayMonth)
+                SpendingCalendar(monthTransactions, monthStartTimestamp, displayMonth)
             }
 
             item { Spacer(modifier = Modifier.height(32.dp)) }

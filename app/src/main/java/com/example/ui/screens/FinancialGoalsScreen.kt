@@ -43,6 +43,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesalytics.model.GoalType
 import com.pesalytics.ui.theme.ExpenseRed
 import com.pesalytics.ui.theme.IncomeGreen
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -586,7 +589,25 @@ fun GoalCard(
     val tagText = if (goal.type == GoalType.SAVINGS) "SAVINGS" else "DEBT"
     val subtitleText = if (goal.type == GoalType.SAVINGS) "Savings Goal" else "Paying Off Debt"
     val savedAmount = goal.savedAmount
-    
+
+    // Spring count-up: animate 0 → savedAmount when the card first enters composition.
+    // Matches the AnimatedNumber_002/004 pattern — spring rolls in, gives a satisfying reveal.
+    var animSavedTarget by remember { mutableStateOf(0f) }
+    LaunchedEffect(savedAmount) { animSavedTarget = savedAmount.toFloat() }
+    val animatedSaved by animateFloatAsState(
+        targetValue = animSavedTarget,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessLow),
+        label = "GoalSavedSpring"
+    )
+
+    // Animated progress bar — spring-fills from 0 to actual progress.
+    val rawProgress = if (goal.targetAmount > 0) (savedAmount / goal.targetAmount).toFloat() else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = rawProgress.coerceIn(0f, 1f),
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        label = "GoalProgressSpring"
+    )
+
     var expanded by remember { mutableStateOf(false) }
 
     Card(
@@ -621,7 +642,7 @@ fun GoalCard(
             // Progress Bar
             val progress = if (goal.targetAmount > 0) (savedAmount / goal.targetAmount).toFloat() else 0f
             LinearProgressIndicator(
-                progress = { progress.coerceIn(0f, 1f) },
+                progress = { animatedProgress },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
                 color = typeColor,
                 trackColor = MaterialTheme.colorScheme.surface
@@ -631,7 +652,7 @@ fun GoalCard(
 
             // Amounts Row
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Saved: KES ${"%,.2f".format(savedAmount)}", style = MaterialTheme.typography.bodySmall, color = typeColor, fontWeight = FontWeight.SemiBold)
+                Text("Saved: KES ${"%,.2f".format(animatedSaved)}", style = MaterialTheme.typography.bodySmall, color = typeColor, fontWeight = FontWeight.SemiBold)
                 Text("Target: KES ${"%,.2f".format(goal.targetAmount)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
             }
 

@@ -64,6 +64,8 @@ import com.pesalytics.model.TransactionType
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.lazy.rememberLazyListState
 import com.pesalytics.ui.theme.AccentGreenDark
 import com.pesalytics.ui.theme.AccentGreenLight
 import com.pesalytics.ui.theme.ExpenseRed
@@ -483,7 +485,10 @@ fun DashboardScreen(
             }
         }
 
+        val dashboardScrollState = rememberLazyListState()
+
         LazyColumn(
+            state = dashboardScrollState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
@@ -551,7 +556,30 @@ fun DashboardScreen(
             }
 
             item(key = "hero-card") {
-                Box(modifier = Modifier.animateItem()) {
+                Box(modifier = Modifier
+                    .animateItem()
+                    .graphicsLayer {
+                        val index = dashboardScrollState.firstVisibleItemIndex
+                        val offset = dashboardScrollState.firstVisibleItemScrollOffset.toFloat()
+                        
+                        // Estimate total scroll amount based on which item is at the top
+                        val estimatedTotalScroll = when (index) {
+                            0 -> offset
+                            1 -> (60f * density) + offset
+                            2 -> (130f * density) + offset
+                            else -> 1000f * density
+                        }
+                        
+                        // Parallax shrink and fade
+                        val progress = (estimatedTotalScroll / (300f * density)).coerceIn(0f, 1f)
+                        scaleX = 1f - (progress * 0.15f)
+                        scaleY = 1f - (progress * 0.15f)
+                        // Fade out completely before the item gets removed by LazyColumn
+                        this.alpha = 1f - (progress * 1.5f).coerceIn(0f, 1f)
+                        // Parallax translation (slower scroll)
+                        translationY = estimatedTotalScroll * 0.5f
+                    }
+                ) {
                     val pageCount = 1 +
                         (if (uiState.hasMshwari) 1 else 0) +
                         (if (uiState.hasPochi) 1 else 0)
@@ -830,22 +858,29 @@ fun HeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
                     }
                 }
 
-                // Animated balance — crossfades when value changes or visibility toggles
-                AnimatedContent(
-                    targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.currentBalance)}" else "KES ••••••",
-                    transitionSpec = {
-                        (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
-                            slideInVertically(animationSpec = tween(350, easing = FastOutSlowInEasing)) { it / 2 }) togetherWith
-                            (fadeOut(animationSpec = tween(200)) +
-                                slideOutVertically(animationSpec = tween(200)) { -it / 2 })
-                    },
-                    label = "BalanceAmount"
-                ) { balanceText ->
+                // Spring count-up animation — rolls from 0 → actual balance when revealed.
+                // Snaps back to •••••• instantly when hidden. Auto-hide timer lives in ViewModel.
+                val animatedBalance by animateFloatAsState(
+                    targetValue = if (uiState.isBalanceVisible) uiState.currentBalance.toFloat() else 0f,
+                    animationSpec = if (uiState.isBalanceVisible)
+                        spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessLow)
+                    else tween(0),
+                    label = "HeroBalanceSpring"
+                )
+
+                if (uiState.isBalanceVisible) {
                     Text(
-                        text = balanceText,
+                        text = "KES ${formatCurrency(animatedBalance.toDouble())}",
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
+                    )
+                } else {
+                    Text(
+                        text = "KES ••••••",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.5f)
                     )
                 }
 
@@ -959,17 +994,33 @@ fun MshwariHeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
                         )
                     }
                 }
-                AnimatedContent(
-                    targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.mshwariBalance)}" else "KES ••••••",
-                    transitionSpec = {
-                        (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
-                            slideInVertically(animationSpec = tween(350, easing = FastOutSlowInEasing)) { it / 2 }) togetherWith
-                            (fadeOut(animationSpec = tween(200)) + slideOutVertically(animationSpec = tween(200)) { -it / 2 })
-                    },
-                    label = "MshwariBalance"
-                ) { balanceText ->
-                    Text(text = balanceText, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = Color.White)
+                
+                // Spring count-up animation — rolls from 0 → actual balance when revealed.
+                // Snaps back to •••••• instantly when hidden. Auto-hide timer lives in ViewModel.
+                val animatedBalance by animateFloatAsState(
+                    targetValue = if (uiState.isBalanceVisible) uiState.mshwariBalance.toFloat() else 0f,
+                    animationSpec = if (uiState.isBalanceVisible)
+                        spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessLow)
+                    else tween(0),
+                    label = "HeroBalanceSpring"
+                )
+
+                if (uiState.isBalanceVisible) {
+                    Text(
+                        text = "KES ${formatCurrency(animatedBalance.toDouble())}",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        text = "KES ••••••",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
                 }
+
                 Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1056,17 +1107,33 @@ fun PochiHeroCard(uiState: HomeUiState, onToggleVisibility: () -> Unit) {
                         )
                     }
                 }
-                AnimatedContent(
-                    targetState = if (uiState.isBalanceVisible) "KES ${formatCurrency(uiState.pochiBalance)}" else "KES ••••••",
-                    transitionSpec = {
-                        (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
-                            slideInVertically(animationSpec = tween(350, easing = FastOutSlowInEasing)) { it / 2 }) togetherWith
-                            (fadeOut(animationSpec = tween(200)) + slideOutVertically(animationSpec = tween(200)) { -it / 2 })
-                    },
-                    label = "PochiBalance"
-                ) { balanceText ->
-                    Text(text = balanceText, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = Color.White)
+
+                // Spring count-up animation — rolls from 0 → actual balance when revealed.
+                // Snaps back to •••••• instantly when hidden. Auto-hide timer lives in ViewModel.
+                val animatedBalance by animateFloatAsState(
+                    targetValue = if (uiState.isBalanceVisible) uiState.pochiBalance.toFloat() else 0f,
+                    animationSpec = if (uiState.isBalanceVisible)
+                        spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessLow)
+                    else tween(0),
+                    label = "HeroBalanceSpring"
+                )
+
+                if (uiState.isBalanceVisible) {
+                    Text(
+                        text = "KES ${formatCurrency(animatedBalance.toDouble())}",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        text = "KES ••••••",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
                 }
+                
                 Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                 Spacer(modifier = Modifier.height(16.dp))
