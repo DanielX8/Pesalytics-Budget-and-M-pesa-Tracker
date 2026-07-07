@@ -101,11 +101,42 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
         }
     }
 
-    val filterCounts by remember(uiState.transactions, selectedCategory, selectedMonth) {
+    val monthStartTimestamp = remember(parsedMonthYear) {
+        val cal = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.YEAR, parsedMonthYear.second)
+            set(java.util.Calendar.MONTH, parsedMonthYear.first)
+            set(java.util.Calendar.DAY_OF_MONTH, 1)
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        cal.timeInMillis
+    }
+
+    val (dayStartTimestamp, dayEndTimestamp) = remember(monthStartTimestamp, selectedDay) {
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = monthStartTimestamp }
+        if (selectedDay != null) {
+            cal.set(java.util.Calendar.DAY_OF_MONTH, selectedDay!!)
+            val start = cal.timeInMillis
+            cal.add(java.util.Calendar.DAY_OF_MONTH, 1)
+            start to cal.timeInMillis
+        } else {
+            val start = cal.timeInMillis
+            cal.add(java.util.Calendar.MONTH, 1)
+            start to cal.timeInMillis
+        }
+    }
+
+    val filterCounts by remember(uiState.transactions, selectedCategory, monthStartTimestamp) {
         derivedStateOf {
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = monthStartTimestamp }
+            cal.add(java.util.Calendar.MONTH, 1)
+            val monthEndTimestamp = cal.timeInMillis
+            
             val transactionsInMonth = uiState.transactions.filter { t ->
                 !t.isFeeTransaction &&
-                monthFormat.format(java.util.Date(t.timestamp)) == selectedMonth &&
+                t.timestamp in monthStartTimestamp until monthEndTimestamp &&
                 when (selectedCategory) {
                     "Income" -> t.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY ||
                                 t.type == com.pesalytics.model.TransactionType.MANUAL_INCOME ||
@@ -133,16 +164,11 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
         }
     }
 
-    val filteredTransactions by remember(uiState.transactions, selectedCategory, selectedFilter, selectedMonth, selectedDay, searchQuery) {
+    val filteredTransactions by remember(uiState.transactions, selectedCategory, selectedFilter, dayStartTimestamp, dayEndTimestamp, searchQuery) {
         derivedStateOf {
             uiState.transactions.filter { transaction ->
                 if (transaction.isFeeTransaction) return@filter false
-                if (monthFormat.format(java.util.Date(transaction.timestamp)) != selectedMonth) return@filter false
-                
-                if (selectedDay != null) {
-                    val txCal = java.util.Calendar.getInstance().apply { timeInMillis = transaction.timestamp }
-                    if (txCal.get(java.util.Calendar.DAY_OF_MONTH) != selectedDay) return@filter false
-                }
+                if (transaction.timestamp !in dayStartTimestamp until dayEndTimestamp) return@filter false
 
                 val matchesCategory = when (selectedCategory) {
                     "Income" -> transaction.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY ||
