@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
@@ -21,12 +24,18 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
+  val localProperties = Properties()
+  val localPropertiesFile = rootProject.file("local.properties")
+  if (localPropertiesFile.exists()) {
+      localProperties.load(FileInputStream(localPropertiesFile))
+  }
+
   signingConfigs {
     create("release") {
-      storeFile = file(System.getenv("KEYSTORE_PATH") ?: "${rootDir}/pesalytics-release.jks")
-      storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "Pesalytics2026!"
-      keyAlias = System.getenv("KEY_ALIAS") ?: "pesalytics"
-      keyPassword = System.getenv("KEY_PASSWORD") ?: "Pesalytics2026!"
+      storeFile = file(System.getenv("KEYSTORE_PATH") ?: localProperties.getProperty("KEYSTORE_PATH") ?: "${rootDir}/pesalytics-release.jks")
+      storePassword = System.getenv("KEYSTORE_PASSWORD") ?: localProperties.getProperty("KEYSTORE_PASSWORD") ?: ""
+      keyAlias = System.getenv("KEY_ALIAS") ?: localProperties.getProperty("KEY_ALIAS") ?: "pesalytics"
+      keyPassword = System.getenv("KEY_PASSWORD") ?: localProperties.getProperty("KEY_PASSWORD") ?: ""
     }
   }
 
@@ -53,9 +62,7 @@ android {
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
-composeCompiler {
-    enableStrongSkippingMode = true
-}
+// enableStrongSkippingMode is enabled by default in Compose 1.7+, so we can remove it.
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
 // to match the convention used in Web projects.

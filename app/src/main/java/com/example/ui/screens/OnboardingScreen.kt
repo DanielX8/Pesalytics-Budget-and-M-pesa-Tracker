@@ -165,9 +165,14 @@ fun OnboardingScreen(
     var nicknameIndex by remember { mutableStateOf(-1) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) viewModel.setMasterNotifEnabled(true, context)
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val smsGranted = permissions[Manifest.permission.READ_SMS] == true
+        // Only set notif master enabled to true if the user granted SMS (as a proxy for finishing)
+        // If Android 13+, also consider if they granted the post_notifications. We'll set the master flag anyway so the settings toggle reflects true.
+        if (smsGranted) {
+            viewModel.setMasterNotifEnabled(true, context)
+        }
         val finalName = if (name.isNotBlank()) name.trim() else "User"
         viewModel.completeOnboarding(finalName, selectedAvatar, context)
         onNavigateNext()
@@ -399,7 +404,11 @@ fun OnboardingScreen(
             if (pagerState.currentPage == onboardingSlides.lastIndex) {
                 Button(
                     onClick = {
-                        permissionLauncher.launch(Manifest.permission.READ_SMS)
+                        val permissionsToRequest = mutableListOf(Manifest.permission.READ_SMS)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        permissionLauncher.launch(permissionsToRequest.toTypedArray())
                     },
                     modifier = Modifier
                         .fillMaxWidth()

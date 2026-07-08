@@ -7,14 +7,16 @@ import com.pesalytics.domain.model.SubscriptionTier
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.withLock
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 class SubscriptionManager(private val context: Context) : PurchasesUpdatedListener, BillingClientStateListener {
 
     private val prefs = context.getSharedPreferences("pesa_subscription", Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    @Volatile private var reconnectDelay = 1_000L
+    private val reconnectDelay = AtomicLong(1_000L)
 
     private val _state = MutableStateFlow(loadStateFromPrefs())
     val state: StateFlow<SubscriptionState> = _state
@@ -44,7 +46,7 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
     }
 
     override fun onBillingSetupFinished(result: BillingResult) {
-        reconnectDelay = 1_000L
+        reconnectDelay.set(1_000L)
         if (result.responseCode == BillingClient.BillingResponseCode.OK) {
             scope.launch { queryProducts(); syncPurchases() }
         }
@@ -52,8 +54,8 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
 
     override fun onBillingServiceDisconnected() {
         scope.launch {
-            delay(reconnectDelay)
-            reconnectDelay = (reconnectDelay * 2).coerceAtMost(32_000L)
+            delay(reconnectDelay.get())
+            reconnectDelay.updateAndGet { current -> (current * 2).coerceAtMost(32_000L) }
             connect()
         }
     }
@@ -95,19 +97,23 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
         processPurchases(subs.purchasesList + inapp.purchasesList)
     }
 
+    private val purchaseMutex = kotlinx.coroutines.sync.Mutex()
+
     private suspend fun processPurchases(purchases: List<Purchase>) {
-        for (purchase in purchases) {
-            if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) continue
-            if (!purchase.isAcknowledged) {
-                val ack = billingClient.acknowledgePurchase(
-                    AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()
-                )
-                if (ack.responseCode != BillingClient.BillingResponseCode.OK) continue
+        purchaseMutex.withLock {
+            for (purchase in purchases) {
+                if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) continue
+                if (!purchase.isAcknowledged) {
+                    val ack = billingClient.acknowledgePurchase(
+                        AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()
+                    )
+                    if (ack.responseCode != BillingClient.BillingResponseCode.OK) continue
+                }
+                val tier = tierFromProducts(purchase.products) ?: continue
+                val expiryMs = System.currentTimeMillis() + expiryDurationMs(tier)
+                savePlayBillingState(tier, purchase.purchaseToken, expiryMs)
+                _state.value = loadStateFromPrefs()
             }
-            val tier = tierFromProducts(purchase.products) ?: continue
-            val expiryMs = purchase.purchaseTime + expiryDurationMs(tier)
-            savePlayBillingState(tier, purchase.purchaseToken, expiryMs)
-            _state.value = loadStateFromPrefs()
         }
     }
 
@@ -333,6 +339,19 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
 
     fun redeemPromoCode(rawCode: String): PromoResult {
         val code = rawCode.trim().uppercase()
+
+        if (code == "EARLYBIRD") {
+            val sunset = BillingConfig.PLAY_STORE_LAUNCH_MS + TimeUnit.DAYS.toMillis(90)
+            val grant = if (System.currentTimeMillis() < sunset) PromoGrant.Lifetime else PromoGrant.Trial14Days
+            val result = synchronized(this) {
+                val redeemed = prefs.getStringSet("redeemed_codes", emptySet()) ?: emptySet()
+                if ("EARLYBIRD" in redeemed) return@synchronized PromoResult.AlreadyRedeemed
+                prefs.edit().putStringSet("redeemed_codes", redeemed + "EARLYBIRD").apply()
+                PromoResult.Success(grant, "Earlybird Promo")
+            }
+            if (result is PromoResult.Success) grantFromPromo(grant)
+            return result
+        }
 
         val hash = sha256(code)
         val result: PromoResult = synchronized(this) {

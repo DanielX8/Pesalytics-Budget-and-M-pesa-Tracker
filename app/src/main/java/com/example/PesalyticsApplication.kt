@@ -20,7 +20,8 @@ class PesalyticsApplication : Application() {
             database.billDao(),
             database.budgetDao(),
             database.customRuleDao(),
-            database.goalDao()
+            database.goalDao(),
+            database
         )
     }
     val subscriptionManager by lazy { com.pesalytics.data.billing.SubscriptionManager(this) }

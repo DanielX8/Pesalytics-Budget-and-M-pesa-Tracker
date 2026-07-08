@@ -610,11 +610,11 @@ class PesaViewModel(
         // === Mshwari transfer — insert before RECEIVE_MONEY to avoid misclassification ===
         if (body.contains("M-Shwari", ignoreCase = true) && body.contains("transferred", ignoreCase = true)) {
             val mshwariWithdrawRegex = Regex(
-                """([A-Z0-9]+)\s+Confirmed\.Ksh([\d,]+\.\d{2})\s+transferred from M-Shwari account on (\d{1,2}/\d{1,2}/\d{2,4}) at (\d{1,2}:\d{2}\s*[APM]{2})\.\s*M-Shwari balance is Ksh([\d,]+\.\d{2})\s*\.?\s*M-PESA balance is Ksh([\d,]+\.\d{2})""",
+                """([A-Z0-9]+)\s+Confirmed\.?\s*Ksh([\d,]+\.\d{2})\s+transferred from M-Shwari account on (\d{1,2}/\d{1,2}/\d{2,4}) at (\d{1,2}:\d{2}\s*[APM]{2})\.\s*M-Shwari balance is Ksh([\d,]+\.\d{2})\s*\.?\s*M-PESA balance is Ksh([\d,]+\.\d{2})""",
                 RegexOption.IGNORE_CASE
             )
             val mshwariDepositRegex = Regex(
-                """([A-Z0-9]+)\s+Confirmed\.Ksh([\d,]+\.\d{2})\s+transferred to M-Shwari account on (\d{1,2}/\d{1,2}/\d{2,4}) at (\d{1,2}:\d{2}\s*[APM]{2})\.\s*M-PESA balance is Ksh([\d,]+\.\d{2})\s*\.?\s*New M-Shwari saving account balance is Ksh([\d,]+\.\d{2})""",
+                """([A-Z0-9]+)\s+Confirmed\.?\s*Ksh([\d,]+\.\d{2})\s+transferred to M-Shwari account on (\d{1,2}/\d{1,2}/\d{2,4}) at (\d{1,2}:\d{2}\s*[APM]{2})\.\s*M-PESA balance is Ksh([\d,]+\.\d{2})\s*\.?\s*New M-Shwari saving account balance is Ksh([\d,]+\.\d{2})""",
                 RegexOption.IGNORE_CASE
             )
             mshwariWithdrawRegex.find(body)?.let { m ->

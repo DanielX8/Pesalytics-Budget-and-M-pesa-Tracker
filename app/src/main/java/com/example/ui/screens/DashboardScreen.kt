@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -103,8 +104,8 @@ fun DashboardScreen(
     var notificationsExpanded by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    var hasRequestedSmsPermission by remember { mutableStateOf(false) }
-    var showSmsDisclosure by remember { mutableStateOf(false) }
+    var hasRequestedSmsPermission by rememberSaveable { mutableStateOf(false) }
+    var showSmsDisclosure by rememberSaveable { mutableStateOf(false) }
 
     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -128,7 +129,7 @@ fun DashboardScreen(
     }
 
     val trialJustStarted by viewModel.trialJustStarted.collectAsStateWithLifecycle()
-    var showTrialSheet by remember { mutableStateOf(false) }
+    var showTrialSheet by rememberSaveable { mutableStateOf(false) }
     val trialSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetScope = rememberCoroutineScope()
     LaunchedEffect(trialJustStarted) {
@@ -203,9 +204,9 @@ fun DashboardScreen(
     }
 
     var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
-    var showTransactionDetails by remember { mutableStateOf(false) }
-    var showAddManualDialog by remember { mutableStateOf(false) }
-    var showCategoryEdit by remember { mutableStateOf(false) }
+    var showTransactionDetails by rememberSaveable { mutableStateOf(false) }
+    var showAddManualDialog by rememberSaveable { mutableStateOf(false) }
+    var showCategoryEdit by rememberSaveable { mutableStateOf(false) }
 
     if (showAddManualDialog) {
         val addManualSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -586,12 +587,29 @@ fun DashboardScreen(
                     if (pageCount > 1) {
                         val pagerState = rememberPagerState(pageCount = { pageCount })
                         Column {
-                            HorizontalPager(state = pagerState) { page ->
-                                var idx = 0
-                                when {
-                                    page == idx -> HeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
-                                    uiState.hasMshwari && page == ++idx -> MshwariHeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
-                                    else -> PochiHeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier.fillMaxWidth()
+                            ) { page ->
+                                val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                                val absOffset = kotlin.math.abs(pageOffset)
+                                
+                                Box(
+                                    modifier = Modifier.graphicsLayer {
+                                        // 3D Perspective Carousel effects
+                                        rotationY = pageOffset * -15f // tilt pages towards the center
+                                        scaleX = 1f - (absOffset * 0.15f)
+                                        scaleY = 1f - (absOffset * 0.15f)
+                                        alpha = 1f - (absOffset * 0.5f)
+                                        cameraDistance = 8f * density
+                                    }
+                                ) {
+                                    var idx = 0
+                                    when {
+                                        page == idx -> HeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
+                                        uiState.hasMshwari && page == ++idx -> MshwariHeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
+                                        else -> PochiHeroCard(uiState = uiState, onToggleVisibility = { viewModel.toggleBalanceVisibility() })
+                                    }
                                 }
                             }
                             Row(

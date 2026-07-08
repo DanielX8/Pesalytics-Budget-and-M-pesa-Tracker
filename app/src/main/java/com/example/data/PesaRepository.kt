@@ -7,12 +7,15 @@ import com.pesalytics.model.Transaction
 import com.pesalytics.model.Goal
 import kotlinx.coroutines.flow.Flow
 
+import androidx.room.withTransaction
+
 class PesaRepository(
     private val transactionDao: TransactionDao,
     private val billDao: BillDao,
     private val budgetDao: BudgetDao,
     private val customRuleDao: CustomRuleDao,
-    private val goalDao: GoalDao
+    private val goalDao: GoalDao,
+    private val db: AppDatabase
 ) {
     val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
     val allBills: Flow<List<Bill>> = billDao.getAllBills()
@@ -56,19 +59,23 @@ class PesaRepository(
     }
 
     suspend fun addGoalContribution(goalId: Int, amount: Double) {
-        goalDao.addGoalContribution(goalId, amount)
-        goalDao.insertGoalTransaction(com.pesalytics.model.GoalTransaction(
-            goalId = goalId,
-            amount = amount,
-            timestamp = System.currentTimeMillis()
-        ))
+        db.withTransaction {
+            goalDao.addGoalContribution(goalId, amount)
+            goalDao.insertGoalTransaction(com.pesalytics.model.GoalTransaction(
+                goalId = goalId,
+                amount = amount,
+                timestamp = System.currentTimeMillis()
+            ))
+        }
     }
 
     fun getTransactionsForGoal(goalId: Int) = goalDao.getTransactionsForGoal(goalId)
 
     suspend fun deleteGoalTransaction(transactionId: Int, amountToRevert: Double, goalId: Int) {
-        goalDao.deleteGoalTransaction(transactionId)
-        goalDao.addGoalContribution(goalId, -amountToRevert)
+        db.withTransaction {
+            goalDao.deleteGoalTransaction(transactionId)
+            goalDao.addGoalContribution(goalId, -amountToRevert)
+        }
     }
 
     suspend fun deleteGoal(goalId: Int) {
@@ -76,12 +83,14 @@ class PesaRepository(
     }
 
     suspend fun updateTransactionCategoryAndRetrain(transactionId: Int, payee: String, newCategory: String) {
-        // 1. Update this specific transaction
-        transactionDao.updateTransactionCategory(transactionId, newCategory)
-        // 2. Retrain: create/update rule for future
-        customRuleDao.insertRule(CustomRule(payeePattern = payee, mappedCategory = newCategory))
-        // 3. Retroactively apply to other past transactions with same payee
-        transactionDao.updateCategoryForPayee(payee, newCategory)
+        db.withTransaction {
+            // 1. Update this specific transaction
+            transactionDao.updateTransactionCategory(transactionId, newCategory)
+            // 2. Retrain: create/update rule for future
+            customRuleDao.insertRule(CustomRule(payeePattern = payee, mappedCategory = newCategory))
+            // 3. Retroactively apply to other past transactions with same payee
+            transactionDao.updateCategoryForPayee(payee, newCategory)
+        }
     }
     
     suspend fun getTransactionByRef(ref: String): Transaction? {
@@ -123,10 +132,12 @@ class PesaRepository(
 
     /** Wipes every table — used by the "Delete All Data" action. */
     suspend fun deleteAllData() {
-        transactionDao.deleteAllTransactions()
-        billDao.deleteAllBills()
-        budgetDao.deleteAllBudgets()
-        goalDao.deleteAllGoals()
-        customRuleDao.deleteAllRules()
+        db.withTransaction {
+            transactionDao.deleteAllTransactions()
+            billDao.deleteAllBills()
+            budgetDao.deleteAllBudgets()
+            goalDao.deleteAllGoals()
+            customRuleDao.deleteAllRules()
+        }
     }
 }
