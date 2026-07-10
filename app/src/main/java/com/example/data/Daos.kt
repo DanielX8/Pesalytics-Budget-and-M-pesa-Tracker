@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TransactionDao {
-    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
+    @Query("SELECT * FROM transactions ORDER BY timestamp DESC, id DESC")
     fun getAllTransactions(): Flow<List<Transaction>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -136,7 +136,7 @@ interface GoalDao {
     @Query("DELETE FROM goals")
     suspend fun deleteAllGoals()
 
-    @Query("SELECT * FROM goal_transactions WHERE goalId = :goalId ORDER BY timestamp DESC")
+    @Query("SELECT * FROM goal_transactions WHERE goalId = :goalId ORDER BY timestamp DESC, id DESC")
     fun getTransactionsForGoal(goalId: Int): Flow<List<com.pesalytics.model.GoalTransaction>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

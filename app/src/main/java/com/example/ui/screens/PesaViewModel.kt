@@ -487,7 +487,7 @@ class PesaViewModel(
                 }
 
                 if (transactionsList.isNotEmpty()) {
-                    repository.insertTransactions(transactionsList)
+                    repository.insertTransactions(transactionsList.reversed())
 
                     // Apply enrichments to DB for transactions from a PREVIOUS sync (cross-batch case).
                     val newRefs = transactionsList.map { it.remoteRef }.toSet()
@@ -895,10 +895,11 @@ class PesaViewModel(
     ) { transactions, stats, isVisible, budgets ->
         val balance = transactions
             .filter {
-                it.type != TransactionType.POCHI_TRANSFER &&
-                it.type != TransactionType.POCHI_RECEIVE &&
-                it.type != TransactionType.MSHWARI_TRANSFER &&
-                it.balanceAfter > 0.0
+                it.type in listOf(
+                    TransactionType.PAYBILL, TransactionType.BUY_GOODS, TransactionType.SEND_MONEY,
+                    TransactionType.WITHDRAW, TransactionType.RECEIVE_MONEY, TransactionType.AIRTIME,
+                    TransactionType.FULIZA, TransactionType.POCHI_TRANSFER
+                ) && it.balanceAfter >= 0.0
             }
             .maxByOrNull { it.timestamp }?.balanceAfter ?: 0.0
         val globalBudget = budgets.find { it.category == "Overall" }
