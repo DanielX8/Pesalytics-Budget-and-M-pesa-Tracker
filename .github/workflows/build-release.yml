@@ -1,4 +1,4 @@
-name: Build & Release APK
+name: Build & Release APK/AAB
 
 on:
   push:
@@ -42,8 +42,8 @@ jobs:
       - name: Decode release keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/pesalytics-release.jks
 
-      - name: Build optimized release APK
-        run: ./gradlew assembleRelease --no-daemon --build-cache
+      - name: Build optimized release APK and AAB
+        run: ./gradlew assembleRelease bundleRelease --no-daemon --build-cache
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/pesalytics-release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -51,21 +51,28 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.parallel=true"
 
-      - name: Locate APK
-        id: apk
+      - name: Locate Artifacts
+        id: artifacts
         run: |
           APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
-          echo "path=$APK" >> $GITHUB_OUTPUT
-          echo "name=pesalytics-release-$(git describe --tags --abbrev=0 2>/dev/null || echo ${{ github.event.inputs.tag || github.ref_name }}).apk" >> $GITHUB_OUTPUT
+          AAB=$(find app/build/outputs/bundle/release -name "*.aab" | head -1)
+          echo "apk_path=$APK" >> $GITHUB_OUTPUT
+          echo "aab_path=$AAB" >> $GITHUB_OUTPUT
+          echo "apk_name=pesalytics-release-$(git describe --tags --abbrev=0 2>/dev/null || echo ${{ github.event.inputs.tag || github.ref_name }}).apk" >> $GITHUB_OUTPUT
+          echo "aab_name=pesalytics-release-$(git describe --tags --abbrev=0 2>/dev/null || echo ${{ github.event.inputs.tag || github.ref_name }}).aab" >> $GITHUB_OUTPUT
 
-      - name: Rename APK
-        run: mv "${{ steps.apk.outputs.path }}" "app/build/outputs/apk/release/${{ steps.apk.outputs.name }}"
+      - name: Rename Artifacts
+        run: |
+          mv "${{ steps.artifacts.outputs.apk_path }}" "app/build/outputs/apk/release/${{ steps.artifacts.outputs.apk_name }}"
+          mv "${{ steps.artifacts.outputs.aab_path }}" "app/build/outputs/bundle/release/${{ steps.artifacts.outputs.aab_name }}"
 
-      - name: Upload APK artifact
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pesalytics-release-apk
-          path: app/build/outputs/apk/release/${{ steps.apk.outputs.name }}
+          name: pesalytics-release-artifacts
+          path: |
+            app/build/outputs/apk/release/${{ steps.artifacts.outputs.apk_name }}
+            app/build/outputs/bundle/release/${{ steps.artifacts.outputs.aab_name }}
           retention-days: 30
 
       - name: Determine tag
@@ -103,11 +110,14 @@ jobs:
           name: "Pesalytics ${{ steps.tag.outputs.value }}"
           draft: false
           prerelease: false
-          files: app/build/outputs/apk/release/${{ steps.apk.outputs.name }}
+          files: |
+            app/build/outputs/apk/release/${{ steps.artifacts.outputs.apk_name }}
+            app/build/outputs/bundle/release/${{ steps.artifacts.outputs.aab_name }}
           body: |
             ${{ steps.changelog.outputs.notes }}
 
             ### Installation
-            Download the APK from the **Assets** section below. Enable *Install from unknown sources* on your Android device, then open the file to install.
+            Download the **APK** from the **Assets** section below. Enable *Install from unknown sources* on your Android device, then open the file to install.
+            The **AAB** file is included for Google Play Console uploads.
 
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/master/CHANGELOG.md) for full history.
