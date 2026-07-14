@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.9] — 2026-07-14 · First-Sync Animation & Bug Fixes
+
+### Added
+- **First-Sync Setup Animation** — Replaced the generic loading spinner during the initial M-PESA SMS import with a custom, branded slot-machine animation and bouncing chart.
+
+### Fixed
+- **Fuliza Fee Overwrite** — Fixed an issue where Fuliza fees would overwrite the original transaction amount. Fees are now correctly added to the total deduction.
+- **M-Shwari Exclusions** — M-Shwari deposits/withdrawals and Pochi La Biashara transfers are now strictly excluded from being categorized as standard monthly expenses.
+- **Layout Adjustments** — Adjusted the dashboard list padding so the Floating Action Button no longer hides the last transaction on small screens.
+
+---
+
 ## [1.4.8] — 2026-07-07 · UI Enhancements
 
 ### Added
