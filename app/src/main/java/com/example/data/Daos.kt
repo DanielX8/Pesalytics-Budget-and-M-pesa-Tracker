@@ -52,7 +52,7 @@ interface TransactionDao {
     @Query("UPDATE transactions SET category = :newCategory WHERE LOWER(payee) = LOWER(:payee)")
     suspend fun updateCategoryForPayee(payee: String, newCategory: String)
 
-    @Query("UPDATE transactions SET fulizaOutstandingBalance = :outstandingBalance, fulizaDueDate = :dueDate, fee = :accessFee WHERE remoteRef = :ref AND isFeeTransaction = 0")
+    @Query("UPDATE transactions SET fulizaOutstandingBalance = :outstandingBalance, fulizaDueDate = :dueDate, fee = fee + :accessFee WHERE remoteRef = :ref AND isFeeTransaction = 0")
     suspend fun enrichFulizaTransaction(ref: String, outstandingBalance: Double, dueDate: String?, accessFee: Double = 0.0)
 
     @Query("""

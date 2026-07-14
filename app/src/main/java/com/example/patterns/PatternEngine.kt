@@ -71,6 +71,9 @@ class PatternEngine {
         t.type != TransactionType.MANUAL_INCOME &&
         t.type != TransactionType.MANUAL_TRANSFER &&
         t.type != TransactionType.FULIZA &&
+        t.type != TransactionType.MSHWARI_TRANSFER &&
+        t.type != TransactionType.POCHI_TRANSFER &&
+        t.type != TransactionType.POCHI_RECEIVE &&
         !t.isFeeTransaction
 
     private fun monthStart(monthsAgo: Int): Long {

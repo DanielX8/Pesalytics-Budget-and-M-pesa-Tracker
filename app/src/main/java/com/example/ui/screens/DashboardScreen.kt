@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -494,7 +495,8 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 88.dp)
         ) {
             item(key = "greeting") {
                 val greeting = remember { getGreetingMessage() }
@@ -713,18 +715,22 @@ fun DashboardScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 32.dp),
+                                .padding(top = 0.dp, bottom = 24.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 if (isSyncing) {
-                                    CircularProgressIndicator(color = AccentGreenLight, modifier = Modifier.size(32.dp))
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        "Syncing your M-PESA history...",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    if (isFirstSync) {
+                                        FirstSyncLoader()
+                                    } else {
+                                        CircularProgressIndicator(color = AccentGreenLight, modifier = Modifier.size(32.dp))
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            "Syncing your M-PESA history...",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 } else {
                                     Text(
                                         "No transactions yet",
@@ -1508,3 +1514,250 @@ fun getGreetingMessage(): String {
 }
 
 
+// ── First-sync branded loader ────────────────────────────────────────────────
+
+@Composable
+private fun FirstSyncLoader() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        BarChartLoader()
+        Spacer(modifier = Modifier.height(12.dp))
+        CyclingWordText()
+    }
+}
+
+@Composable
+private fun BarChartLoader() {
+    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "barLoader")
+
+    // Bar scale definitions: Triple(initialScale, midScale, label)
+    // Bar 3 is fixed — no animation needed
+    val bar1Scale by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.2f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.keyframes {
+                durationMillis = 4000
+                0.2f at 0
+                0.2f at 1600   // 40%
+                1.0f at 2000   // 50%
+                1.0f at 3600   // 90%
+                0.2f at 4000   // 100%
+            }
+        ),
+        label = "bar1"
+    )
+    val bar2Scale by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0.4f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.keyframes {
+                durationMillis = 4000
+                0.4f at 0
+                0.4f at 1600
+                0.8f at 2000
+                0.8f at 3600
+                0.4f at 4000
+            }
+        ),
+        label = "bar2"
+    )
+    val bar4Scale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 0.8f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.keyframes {
+                durationMillis = 4000
+                0.8f at 0
+                0.8f at 1600
+                0.4f at 2000
+                0.4f at 3600
+                0.8f at 4000
+            }
+        ),
+        label = "bar4"
+    )
+    val bar5Scale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.0f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.keyframes {
+                durationMillis = 4000
+                1.0f at 0
+                1.0f at 1600
+                0.2f at 2000
+                0.2f at 3600
+                1.0f at 4000
+            }
+        ),
+        label = "bar5"
+    )
+
+    // Ball X offset (dp): 0 → 60 → 0 across the 4s cycle
+    val ballX by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 0f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.keyframes {
+                durationMillis = 4000
+                0f at 0
+                6f at 200
+                12f at 400
+                18f at 680
+                24f at 800
+                30f at 1080
+                36f at 1200
+                42f at 1480
+                48f at 1600  // 40%
+                48f at 2000  // 50%
+                42f at 2280
+                36f at 2400
+                30f at 2680
+                24f at 2800
+                18f at 3080
+                12f at 3200
+                6f at 3480
+                0f at 3600   // 90%
+                0f at 4000   // 100%
+            }
+        ),
+        label = "ballX"
+    )
+    // Ball Y offset (dp): bouncing up over each bar
+    val ballY by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 0f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.keyframes {
+                durationMillis = 4000
+                0f at 0
+                (-14f) at 200
+                (-10f) at 400
+                (-24f) at 680
+                (-20f) at 800
+                (-34f) at 1080
+                (-30f) at 1200
+                (-44f) at 1480
+                (-40f) at 1600
+                0f at 2000
+                (-14f) at 2280
+                (-10f) at 2400
+                (-24f) at 2680
+                (-20f) at 2800
+                (-34f) at 3080
+                (-30f) at 3200
+                (-44f) at 3480
+                (-40f) at 3600
+                0f at 4000
+            }
+        ),
+        label = "ballY"
+    )
+
+    val barColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+    val barScales = listOf(bar1Scale, bar2Scale, 0.6f, bar4Scale, bar5Scale)
+
+    Box(
+        modifier = Modifier
+            .width(60.dp)
+            .height(80.dp)
+    ) {
+        // Draw the 5 bars anchored to the bottom
+        barScales.forEachIndexed { index, scale ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = (index * 12).dp, y = 0.dp)
+                    .width(10.dp)
+                    .height(40.dp)
+                    .graphicsLayer {
+                        scaleY = scale
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
+                    }
+                    .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                    .background(barColor)
+            )
+        }
+
+        // Draw the bouncing ball
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .offset(
+                    x = ballX.dp,
+                    y = (ballY - 10f).dp   // -10 keeps ball bottom at bottom edge when Y=0
+                )
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(AccentGreenLight)
+        )
+    }
+}
+
+@Composable
+private fun CyclingWordText() {
+    val words = listOf("transactions", "SMS history", "savings", "spending")
+    var currentIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(1200L)
+            currentIndex = (currentIndex + 1) % words.size
+        }
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Analysing your",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+
+        // Clipped window showing one word at a time
+        Box(
+            modifier = Modifier
+                .height(28.dp)
+                .clip(RoundedCornerShape(4.dp))
+        ) {
+            AnimatedContent(
+                targetState = currentIndex,
+                transitionSpec = {
+                    slideInVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) { height -> height } togetherWith
+                            slideOutVertically(animationSpec = tween(400, easing = FastOutSlowInEasing)) { height -> -height }
+                },
+                label = "wordAnimation"
+            ) { targetIndex ->
+                Box(
+                    modifier = Modifier.height(28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = words[targetIndex],
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AccentGreenLight
+                    )
+                }
+            }
+
+            // Fade mask at top and bottom to match CSS ::after gradient
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to MaterialTheme.colorScheme.background,
+                            0.2f to Color.Transparent,
+                            0.8f to Color.Transparent,
+                            1.0f to MaterialTheme.colorScheme.background
+                        )
+                    )
+            )
+        }
+    }
+}

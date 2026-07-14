@@ -480,7 +480,7 @@ class PesaViewModel(
                             transactionsList[i] = transactionsList[i].copy(
                                 fulizaOutstandingBalance = enrichment.first,
                                 fulizaDueDate = enrichment.second,
-                                fee = enrichment.third
+                                fee = transactionsList[i].fee + enrichment.third
                             )
                         }
                     }
@@ -898,7 +898,7 @@ class PesaViewModel(
                 it.type in listOf(
                     TransactionType.PAYBILL, TransactionType.BUY_GOODS, TransactionType.SEND_MONEY,
                     TransactionType.WITHDRAW, TransactionType.RECEIVE_MONEY, TransactionType.AIRTIME,
-                    TransactionType.FULIZA, TransactionType.POCHI_TRANSFER
+                    TransactionType.FULIZA, TransactionType.POCHI_TRANSFER, TransactionType.MSHWARI_TRANSFER
                 ) && it.balanceAfter >= 0.0
             }
             .maxByOrNull { it.timestamp }?.balanceAfter ?: 0.0
