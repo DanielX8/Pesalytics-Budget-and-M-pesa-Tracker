@@ -555,9 +555,9 @@ fun CreateGoalBottomSheet(
                 Button(
                     onClick = {
                         val amount = targetAmount.toDoubleOrNull()
-                        val monthly = monthlyContribution.toDoubleOrNull()
-                        if (goalName.isNotBlank() && amount != null && targetDate != null && monthly != null) {
-                            onSave(Goal(name = goalName, type = selectedType, targetAmount = amount, targetDate = targetDate!!, monthlyContribution = monthly, color = selectedColor.value.toLong()))
+                        val monthly = monthlyContribution.replace(",", "").toDoubleOrNull()
+                        if (monthly != null) {
+                            onSave(Goal(name = goalName, type = selectedType, targetAmount = amount ?: 0.0, targetDate = targetDate!!, monthlyContribution = monthly, color = selectedColor.value.toLong()))
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark),
@@ -660,8 +660,8 @@ fun GoalCard(
 
             // On-track status indicator — icon + text + color (not color alone)
             val now = System.currentTimeMillis()
-            val totalDuration = (goal.targetDate - 0L).coerceAtLeast(1L)
-            val elapsed = (now - 0L).coerceAtLeast(0L)
+            val totalDuration = (goal.targetDate - goal.createdAt).coerceAtLeast(1L)
+            val elapsed = (now - goal.createdAt).coerceAtLeast(0L)
             val expectedProgress = (elapsed.toFloat() / totalDuration).coerceIn(0f, 1f)
             val actualProgress = (goal.savedAmount / goal.targetAmount).toFloat().coerceIn(0f, 1f)
             val isOnTrack = actualProgress >= expectedProgress

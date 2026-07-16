@@ -27,18 +27,18 @@ object MerchantCategoryEngine {
         "kobil" to "Fuel",
         "gulf energy" to "Fuel",
 
-        // Restaurant / Food
-        "java house" to "Restaurant",
-        "artcaffe" to "Restaurant",
-        "kfc" to "Restaurant",
-        "chicken inn" to "Restaurant",
-        "kenchic" to "Restaurant",
-        "subway" to "Restaurant",
-        "galito" to "Restaurant",
-        "pizza inn" to "Restaurant",
-        "dormans" to "Restaurant",
-        "cafeteria" to "Restaurant",
-        "restaurant" to "Restaurant",
+        // Eating Out
+        "java house" to "Eating Out",
+        "artcaffe" to "Eating Out",
+        "kfc" to "Eating Out",
+        "chicken inn" to "Eating Out",
+        "kenchic" to "Eating Out",
+        "subway" to "Eating Out",
+        "galito" to "Eating Out",
+        "pizza inn" to "Eating Out",
+        "dormans" to "Eating Out",
+        "cafeteria" to "Eating Out",
+        "restaurant" to "Eating Out",
 
         // Transport
         "kaps" to "Transport",
@@ -52,8 +52,11 @@ object MerchantCategoryEngine {
         "express" to "Transport",
         "shuttle" to "Transport",
         "matatu" to "Transport",
-        "sacco" to "Transport",
 
+        // Savings & Investments
+        "sacco" to "Savings",
+        "chama" to "Savings",
+        
         // Banking
         "kcb" to "Banking",
         "equity bank" to "Banking",
@@ -82,15 +85,13 @@ object MerchantCategoryEngine {
         "county" to "Utilities",
         "water" to "Utilities",
 
-        // Telecoms
-        "safaricom" to "Telecoms",
-        "airtel" to "Telecoms",
-        "telkom" to "Telecoms",
-
-        // Internet
-        "zuku" to "Internet",
-        "faiba" to "Internet",
-        "jamii" to "Internet",
+        // Airtime & Data
+        "safaricom" to "Airtime & Data",
+        "airtel" to "Airtime & Data",
+        "telkom" to "Airtime & Data",
+        "zuku" to "Airtime & Data",
+        "faiba" to "Airtime & Data",
+        "jamii" to "Airtime & Data",
 
         // Insurance
         "nhif" to "Insurance",
@@ -134,17 +135,18 @@ object MerchantCategoryEngine {
         "university" to "Education",
         "knec" to "Education",
 
-        // Streaming
-        "netflix" to "Streaming",
-        "showmax" to "Streaming",
-        "dstv" to "Streaming",
-        "canal" to "Streaming",
-        "youtube" to "Streaming",
-        "spotify" to "Streaming",
+        // Subscriptions
+        "netflix" to "Subscriptions",
+        "showmax" to "Subscriptions",
+        "dstv" to "Subscriptions",
+        "canal" to "Subscriptions",
+        "youtube" to "Subscriptions",
+        "spotify" to "Subscriptions",
     )
 
     fun categorize(payee: String): String? {
         val lower = payee.lowercase()
+        if (lower.contains("fuliza")) return null
         return merchantMap.firstOrNull { (keyword, _) -> lower.contains(keyword) }?.second
     }
 }

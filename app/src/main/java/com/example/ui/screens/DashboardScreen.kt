@@ -687,6 +687,53 @@ fun DashboardScreen(
                 }
             }
 
+            if (uiState.insights.isNotEmpty()) {
+                item(key = "insights-card") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(2.dp, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .animateItem()
+                            .padding(16.dp)
+                    ) {
+                        Text("Today's Insights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        uiState.insights.take(2).forEachIndexed { index, insight ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                val icon = when (insight.type) {
+                                    com.pesalytics.patterns.InsightType.WARNING -> Icons.Default.Warning
+                                    com.pesalytics.patterns.InsightType.SUCCESS -> Icons.Default.CheckCircle
+                                    com.pesalytics.patterns.InsightType.INFO -> Icons.Default.Info
+                                }
+                                val tint = when (insight.type) {
+                                    com.pesalytics.patterns.InsightType.WARNING -> ExpenseRed
+                                    com.pesalytics.patterns.InsightType.SUCCESS -> AccentGreenLight
+                                    com.pesalytics.patterns.InsightType.INFO -> TransferBlue
+                                }
+                                
+                                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp).padding(top = 2.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(insight.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(insight.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            if (index < uiState.insights.take(2).size - 1) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                            }
+                        }
+                    }
+                }
+            }
+
             item(key = "recent-header") {
                 Row(
                     modifier = Modifier.fillMaxWidth().animateItem(),

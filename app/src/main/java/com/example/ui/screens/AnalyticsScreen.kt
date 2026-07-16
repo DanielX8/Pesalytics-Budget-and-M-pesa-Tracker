@@ -708,6 +708,8 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
     }
     val totalExpense = expenses.sumOf { it.amount }
 
+    var viewMode by remember { mutableStateOf("category") } // "category" or "channel"
+
     val typeLabels = mapOf(
         TransactionType.SEND_MONEY to "Send Money",
         TransactionType.PAYBILL to "Paybill",
@@ -716,9 +718,28 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
         TransactionType.AIRTIME to "Airtime",
         TransactionType.MANUAL_EXPENSE to "Other"
     )
-    val rawTypeTotals = expenses.groupBy { typeLabels[it.type] ?: "Other" }
-        .mapValues { it.value.sumOf { t -> t.amount } }
-        .toList().sortedByDescending { it.second }
+    val categoryEmoji = mapOf(
+        "Groceries" to "🛒",
+        "Fuel" to "⛽",
+        "Eating Out" to "🍽️",
+        "Transport" to "🚌",
+        "Savings" to "💰",
+        "Banking" to "🏦",
+        "Utilities" to "💡",
+        "Airtime & Data" to "📱",
+        "Insurance" to "🛡️",
+        "Government" to "🏛️",
+        "Healthcare" to "🏥",
+        "Education" to "🎓",
+        "Subscriptions" to "🔁"
+    )
+
+    val rawTypeTotals = if (viewMode == "channel") {
+        expenses.groupBy { typeLabels[it.type] ?: "Other" }
+    } else {
+        expenses.groupBy { it.category.ifBlank { "Other" } }
+    }.mapValues { it.value.sumOf { t -> t.amount } }
+     .toList().sortedByDescending { it.second }
     // Cap at 5 categories to keep chart readable (P10 — UX audit)
     val typeTotals = if (rawTypeTotals.size > 5) {
         val top4 = rawTypeTotals.take(4)
@@ -739,6 +760,17 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
             ) {
                 Text("Where It Goes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = "View all transactions", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tab Toggle
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)).padding(4.dp)) {
+                Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(6.dp)).background(if (viewMode == "category") MaterialTheme.colorScheme.surface else Color.Transparent).clickable { viewMode = "category" }.padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                    Text("By Category", style = MaterialTheme.typography.labelMedium, fontWeight = if (viewMode == "category") FontWeight.Bold else FontWeight.Normal, color = if (viewMode == "category") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(6.dp)).background(if (viewMode == "channel") MaterialTheme.colorScheme.surface else Color.Transparent).clickable { viewMode = "channel" }.padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                    Text("By Channel", style = MaterialTheme.typography.labelMedium, fontWeight = if (viewMode == "channel") FontWeight.Bold else FontWeight.Normal, color = if (viewMode == "channel") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -803,7 +835,8 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(colors[index % colors.size]))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(pair.first, style = MaterialTheme.typography.bodyMedium)
+                        val prefix = if (viewMode == "category") "${categoryEmoji[pair.first] ?: "📦"} " else ""
+                        Text("$prefix${pair.first}", style = MaterialTheme.typography.bodyMedium)
                         if (delta != null && kotlin.math.abs(delta.percentChange) >= 10.0) {
                             Spacer(modifier = Modifier.width(6.dp))
                             val isUp = delta.percentChange > 0

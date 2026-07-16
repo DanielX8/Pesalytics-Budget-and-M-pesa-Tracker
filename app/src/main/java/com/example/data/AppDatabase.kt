@@ -84,7 +84,14 @@ val MIGRATION_14_15 = object : Migration(14, 15) {
     }
 }
 
-@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class, com.pesalytics.model.GoalTransaction::class], version = 15, exportSchema = true)
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        val currentTime = System.currentTimeMillis()
+        database.execSQL("ALTER TABLE goals ADD COLUMN createdAt INTEGER NOT NULL DEFAULT $currentTime")
+    }
+}
+
+@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class, com.pesalytics.model.GoalTransaction::class], version = 16, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun billDao(): BillDao
@@ -102,7 +109,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "pesalytics_database"
-                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15).build()
+                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16).build()
                 INSTANCE = instance
                 instance
             }

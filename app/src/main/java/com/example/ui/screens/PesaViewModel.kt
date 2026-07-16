@@ -71,7 +71,8 @@ data class HomeUiState(
     val fulizaOutstandingBalance: Double = 0.0,
     val fulizaLimit: Double = 0.0,
     val fulizaTotalBorrowed: Double = 0.0,
-    val fulizaDueDate: String = ""
+    val fulizaDueDate: String = "",
+    val insights: List<com.pesalytics.patterns.Insight> = emptyList()
 )
 
 data class BudgetInsights(
@@ -1003,7 +1004,8 @@ class PesaViewModel(
             fulizaOutstandingBalance = fulizaOutstandingBalance,
             fulizaLimit = fulizaTotalLimit,
             fulizaTotalBorrowed = fulizaTotalBorrowed,
-            fulizaDueDate = fulizaDueDate ?: ""
+            fulizaDueDate = fulizaDueDate ?: "",
+            insights = com.pesalytics.patterns.InsightEngine.generateInsights(transactions)
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 

@@ -113,7 +113,8 @@ data class Goal(
     val targetDate: Long,
     val monthlyContribution: Double,
     val color: Long = 0xFF4CAF50,
-    val savedAmount: Double = 0.0
+    val savedAmount: Double = 0.0,
+    val createdAt: Long = System.currentTimeMillis()
 )
 
 @Entity(
