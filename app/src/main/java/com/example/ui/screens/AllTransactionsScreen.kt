@@ -61,18 +61,23 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
             }
         }
     }
-    val filterOptions by remember(hasFuliza) {
+    val filterOptions by remember(hasFuliza, initialFilter) {
         derivedStateOf {
             buildList {
                 addAll(listOf("All", "Send Money", "Received", "Paybill", "Buy Goods", "Withdraw", "Airtime"))
                 if (hasFuliza) add("Fuliza")
+                if (initialFilter !in this && initialFilter != "All") {
+                    add(initialFilter)
+                }
             }
         }
     }
     val expenseFilterOptions = remember(filterOptions) {
         filterOptions.filter { it != "Received" }
     }
-    var selectedCategory by remember { mutableStateOf("All") }
+    var selectedCategory by remember { mutableStateOf(
+        if (initialFilter != "All" && initialFilter != "Received") "Expenses" else "All"
+    ) }
     var selectedFilter by remember { mutableStateOf(if (initialFilter in filterOptions) initialFilter else filterOptions[0]) }
     var searchQuery by remember { mutableStateOf("") }
 
@@ -157,7 +162,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                         "Withdraw" -> transaction.type == com.pesalytics.model.TransactionType.WITHDRAW
                         "Airtime" -> transaction.type == com.pesalytics.model.TransactionType.AIRTIME
                         "Fuliza" -> transaction.type == com.pesalytics.model.TransactionType.FULIZA || transaction.usedFulizaAmount > 0 || transaction.fulizaOutstandingBalance > 0
-                        else -> true
+                        else -> transaction.category.equals(filter, ignoreCase = true)
                     }
                 }
             }
@@ -191,7 +196,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                     "Fuliza" -> transaction.type == com.pesalytics.model.TransactionType.FULIZA ||
                                 transaction.usedFulizaAmount > 0 ||
                                 transaction.fulizaOutstandingBalance > 0
-                    else -> true
+                    else -> transaction.category.equals(selectedFilter, ignoreCase = true)
                 }
 
                 val matchesSearch = searchQuery.isEmpty() ||

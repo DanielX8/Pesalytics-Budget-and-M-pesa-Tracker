@@ -15,44 +15,35 @@ enum class InsightType {
 }
 
 object InsightEngine {
-    fun generateInsights(transactions: List<Transaction>): List<Insight> {
+    fun generateInsights(transactions: List<Transaction>, periodDays: Int = 30): List<Insight> {
         val insights = mutableListOf<Insight>()
+        if (transactions.isEmpty() || periodDays <= 0) return insights
         
-        // Group by month
-        val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
-        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+        val now = Calendar.getInstance().timeInMillis
+        val periodMs = periodDays * 24L * 60 * 60 * 1000L
         
-        val thisMonthTransactions = transactions.filter {
-            val cal = Calendar.getInstance().apply { timeInMillis = it.timestamp }
-            cal.get(Calendar.MONTH) == currentMonth && cal.get(Calendar.YEAR) == currentYear
-        }
+        val currentPeriodStart = now - periodMs
+        val previousPeriodStart = currentPeriodStart - periodMs
         
-        val previousMonthTransactions = transactions.filter {
-            val cal = Calendar.getInstance().apply { timeInMillis = it.timestamp }
-            var prevMonth = currentMonth - 1
-            var prevYear = currentYear
-            if (prevMonth < 0) {
-                prevMonth = 11
-                prevYear -= 1
-            }
-            cal.get(Calendar.MONTH) == prevMonth && cal.get(Calendar.YEAR) == prevYear
-        }
+        val currentTransactions = transactions.filter { it.timestamp in currentPeriodStart..now }
+        val previousTransactions = transactions.filter { it.timestamp in previousPeriodStart until currentPeriodStart }
 
-        // Rule 1: High category spend compared to last month
-        val thisMonthByCategory = thisMonthTransactions.groupBy { it.category }.mapValues { it.value.sumOf { t -> t.amount } }
-        val prevMonthByCategory = previousMonthTransactions.groupBy { it.category }.mapValues { it.value.sumOf { t -> t.amount } }
+        // Rule 1: High category spend compared to last period
+        val currentByCategory = currentTransactions.groupBy { it.category }.mapValues { it.value.sumOf { t -> t.amount } }
+        val previousByCategory = previousTransactions.groupBy { it.category }.mapValues { it.value.sumOf { t -> t.amount } }
         
-        thisMonthByCategory.forEach { (category, currentAmount) ->
+        currentByCategory.forEach { (category, currentAmount) ->
             if (category.isBlank() || category == "Fuliza" || category == "Other") return@forEach
-            val previousAmount = prevMonthByCategory[category] ?: 0.0
+            val previousAmount = previousByCategory[category] ?: 0.0
             
-            // If spent more than 50% more than last month, and amount is significant (> 1000)
-            if (previousAmount > 1000.0 && currentAmount > previousAmount * 1.5) {
-                val multiplier = currentAmount / previousAmount
+            // If spent more than 30% more than last period, and amount is significant (at least 1000 more)
+            if (currentAmount > previousAmount * 1.3 && (currentAmount - previousAmount) > 1000.0) {
+                val multiplier = currentAmount / (if(previousAmount == 0.0) 1.0 else previousAmount)
+                val descriptor = if (previousAmount == 0.0) "you usually spend" else "${String.format(java.util.Locale.US, "%.1f", multiplier)}x more than last period"
                 insights.add(
                     Insight(
                         title = "Spending Spike",
-                        description = "$category is ${String.format(java.util.Locale.US, "%.1f", multiplier)}x more than your usual spend.",
+                        description = "$category is $descriptor.",
                         type = InsightType.WARNING,
                         category = category
                     )
@@ -61,15 +52,40 @@ object InsightEngine {
         }
         
         // Rule 2: High Fees
-        val totalFees = thisMonthTransactions.sumOf { it.fee }
+        val totalFees = currentTransactions.sumOf { it.fee }
         if (totalFees > 500) {
             insights.add(
                 Insight(
                     title = "High Fees",
-                    description = "You've paid KES ${String.format(java.util.Locale.US, "%,.0f", totalFees)} in transaction fees this month.",
+                    description = "You've paid KES ${String.format(java.util.Locale.US, "%,.0f", totalFees)} in fees.",
                     type = InsightType.INFO
                 )
             )
+        }
+
+        // Rule 3: Velocity (Pace)
+        val currentExpense = currentTransactions.filter { !it.isFeeTransaction && it.type != com.pesalytics.model.TransactionType.RECEIVE_MONEY && it.type != com.pesalytics.model.TransactionType.MANUAL_INCOME }.sumOf { it.amount }
+        val previousExpense = previousTransactions.filter { !it.isFeeTransaction && it.type != com.pesalytics.model.TransactionType.RECEIVE_MONEY && it.type != com.pesalytics.model.TransactionType.MANUAL_INCOME }.sumOf { it.amount }
+        
+        if (previousExpense > 0) {
+            val pace = currentExpense / previousExpense
+            if (pace > 1.2 && (currentExpense - previousExpense) > 2000.0) {
+                 insights.add(
+                    Insight(
+                        title = "Spending Fast",
+                        description = "You're spending ${String.format(java.util.Locale.US, "%.0f", (pace - 1) * 100)}% faster than last period.",
+                        type = InsightType.WARNING
+                    )
+                )
+            } else if (pace < 0.8 && previousExpense > 5000.0) {
+                 insights.add(
+                    Insight(
+                        title = "Great Saving!",
+                        description = "You're spending ${String.format(java.util.Locale.US, "%.0f", (1 - pace) * 100)}% less than last period.",
+                        type = InsightType.SUCCESS
+                    )
+                )
+            }
         }
 
         return insights.sortedByDescending { it.type == InsightType.WARNING }

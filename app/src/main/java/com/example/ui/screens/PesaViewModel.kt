@@ -981,6 +981,14 @@ class PesaViewModel(
         }.sumOf { it.amount }
         val fulizaDueDate = fulizaUsageTxns.maxByOrNull { it.timestamp }?.fulizaDueDate ?: ""
 
+        val firstTxnDate = transactions.minByOrNull { it.timestamp }?.timestamp ?: System.currentTimeMillis()
+        val daysHistory = ((System.currentTimeMillis() - firstTxnDate) / (1000 * 60 * 60 * 24)).toInt()
+        val optimalPeriod = when {
+            daysHistory <= 14 -> 7
+            daysHistory <= 30 -> 14
+            else -> 30
+        }
+
         HomeUiState(
             transactions = transactions,
             recentTransactions = transactions.take(10),
@@ -1005,7 +1013,7 @@ class PesaViewModel(
             fulizaLimit = fulizaTotalLimit,
             fulizaTotalBorrowed = fulizaTotalBorrowed,
             fulizaDueDate = fulizaDueDate ?: "",
-            insights = com.pesalytics.patterns.InsightEngine.generateInsights(transactions)
+            insights = com.pesalytics.patterns.InsightEngine.generateInsights(transactions, optimalPeriod)
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 

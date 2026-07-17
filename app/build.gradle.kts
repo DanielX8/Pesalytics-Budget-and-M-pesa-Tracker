@@ -18,8 +18,8 @@ android {
     applicationId = "com.pesalytics"
     minSdk = 24
     targetSdk = 36
-    versionCode = 11
-    versionName = "1.4.9"
+    versionCode = 12
+    versionName = "1.4.10"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -111,6 +111,7 @@ dependencies {
   implementation(libs.retrofit)
   implementation("com.android.billingclient:billing-ktx:7.0.0")
   implementation("androidx.profileinstaller:profileinstaller:1.3.1")
+  implementation(libs.androidx.fragment.ktx)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
