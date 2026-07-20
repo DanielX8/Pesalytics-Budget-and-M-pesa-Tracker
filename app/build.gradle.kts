@@ -16,7 +16,7 @@ android {
 
   defaultConfig {
     applicationId = "com.pesalytics"
-    minSdk = 24
+    minSdk = 23
     targetSdk = 36
     versionCode = 12
     versionName = "1.4.10"
