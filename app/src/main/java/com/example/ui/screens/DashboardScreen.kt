@@ -1779,11 +1779,6 @@ fun InsightsCarousel(insights: List<com.pesalytics.patterns.Insight>) {
     ) {
         items(insights.size) { index ->
             val insight = insights[index]
-            val bgColor = when (insight.type) {
-                com.pesalytics.patterns.InsightType.WARNING -> ExpenseRed.copy(alpha = 0.1f)
-                com.pesalytics.patterns.InsightType.SUCCESS -> AccentGreenLight.copy(alpha = 0.15f)
-                com.pesalytics.patterns.InsightType.INFO -> TransferBlue.copy(alpha = 0.1f)
-            }
             val accentColor = when (insight.type) {
                 com.pesalytics.patterns.InsightType.WARNING -> ExpenseRed
                 com.pesalytics.patterns.InsightType.SUCCESS -> Color(0xFF2E7D32)
@@ -1798,31 +1793,35 @@ fun InsightsCarousel(insights: List<com.pesalytics.patterns.Insight>) {
             Card(
                 modifier = Modifier.width(260.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = bgColor)
+                colors = CardDefaults.elevatedCardColors(),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier.size(32.dp).clip(CircleShape).background(accentColor),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                    Box(modifier = Modifier.width(4.dp).fillMaxHeight().background(accentColor))
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier.size(32.dp).clip(CircleShape).background(accentColor.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = insight.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = insight.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            text = insight.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                            lineHeight = 20.sp
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = insight.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 20.sp
-                    )
                 }
             }
         }
