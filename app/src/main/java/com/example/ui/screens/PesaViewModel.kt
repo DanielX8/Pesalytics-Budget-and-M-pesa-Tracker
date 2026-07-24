@@ -232,6 +232,12 @@ class PesaViewModel(
         loadNeedsWants(context)
         checkUpcomingBills()
         drainWorkerNotifications(prefs)
+        
+        // F-13: Retroactive Category Analysis Migration
+        if (!prefs.getBoolean("has_run_category_migration_v2", false)) {
+            reanalyseMerchantCategories()
+            prefs.edit().putBoolean("has_run_category_migration_v2", true).apply()
+        }
     }
 
     // Workers (DailySpendWorker, WeeklyReportWorker, MonthlyReportWorker) write in-app
@@ -594,7 +600,7 @@ class PesaViewModel(
                     timestamp = timestamp,
                     type = TransactionType.FULIZA,
                     remoteRef = receipt,
-                    category = if (body.contains("fully pay", ignoreCase = true))
+                    category = if (body.contains("fully", ignoreCase = true))
                         "Fuliza Full Repayment"
                     else
                         "Fuliza Partial Repayment",
@@ -899,7 +905,8 @@ class PesaViewModel(
                 it.type in listOf(
                     TransactionType.PAYBILL, TransactionType.BUY_GOODS, TransactionType.SEND_MONEY,
                     TransactionType.WITHDRAW, TransactionType.RECEIVE_MONEY, TransactionType.AIRTIME,
-                    TransactionType.FULIZA, TransactionType.POCHI_TRANSFER, TransactionType.MSHWARI_TRANSFER
+                    TransactionType.FULIZA, TransactionType.POCHI, TransactionType.POCHI_TRANSFER, 
+                    TransactionType.MSHWARI_TRANSFER
                 ) && it.balanceAfter >= 0.0
             }
             .maxByOrNull { it.timestamp }?.balanceAfter ?: 0.0
@@ -938,7 +945,6 @@ class PesaViewModel(
 
         // Fuliza overdraft state — read from most recent Fuliza SMS, no limit arithmetic for full repayments
         val allFulizaTxns = transactions.filter { it.type == TransactionType.FULIZA }
-        val hasFuliza = allFulizaTxns.isNotEmpty() || transactions.any { it.fulizaOutstandingBalance > 0 }
 
         val allRepayments = allFulizaTxns.filter {
             it.category == "Fuliza Full Repayment" ||
@@ -948,8 +954,10 @@ class PesaViewModel(
         val fullRepayments = allFulizaTxns.filter { it.category == "Fuliza Full Repayment" }
         // Total limit from full repayments only (available == total on a full repayment, so reliable).
         // Fall back to old "Fuliza Repayment" records for users upgrading from pre-fix data.
-        val fulizaTotalLimit = fullRepayments.maxOfOrNull { it.fulizaLimitAfter }
-            ?: allFulizaTxns.filter { it.category == "Fuliza Repayment" }.maxOfOrNull { it.fulizaLimitAfter }
+        val fulizaTotalLimit = fullRepayments
+            .maxByOrNull { it.timestamp }?.fulizaLimitAfter
+            ?: allFulizaTxns.filter { it.category == "Fuliza Repayment" }
+                .maxByOrNull { it.timestamp }?.fulizaLimitAfter
             ?: 0.0
 
         // Usage txns: original SEND_MONEY/PAYBILL/etc. enriched with companion SMS outstanding
@@ -976,8 +984,10 @@ class PesaViewModel(
             else ->
                 latestUsageTxn?.fulizaOutstandingBalance ?: 0.0
         }
+        val hasFuliza = fulizaOutstandingBalance > 0
+        
         val fulizaTotalBorrowed = allFulizaTxns.filter {
-            it.category != "Fuliza Full Repayment" && it.category != "Fuliza Partial Repayment" && it.category != "Fuliza Repayment"
+            it.category != "Fuliza Full Repayment" && it.category != "Fuliza Partial Repayment" && it.category != "Fuliza Repayment" && !it.isFeeTransaction
         }.sumOf { it.amount }
         val fulizaDueDate = fulizaUsageTxns.maxByOrNull { it.timestamp }?.fulizaDueDate ?: ""
 
@@ -1243,7 +1253,11 @@ class PesaViewModel(
             clearNotifications()
             needsWantsClassification.value = emptyMap()
             context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
-                .remove("nw_needs").remove("nw_wants").apply()
+                .remove("nw_needs").remove("nw_wants")
+                .remove("last_sync_timestamp_ms")
+                .putBoolean("has_synced_before", false)
+                .apply()
+            isFirstSync.value = true
             _patternResult.value = null
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 android.widget.Toast.makeText(context, "All data deleted", android.widget.Toast.LENGTH_SHORT).show()

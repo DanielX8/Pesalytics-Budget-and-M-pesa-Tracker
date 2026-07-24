@@ -84,6 +84,17 @@ class WeeklyReportWorker(appContext: Context, workerParams: WorkerParameters) :
             appendInAppNotification(prefs, "Bills due this week: $names (KES ${"%.0f".format(total)} total)")
         }
 
+        // ── Self-reschedule for next Monday at 9:00 AM ───────────
+        val nextMondayDelay = delayUntilNextMonday(9, 0)
+        androidx.work.WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            "weekly_report",
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            androidx.work.OneTimeWorkRequestBuilder<WeeklyReportWorker>()
+                .setInitialDelay(nextMondayDelay, TimeUnit.MILLISECONDS)
+                .addTag("weekly_report")
+                .build()
+        )
+
         return Result.success()
     }
 
@@ -94,5 +105,21 @@ class WeeklyReportWorker(appContext: Context, workerParams: WorkerParameters) :
         val existing = prefs.getString("pending_in_app_notifs", "") ?: ""
         val updated = if (existing.isBlank()) message else "$existing\n$message"
         prefs.edit().putString("pending_in_app_notifs", updated).apply()
+    }
+
+    private fun delayUntilNextMonday(hour: Int, minute: Int): Long {
+        val now = Calendar.getInstance()
+        val target = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+            if (get(Calendar.DAY_OF_WEEK) >= Calendar.MONDAY) {
+                add(Calendar.WEEK_OF_YEAR, 1)
+            }
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val delay = target.timeInMillis - now.timeInMillis
+        return if (delay > 0) delay else 7L * 24 * 60 * 60 * 1000 // Fallback to 7 days
     }
 }

@@ -25,6 +25,20 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.rounded.AccountBalance
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.DirectionsBus
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.LocalGasStation
+import androidx.compose.material.icons.rounded.LocalHospital
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.Restaurant
+import androidx.compose.material.icons.rounded.Savings
+import androidx.compose.material.icons.rounded.School
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.ShoppingCart
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -718,20 +732,20 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
         TransactionType.AIRTIME to "Airtime",
         TransactionType.MANUAL_EXPENSE to "Other"
     )
-    val categoryEmoji = mapOf(
-        "Groceries" to "🛒",
-        "Fuel" to "⛽",
-        "Eating Out" to "🍽️",
-        "Transport" to "🚌",
-        "Savings" to "💰",
-        "Banking" to "🏦",
-        "Utilities" to "💡",
-        "Airtime & Data" to "📱",
-        "Insurance" to "🛡️",
-        "Government" to "🏛️",
-        "Healthcare" to "🏥",
-        "Education" to "🎓",
-        "Subscriptions" to "🔁"
+    val categoryIcon = mapOf(
+        "Groceries" to Icons.Rounded.ShoppingCart,
+        "Fuel" to Icons.Rounded.LocalGasStation,
+        "Eating Out" to Icons.Rounded.Restaurant,
+        "Transport" to Icons.Rounded.DirectionsBus,
+        "Savings" to Icons.Rounded.Savings,
+        "Banking" to Icons.Rounded.AccountBalance,
+        "Utilities" to Icons.Rounded.Lightbulb,
+        "Airtime & Data" to Icons.Rounded.PhoneAndroid,
+        "Insurance" to Icons.Rounded.Shield,
+        "Government" to Icons.Rounded.AccountBalanceWallet,
+        "Healthcare" to Icons.Rounded.LocalHospital,
+        "Education" to Icons.Rounded.School,
+        "Subscriptions" to Icons.Rounded.Sync
     )
 
     val rawTypeTotals = if (viewMode == "channel") {
@@ -835,8 +849,12 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(colors[index % colors.size]))
                         Spacer(modifier = Modifier.width(8.dp))
-                        val prefix = if (viewMode == "category") "${categoryEmoji[pair.first] ?: "📦"} " else ""
-                        Text("$prefix${pair.first}", style = MaterialTheme.typography.bodyMedium)
+                        if (viewMode == "category") {
+                            val icon = categoryIcon[pair.first] ?: Icons.Rounded.Category
+                            Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        Text(pair.first, style = MaterialTheme.typography.bodyMedium)
                         if (delta != null && kotlin.math.abs(delta.percentChange) >= 10.0) {
                             Spacer(modifier = Modifier.width(6.dp))
                             val isUp = delta.percentChange > 0

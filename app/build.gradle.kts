@@ -109,7 +109,7 @@ dependencies {
   implementation(libs.okhttp)
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
-  implementation("com.android.billingclient:billing-ktx:7.0.0")
+  implementation("com.android.billingclient:billing-ktx:8.0.0")
   implementation("androidx.profileinstaller:profileinstaller:1.3.1")
   implementation(libs.androidx.fragment.ktx)
   testImplementation(libs.androidx.compose.ui.test.junit4)

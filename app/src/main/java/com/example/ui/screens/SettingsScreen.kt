@@ -257,18 +257,6 @@ fun SettingsScreen(
                         SettingsDivider()
                         ToggleRow("Monthly Report", monthlyReportEnabled, masterNotifEnabled) { viewModel.setNotificationPref("monthly_report", it, context) }
                     }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    "Report Frequency",
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-                    color = if (masterNotifEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                )
-                SegmentedRow(listOf("Daily", "Weekly", "Monthly"), notificationFrequency, masterNotifEnabled) { option ->
-                    notificationFrequency = option
-                    context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE).edit().putString("report_frequency", option).apply()
-                }
             } }
 
             item { SettingsSection("DATA EXPORT") {

@@ -110,7 +110,7 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
                     if (ack.responseCode != BillingClient.BillingResponseCode.OK) continue
                 }
                 val tier = tierFromProducts(purchase.products) ?: continue
-                val expiryMs = System.currentTimeMillis() + expiryDurationMs(tier)
+                val expiryMs = purchase.purchaseTime + expiryDurationMs(tier)
                 savePlayBillingState(tier, purchase.purchaseToken, expiryMs)
                 _state.value = loadStateFromPrefs()
             }

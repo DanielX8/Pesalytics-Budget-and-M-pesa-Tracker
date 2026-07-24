@@ -35,7 +35,7 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
             if (expense > 0) {
                 // Enrich with transaction count and top category
                 val yesterdayTxns = repository.allTransactions.first()
-                    .filter { it.timestamp in startYesterday..endYesterday && !it.isFeeTransaction }
+                    .filter { it.timestamp in startYesterday until endYesterday && !it.isFeeTransaction }
                 val txnCount = yesterdayTxns.size
                 val topCat = yesterdayTxns
                     .filter {

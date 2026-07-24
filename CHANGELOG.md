@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.0] — 2026-07-24 · QA Audit Fixes & Billing Upgrade
+
+### Added
+- **Where It Goes Chart**: Swapped out the old hardcoded emoji map for proper Material `Icons.Rounded` symbols.
+- **Data Migration**: Background script to re-scan all historical transactions and apply the new `MerchantCategoryEngine` categories.
+
+### Changed
+- **Settings Screen Cleanup**: Removed the inactive "Report Frequency" selector.
+- **Worker Rescheduling**: The `WeeklyReportWorker` now reliably re-queues itself for the following Monday after every run.
+- **Play Billing v8**: Bumped `billing-ktx` to `8.0.0` to satisfy Google Play's 2026 platform compliance requirements.
+- **Subscription Math**: Subscription expiry time is now anchored strictly to `purchase.purchaseTime` rather than local device time.
+
+### Fixed
+- **Fuliza Limit Math**: Fixed the "highest limit" logic so it accurately reflects your most recent limit from Safaricom.
+- **Fuliza Zero-Balance**: The `hasFuliza` state correctly resets to false when your outstanding balance hits zero, and a parsing bug where `"fully paid"` messages were mistakenly classified as partial repayments was fixed.
+- **Midnight Spending Math**: Adjusted the `DailySpendWorker` boundaries so transactions at exactly 00:00 aren't double-counted.
+- **Stale Hero Balances**: Pochi outgoing payments are now properly included in the balance filter, preventing stale numbers.
+
+---
+
 ## [1.4.9] — 2026-07-14 · First-Sync Animation & Bug Fixes
 
 ### Added
