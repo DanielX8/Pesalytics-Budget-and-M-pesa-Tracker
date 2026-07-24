@@ -257,6 +257,7 @@ fun SettingsScreen(
                         SettingsDivider()
                         ToggleRow("Monthly Report", monthlyReportEnabled, masterNotifEnabled) { viewModel.setNotificationPref("monthly_report", it, context) }
                     }
+                }
             } }
 
             item { SettingsSection("DATA EXPORT") {
