@@ -1406,23 +1406,23 @@ fun MetadataRow(label: String, value: String) {
 }
 
 fun getIconForTransaction(transaction: Transaction): androidx.compose.ui.graphics.vector.ImageVector {
-    if (transaction.isFeeTransaction) return Icons.AutoMirrored.Filled.ReceiptLong
+    if (transaction.isFeeTransaction) return Icons.AutoMirrored.Outlined.ReceiptLong
     
     val payee = transaction.payee.lowercase()
     val category = transaction.category?.lowercase() ?: "other"
     
     return when {
-        category == "bank/m-pesa fees" -> Icons.AutoMirrored.Filled.ReceiptLong
-        category == "airtime" -> Icons.Default.Phone
-        category == "cash" || category == "withdraw" -> Icons.Default.AttachMoney
-        category == "transfer" || category == "send money" -> Icons.Default.AttachMoney
-        category == "received money" || category == "income" || transaction.type == TransactionType.RECEIVE_MONEY || transaction.type == TransactionType.MANUAL_INCOME -> Icons.AutoMirrored.Filled.TrendingDown
-        category == "shopping" || category == "buy goods" -> Icons.Default.ShoppingCart
-        category == "bills" || category == "paybill" -> Icons.Default.Payment
-        category == "fuliza" -> Icons.Default.AccountBalance
-        payee.contains("bank") -> Icons.Default.AccountBalance
-        payee.contains("kplc") -> Icons.Default.Bolt
-        else -> Icons.AutoMirrored.Filled.TrendingUp
+        category == "bank/m-pesa fees" -> Icons.AutoMirrored.Outlined.ReceiptLong
+        category == "airtime" -> Icons.Outlined.Phone
+        category == "cash" || category == "withdraw" -> Icons.Outlined.AttachMoney
+        category == "transfer" || category == "send money" -> Icons.Outlined.AttachMoney
+        category == "received money" || category == "income" || transaction.type == TransactionType.RECEIVE_MONEY || transaction.type == TransactionType.MANUAL_INCOME -> Icons.AutoMirrored.Outlined.TrendingDown
+        category == "shopping" || category == "buy goods" -> Icons.Outlined.ShoppingCart
+        category == "bills" || category == "paybill" -> Icons.Outlined.Payment
+        category == "fuliza" -> Icons.Outlined.AccountBalance
+        payee.contains("bank") -> Icons.Outlined.AccountBalance
+        payee.contains("kplc") -> Icons.Outlined.Bolt
+        else -> Icons.AutoMirrored.Outlined.TrendingUp
     }
 }
 
@@ -1790,9 +1790,9 @@ fun InsightsCarousel(insights: List<com.pesalytics.patterns.Insight>) {
                 com.pesalytics.patterns.InsightType.INFO -> TransferBlue
             }
             val icon = when (insight.type) {
-                com.pesalytics.patterns.InsightType.WARNING -> Icons.Default.Warning
-                com.pesalytics.patterns.InsightType.SUCCESS -> Icons.Default.CheckCircle
-                com.pesalytics.patterns.InsightType.INFO -> Icons.Default.Info
+                com.pesalytics.patterns.InsightType.WARNING -> Icons.Outlined.Warning
+                com.pesalytics.patterns.InsightType.SUCCESS -> Icons.Outlined.CheckCircle
+                com.pesalytics.patterns.InsightType.INFO -> Icons.Outlined.Info
             }
             
             Card(
