@@ -849,11 +849,6 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(colors[index % colors.size]))
                         Spacer(modifier = Modifier.width(8.dp))
-                        if (viewMode == "category") {
-                            val icon = categoryIcon[pair.first] ?: Icons.Rounded.Category
-                            Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
                         Text(pair.first, style = MaterialTheme.typography.bodyMedium)
                         if (delta != null && kotlin.math.abs(delta.percentChange) >= 10.0) {
                             Spacer(modifier = Modifier.width(6.dp))

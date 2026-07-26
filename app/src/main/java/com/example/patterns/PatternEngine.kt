@@ -15,7 +15,7 @@ data class CategoryDelta(
 ) {
     val delta: Double get() = currentAmount - previousAmount
     val percentChange: Double get() = when {
-        previousAmount > 0 -> (delta / previousAmount) * 100
+        previousAmount > 0 -> ((delta / previousAmount) * 100).coerceAtMost(999.0)
         currentAmount > 0 -> 100.0
         else -> 0.0
     }
