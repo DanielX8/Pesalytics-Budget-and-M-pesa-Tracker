@@ -267,7 +267,7 @@ fun FinancialGoalsScreen(
         AlertDialog(
             onDismissRequest = { showUpgradeDialog = false },
             title = { Text("Track unlimited goals", fontWeight = FontWeight.Bold) },
-            text = { Text("You've used your 1 free goal. Upgrade to Premium to track all your savings goals — KES 299/month or KES 2,000/year.") },
+            text = { Text("You've used your 1 free goal. Upgrade to Premium to track all your savings goals — KES 169/month or KES 2,000/year.") },
             confirmButton = {
                 Button(onClick = { showUpgradeDialog = false; onNavigateToSubscription() }) {
                     Text("Upgrade to Premium")
