@@ -101,10 +101,10 @@ fun SubscriptionScreen(
                     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             PricingCard("Monthly", "KES 169", isSelected = selectedPlan == "Monthly", modifier = Modifier.weight(1f)) { selectedPlan = "Monthly" }
-                            PricingCard("Quarterly", "KES 499", isSelected = selectedPlan == "Quarterly", modifier = Modifier.weight(1f)) { selectedPlan = "Quarterly" }
+                            PricingCard("Quarterly", "KES 449", isSelected = selectedPlan == "Quarterly", modifier = Modifier.weight(1f)) { selectedPlan = "Quarterly" }
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            PricingCard("Yearly", "KES 2,000", badge = "BEST VALUE", isSelected = selectedPlan == "Yearly", modifier = Modifier.weight(1f)) { selectedPlan = "Yearly" }
+                            PricingCard("Yearly", "KES 1,499", badge = "BEST VALUE", isSelected = selectedPlan == "Yearly", modifier = Modifier.weight(1f)) { selectedPlan = "Yearly" }
                             PricingCard("Lifetime", "KES 5,999", isSelected = selectedPlan == "Lifetime", modifier = Modifier.weight(1f)) { selectedPlan = "Lifetime" }
                         }
                     }
