@@ -21,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesalytics.R
 import com.pesalytics.ui.screens.PesaViewModel
 import com.pesalytics.ui.theme.ExpenseRed
+import com.pesalytics.ui.theme.AccentGreenDark
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +62,7 @@ fun PesalyticsTopBar(
                         .clickable { notificationsExpanded = true },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp), tint = AccentGreenDark)
                     if (notifications.isNotEmpty()) {
                         Box(
                             modifier = Modifier
@@ -84,7 +85,7 @@ fun PesalyticsTopBar(
                     if (notifications.isEmpty()) {
                         DropdownMenuItem(
                             text = { Text("No new notifications", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                            onClick = { }
+                            onClick = { notificationsExpanded = false }
                         )
                     } else {
                         notifications.forEach { notif ->

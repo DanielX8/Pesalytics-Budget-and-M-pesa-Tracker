@@ -109,6 +109,7 @@ fun BillsScreen(viewModel: PesaViewModel, navController: NavController, onNaviga
         ModalBottomSheet(
             onDismissRequest = { showAddBillDialog = false },
             sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.background,
             dragHandle = { BottomSheetDefaults.DragHandle() }
         ) {
             AddBillBottomSheetContent(
@@ -176,6 +177,7 @@ fun BillsScreen(viewModel: PesaViewModel, navController: NavController, onNaviga
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.background,
             dragHandle = { BottomSheetDefaults.DragHandle() }
         ) {
             if (isEditingBill) {
@@ -557,9 +559,20 @@ fun AddBillBottomSheetContent(
             val datePickerState = rememberDatePickerState(initialSelectedDateMillis = nextDue)
             DatePickerDialog(
                 onDismissRequest = { showDatePicker = false },
-                confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { nextDue = it }; showDatePicker = false }) { Text("OK") } },
-                dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }
-            ) { DatePicker(state = datePickerState) }
+                confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { nextDue = it }; showDatePicker = false }) { Text("OK", color = AccentGreenDark) } },
+                dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel", color = AccentGreenDark) } },
+                colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.background)
+            ) { DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    titleContentColor = AccentGreenDark,
+                    headlineContentColor = AccentGreenDark,
+                    todayContentColor = AccentGreenDark,
+                    todayDateBorderColor = AccentGreenDark,
+                    selectedDayContainerColor = AccentGreenDark,
+                    selectedDayContentColor = Color.White
+                )
+            ) }
         }
 
         Spacer(modifier = Modifier.height(32.dp))

@@ -24,7 +24,16 @@ private val DarkColorScheme = darkColorScheme(
     onBackground = TextPrimary,
     onSurface = TextPrimary,
     onSurfaceVariant = TextSecondary,
-    error = ExpenseRed
+    error = ExpenseRed,
+    primaryContainer = AccentGreenDark,
+    onPrimaryContainer = Color.White,
+    secondaryContainer = AccentGreenDark,
+    onSecondaryContainer = Color.White,
+    surfaceTint = AccentGreenLight,
+    surfaceContainer = DarkSurface1,
+    surfaceContainerHigh = DarkSurface2,
+    surfaceContainerLow = AmoledBlack,
+    surfaceContainerLowest = AmoledBlack
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -40,7 +49,16 @@ private val LightColorScheme = lightColorScheme(
     onBackground = AmoledBlack,
     onSurface = AmoledBlack,
     onSurfaceVariant = AmoledBlack,
-    error = ExpenseRed
+    error = ExpenseRed,
+    primaryContainer = AccentGreenLight,
+    onPrimaryContainer = AmoledBlack,
+    secondaryContainer = AccentGreenLight,
+    onSecondaryContainer = AmoledBlack,
+    surfaceTint = AccentGreenDark,
+    surfaceContainer = Color(0xFFFFFFFF),
+    surfaceContainerHigh = Color(0xFFF0F2F5),
+    surfaceContainerLow = Color(0xFFF4FBF7),
+    surfaceContainerLowest = Color(0xFFFFFFFF)
 )
 
 @Composable

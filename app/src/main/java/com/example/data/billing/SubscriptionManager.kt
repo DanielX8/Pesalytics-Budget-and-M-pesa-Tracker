@@ -42,7 +42,7 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
 
     fun disconnect() {
         billingClient.endConnection()  // stop incoming events before cancelling inflight coroutines
-        scope.coroutineContext.cancelChildren()
+        scope.cancel()
     }
 
     override fun onBillingSetupFinished(result: BillingResult) {
@@ -161,16 +161,6 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
         if (tier.isPremium && expiryMs > now) {
             return SubscriptionState(tier = tier, expiryMs = expiryMs)
         }
-        val referralExpiry = prefs.getLong("referral_expiry_ms", 0L)
-        if (referralExpiry > now) {
-            return SubscriptionState(tier = SubscriptionTier.PREMIUM_MONTHLY, expiryMs = referralExpiry, source = "referral")
-        }
-        val trialStart = prefs.getLong("trial_start_ms", 0L)
-        val trialDuration = TimeUnit.DAYS.toMillis(14)
-        if (trialStart > 0L && (now - trialStart) < trialDuration) {
-            val remaining = TimeUnit.MILLISECONDS.toDays(trialDuration - (now - trialStart)).toInt().coerceAtLeast(1)
-            return SubscriptionState(tier = SubscriptionTier.TRIAL, expiryMs = trialStart + trialDuration, trialDaysRemaining = remaining)
-        }
         // One-time migration: prior versions wrote is_premium=true to a different prefs file.
         // Elevate those users to PREMIUM_LIFETIME so they don't lose access after an update.
         val legacyPrefs = context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
@@ -181,6 +171,17 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
                 .apply()
             legacyPrefs.edit().remove("is_premium").apply()
             return SubscriptionState(tier = SubscriptionTier.PREMIUM_LIFETIME, expiryMs = Long.MAX_VALUE / 2)
+        }
+
+        val referralExpiry = prefs.getLong("referral_expiry_ms", 0L)
+        if (referralExpiry > now) {
+            return SubscriptionState(tier = SubscriptionTier.PREMIUM_MONTHLY, expiryMs = referralExpiry, source = "referral")
+        }
+        val trialStart = prefs.getLong("trial_start_ms", 0L)
+        val trialDuration = TimeUnit.DAYS.toMillis(14)
+        if (trialStart > 0L && (now - trialStart) < trialDuration) {
+            val remaining = TimeUnit.MILLISECONDS.toDays(trialDuration - (now - trialStart)).toInt().coerceAtLeast(1)
+            return SubscriptionState(tier = SubscriptionTier.TRIAL, expiryMs = trialStart + trialDuration, trialDaysRemaining = remaining)
         }
         return SubscriptionState(tier = SubscriptionTier.FREE)
     }

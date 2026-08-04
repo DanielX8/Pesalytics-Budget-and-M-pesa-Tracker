@@ -304,8 +304,16 @@ object PdfExportHelper {
 
     private fun createPdfFile(context: Context, webView: WebView, onComplete: (File?) -> Unit) {
         try {
-            // Wait briefly for layout to finish
-            webView.postDelayed({
+            // Wait briefly for layout to finish, use Handler instead of WebView.postDelayed 
+            // since WebView is not attached to a window and its message queue might be paused.
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                // Force layout so it actually draws correctly even when offscreen
+                webView.measure(
+                    android.view.View.MeasureSpec.makeMeasureSpec(800, android.view.View.MeasureSpec.EXACTLY),
+                    android.view.View.MeasureSpec.makeMeasureSpec(1200, android.view.View.MeasureSpec.EXACTLY)
+                )
+                webView.layout(0, 0, webView.measuredWidth, webView.measuredHeight)
+
                 val width = webView.measuredWidth
                 val height = webView.measuredHeight
                 

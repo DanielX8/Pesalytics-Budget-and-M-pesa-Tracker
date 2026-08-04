@@ -187,18 +187,31 @@ fun AnalyticsScreen(
                     } else {
                         showDateRangePicker = false
                     }
-                }) { Text("Confirm") }
+                }) { Text("Confirm", color = AccentGreenDark) }
             },
             dismissButton = {
-                TextButton(onClick = { showDateRangePicker = false }) { Text("Cancel") }
-            }
+                TextButton(onClick = { showDateRangePicker = false }) { Text("Cancel", color = AccentGreenDark) }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.background
+            )
         ) {
             DateRangePicker(
                 state = dateRangePickerState,
                 title = { Text("Select date range (max 1 year)", modifier = Modifier.padding(start = 64.dp, end = 12.dp, top = 16.dp)) },
                 headline = null,
                 showModeToggle = false,
-                modifier = Modifier.fillMaxWidth().height(500.dp)
+                modifier = Modifier.fillMaxWidth().height(500.dp),
+                colors = DatePickerDefaults.colors(
+                    titleContentColor = AccentGreenDark,
+                    headlineContentColor = AccentGreenDark,
+                    todayContentColor = AccentGreenDark,
+                    todayDateBorderColor = AccentGreenDark,
+                    selectedDayContainerColor = AccentGreenDark,
+                    selectedDayContentColor = Color.White,
+                    dayInSelectionRangeContainerColor = AccentGreenDark.copy(alpha = 0.2f),
+                    dayInSelectionRangeContentColor = AccentGreenDark
+                )
             )
         }
     }

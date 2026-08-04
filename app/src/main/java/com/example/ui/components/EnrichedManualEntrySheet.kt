@@ -21,6 +21,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import com.pesalytics.ui.theme.AccentGreenDark
+import com.pesalytics.ui.theme.ExpenseRed
+import com.pesalytics.ui.theme.IncomeGreen
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -67,6 +69,7 @@ fun EnrichedManualEntrySheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.background,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         LazyColumn(
@@ -88,7 +91,7 @@ fun EnrichedManualEntrySheet(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) AccentGreenDark else Color.Transparent)
+                                .background(if (isSelected) (if (incomeFlag) IncomeGreen else ExpenseRed) else Color.Transparent)
                                 .clickable { 
                                     isIncome = incomeFlag
                                     if (incomeFlag && selectedCategory.isEmpty()) selectedCategory = "Income"
@@ -120,7 +123,11 @@ fun EnrichedManualEntrySheet(
                             FilterChip(
                                 selected = selectedSource == sourceId,
                                 onClick = { selectedSource = sourceId },
-                                label = { Text(sourceLabel) }
+                                label = { Text(sourceLabel) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = AccentGreenDark,
+                                    selectedLabelColor = Color.White
+                                )
                             )
                         }
                     }
@@ -182,7 +189,11 @@ fun EnrichedManualEntrySheet(
                             FilterChip(
                                 selected = selectedCategory == cat,
                                 onClick = { selectedCategory = cat },
-                                label = { Text(cat) }
+                                label = { Text(cat) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = AccentGreenDark,
+                                    selectedLabelColor = Color.White
+                                )
                             )
                         }
                     }
@@ -256,7 +267,6 @@ fun EnrichedManualEntrySheet(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let {
-                        // Keep current time, just change the date portion
                         val currentCal = Calendar.getInstance().apply { timeInMillis = timestamp }
                         val newCal = Calendar.getInstance().apply { timeInMillis = it }
                         currentCal.set(Calendar.YEAR, newCal.get(Calendar.YEAR))
@@ -265,13 +275,26 @@ fun EnrichedManualEntrySheet(
                         timestamp = currentCal.timeInMillis
                     }
                     showDatePicker = false
-                }) { Text("OK") }
+                }) { Text("OK", color = AccentGreenDark) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
-            }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel", color = AccentGreenDark) }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.background
+            )
         ) {
-            DatePicker(state = datePickerState)
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    titleContentColor = AccentGreenDark,
+                    headlineContentColor = AccentGreenDark,
+                    todayContentColor = AccentGreenDark,
+                    todayDateBorderColor = AccentGreenDark,
+                    selectedDayContainerColor = AccentGreenDark,
+                    selectedDayContentColor = Color.White
+                )
+            )
         }
     }
 }

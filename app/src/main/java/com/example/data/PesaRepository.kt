@@ -145,4 +145,31 @@ class PesaRepository(
     suspend fun getBudgetsOnce(): List<Budget> = budgetDao.getBudgetsOnce()
     suspend fun getGoalsOnce(): List<Goal> = goalDao.getGoalsOnce()
     suspend fun getGoalTransactionsOnce(): List<com.pesalytics.model.GoalTransaction> = goalDao.getGoalTransactionsOnce()
+
+    suspend fun restoreBackup(schema: com.pesalytics.utils.BackupSchema): RestoreResult {
+        db.withTransaction {
+            transactionDao.insertTransactionsIgnore(schema.transactions)
+            billDao.insertBills(schema.bills)
+            budgetDao.insertBudgets(schema.budgets)
+            goalDao.insertGoals(schema.goals)
+            goalDao.insertGoalTransactions(schema.goal_transactions)
+            customRuleDao.insertRules(schema.custom_rules)
+        }
+
+        return RestoreResult(
+            transactionsAdded = schema.transactions.size,
+            billsAdded = schema.bills.size,
+            budgetsAdded = schema.budgets.size,
+            goalsAdded = schema.goals.size,
+            rulesAdded = schema.custom_rules.size
+        )
+    }
 }
+
+data class RestoreResult(
+    val transactionsAdded: Int,
+    val billsAdded: Int,
+    val budgetsAdded: Int,
+    val goalsAdded: Int,
+    val rulesAdded: Int
+)

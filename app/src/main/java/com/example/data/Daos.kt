@@ -23,6 +23,9 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransactions(transactions: List<Transaction>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTransactionsIgnore(transactions: List<Transaction>)
+
     @Query("SELECT * FROM transactions WHERE remoteRef = :ref LIMIT 1")
     suspend fun getTransactionByRef(ref: String): Transaction?
 
@@ -31,7 +34,7 @@ interface TransactionDao {
 
     @Query("""
         SELECT SUM(amount) FROM transactions
-        WHERE type IN ('RECEIVE_MONEY', 'MANUAL_INCOME')
+        WHERE type IN ('RECEIVE_MONEY', 'MANUAL_INCOME', 'POCHI_RECEIVE')
         AND isFeeTransaction = 0
         AND timestamp >= :startOfMonth AND timestamp < :endOfMonth
     """)
@@ -79,6 +82,9 @@ interface CustomRuleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRule(rule: CustomRule)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertRules(rules: List<CustomRule>)
+
     @Query("SELECT * FROM custom_rules")
     suspend fun getCustomRulesOnce(): List<CustomRule>
 
@@ -93,6 +99,9 @@ interface BillDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBill(bill: Bill)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertBills(bills: List<Bill>)
 
     @Query("DELETE FROM bills WHERE id = :id")
     suspend fun deleteBill(id: Int)
@@ -115,6 +124,9 @@ interface BudgetDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBudget(budget: Budget)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertBudgets(budgets: List<Budget>)
+
     @Query("DELETE FROM budgets WHERE category = :category AND monthYear = :monthYear")
     suspend fun deleteBudgetByCategory(category: String, monthYear: String)
 
@@ -132,6 +144,9 @@ interface GoalDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoal(goal: com.pesalytics.model.Goal)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertGoals(goals: List<com.pesalytics.model.Goal>)
 
     @Query("UPDATE goals SET savedAmount = savedAmount + :amount WHERE id = :id")
     suspend fun addGoalContribution(id: Int, amount: Double)
@@ -153,6 +168,9 @@ interface GoalDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoalTransaction(transaction: com.pesalytics.model.GoalTransaction)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertGoalTransactions(transactions: List<com.pesalytics.model.GoalTransaction>)
 
     @Query("DELETE FROM goal_transactions WHERE id = :transactionId")
     suspend fun deleteGoalTransaction(transactionId: Int)

@@ -519,7 +519,8 @@ fun AddBudgetBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        dragHandle = null
+        dragHandle = null,
+        containerColor = MaterialTheme.colorScheme.background
     ) {
         Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f)) {
             // Header
@@ -705,7 +706,11 @@ fun EditBudgetLimitSheet(
         mutableStateOf(if (budget.limitAmount > 0) budget.limitAmount.toInt().toString() else "")
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss, 
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.background
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
             Text(
                 if (isOverall) "Edit Overall Budget" else "Edit Budget",
@@ -774,7 +779,11 @@ fun AddManualExpenseSheet(
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss, 
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.background
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
             Text(
                 "Contribute to $category",

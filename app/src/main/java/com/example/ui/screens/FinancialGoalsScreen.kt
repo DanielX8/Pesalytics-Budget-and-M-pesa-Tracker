@@ -318,7 +318,7 @@ fun CreateGoalBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.background,
         scrimColor = Color.Black.copy(alpha = 0.4f),
         dragHandle = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -447,7 +447,7 @@ fun CreateGoalBottomSheet(
                 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("MONTHLY CONTRIBUTION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Box(modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer).clickable {
+                    Box(modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(AccentGreenDark.copy(alpha = 0.15f)).clickable {
                         val amount = targetAmount.toDoubleOrNull()
                         if (amount != null && targetDate != null) {
                             val cal1 = Calendar.getInstance()
@@ -461,7 +461,7 @@ fun CreateGoalBottomSheet(
                             monthlyContribution = "%.0f".format(amount / months)
                         }
                     }.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                        Text("Smart Recommendation", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text("Smart Recommendation", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = AccentGreenDark)
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))

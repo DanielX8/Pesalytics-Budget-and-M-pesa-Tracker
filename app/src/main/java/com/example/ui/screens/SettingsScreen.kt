@@ -136,8 +136,30 @@ fun SettingsScreen(
     val goals by viewModel.goals.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val syncProgress by viewModel.syncProgress.collectAsStateWithLifecycle()
+    val pendingRestore by viewModel.pendingRestore.collectAsStateWithLifecycle()
     var showEditNameSheet by remember { mutableStateOf(false) }
     var editTempName by remember { mutableStateOf(userName) }
+    
+    val restoreFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            viewModel.parseBackupFile(context, uri) { parseResult ->
+                when (parseResult) {
+                    is com.pesalytics.utils.RestoreParseResult.InvalidFormat -> {
+                        android.widget.Toast.makeText(context, parseResult.message, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    is com.pesalytics.utils.RestoreParseResult.UnsupportedVersion -> {
+                        android.widget.Toast.makeText(context, "Backup version ${parseResult.version} is not supported. Please update the app.", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    is com.pesalytics.utils.RestoreParseResult.EmptyFile -> {
+                        android.widget.Toast.makeText(context, "Nothing to restore — the backup file is empty.", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    is com.pesalytics.utils.RestoreParseResult.Success -> {
+                        // Handled by view model state, the preview sheet will show automatically
+                    }
+                }
+            }
+        }
+    }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showExportGateDialog by remember { mutableStateOf(false) }
     var showExportStationSheet by remember { mutableStateOf(false) }
@@ -266,10 +288,18 @@ fun SettingsScreen(
                 }
             } }
 
-            item { SettingsSection("DATA EXPORT") {
+            item { SettingsSection("DATA & BACKUP") {
                 SettingsCard {
                     SupportListItem(Icons.Rounded.Upload, "Export Financial Statement", "Generate a PDF, CSV, or JSON backup of your data") {
                         showExportStationSheet = true
+                    }
+                    SettingsDivider()
+                    SupportListItem(Icons.Rounded.Download, "Restore from Backup", "Import data from a previously exported JSON file") {
+                        if (isPremium) {
+                            restoreFilePicker.launch("application/json") // Note: "application/json" might not cover all json files on all devices, "*/*" is safer, but let's try "application/json" first or "*/*" 
+                        } else {
+                            showExportGateDialog = true // Reuse the same premium gate
+                        }
                     }
                 }
             } }
@@ -356,6 +386,19 @@ fun SettingsScreen(
             onDismiss = { showExportStationSheet = false },
             onShowPremiumGate = { showExportStationSheet = false; showExportGateDialog = true },
             onNotification = { viewModel.addNotification(it) }
+        )
+    }
+
+    pendingRestore?.let { schema ->
+        com.pesalytics.ui.components.RestorePreviewSheet(
+            schema = schema,
+            onConfirm = {
+                viewModel.confirmRestore { result ->
+                    val message = "Restored: ${result.transactionsAdded} transactions, ${result.billsAdded} bills, ${result.budgetsAdded} budgets, ${result.goalsAdded} goals"
+                    android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+                }
+            },
+            onCancel = { viewModel.cancelRestore() }
         )
     }
 

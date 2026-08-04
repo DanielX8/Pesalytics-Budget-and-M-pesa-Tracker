@@ -77,7 +77,7 @@ class PatternEngine {
         !t.isFeeTransaction
 
     private fun monthStart(monthsAgo: Int): Long {
-        return Calendar.getInstance().apply {
+        return Calendar.getInstance(java.util.TimeZone.getTimeZone("Africa/Nairobi")).apply {
             add(Calendar.MONTH, -monthsAgo)
             set(Calendar.DAY_OF_MONTH, 1)
             set(Calendar.HOUR_OF_DAY, 0)
@@ -113,7 +113,7 @@ class PatternEngine {
     }
 
     private fun computeSpendVelocity(transactions: List<Transaction>): SpendVelocity? {
-        val cal = Calendar.getInstance()
+        val cal = Calendar.getInstance(java.util.TimeZone.getTimeZone("Africa/Nairobi"))
         val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
         val daysElapsed = cal.get(Calendar.DAY_OF_MONTH)
         if (daysElapsed == 0) return null

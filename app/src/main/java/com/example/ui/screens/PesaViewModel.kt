@@ -151,7 +151,7 @@ class PesaViewModel(
     val isFirstLaunch = MutableStateFlow(true)
     val isPremium: StateFlow<Boolean> = subscriptionManager?.state
         ?.map { it.isPremium }
-        ?.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        ?.stateIn(viewModelScope, SharingStarted.Eagerly, subscriptionManager.state.value.isPremium)
         ?: MutableStateFlow(false)
 
     // ── Subscription state ────────────────────────────────────────────────────
@@ -193,6 +193,14 @@ class PesaViewModel(
     private val _patternResult = MutableStateFlow<PatternResult?>(null)
     val patternResult = _patternResult.asStateFlow()
     private val patternEngine = PatternEngine()
+
+    // ── JSON Restore ─────────────────────────────────────────────────────────
+    private val _pendingRestore = MutableStateFlow<com.pesalytics.utils.BackupSchema?>(null)
+    val pendingRestore = _pendingRestore.asStateFlow()
+
+    // ── What's New ───────────────────────────────────────────────────────────
+    private val _showWhatsNewSheet = MutableStateFlow(false)
+    val showWhatsNewSheet = _showWhatsNewSheet.asStateFlow()
 
     init {
         // Refresh patterns on every transaction change. Using collect (not first{}) so
@@ -498,15 +506,17 @@ class PesaViewModel(
 
                 if (transactionsList.isNotEmpty()) {
                     repository.insertTransactions(transactionsList.reversed())
+                }
 
-                    // Apply enrichments to DB for transactions from a PREVIOUS sync (cross-batch case).
-                    val newRefs = transactionsList.map { it.remoteRef }.toSet()
-                    for ((ref, enrichment) in pendingFulizaEnrichments) {
-                        if (ref !in newRefs) {
-                            repository.enrichFulizaTransaction(ref, enrichment.first, enrichment.second, enrichment.third)
-                        }
+                // Apply enrichments to DB for transactions from a PREVIOUS sync (cross-batch case).
+                val newRefs = transactionsList.map { it.remoteRef }.toSet()
+                for ((ref, enrichment) in pendingFulizaEnrichments) {
+                    if (ref !in newRefs) {
+                        repository.enrichFulizaTransaction(ref, enrichment.first, enrichment.second, enrichment.third)
                     }
+                }
 
+                if (transactionsList.isNotEmpty()) {
                     // Auto-match newly synced transactions against tracked bills
                     val currentBills = repository.allBills.first()
                     for (transaction in transactionsList) {
@@ -1326,6 +1336,44 @@ class PesaViewModel(
             }
             _promoMessage.value = msg
         }
+    }
+
+
+    fun parseBackupFile(context: android.content.Context, uri: android.net.Uri, onResult: (com.pesalytics.utils.RestoreParseResult) -> Unit) {
+        viewModelScope.launch {
+            val result = com.pesalytics.utils.JsonRestoreHelper.parse(context, uri)
+            if (result is com.pesalytics.utils.RestoreParseResult.Success) {
+                _pendingRestore.value = result.schema
+            }
+            onResult(result)
+        }
+    }
+
+    fun confirmRestore(onComplete: (com.pesalytics.data.RestoreResult) -> Unit = {}) {
+        val schema = _pendingRestore.value ?: return
+        viewModelScope.launch {
+            val result = repository.restoreBackup(schema)
+            _pendingRestore.value = null
+            onComplete(result)
+        }
+    }
+
+    fun cancelRestore() {
+        _pendingRestore.value = null
+    }
+
+    fun checkWhatsNew(context: android.content.Context) {
+        val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+        val lastSeen = prefs.getInt("last_seen_version_code", 0)
+        if (com.pesalytics.BuildConfig.VERSION_CODE > lastSeen) {
+            _showWhatsNewSheet.value = true
+        }
+    }
+
+    fun dismissWhatsNew(context: android.content.Context) {
+        val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putInt("last_seen_version_code", com.pesalytics.BuildConfig.VERSION_CODE).apply()
+        _showWhatsNewSheet.value = false
     }
 
     fun clearPromoMessage() {

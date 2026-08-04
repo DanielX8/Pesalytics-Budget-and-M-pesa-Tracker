@@ -346,15 +346,28 @@ fun ExportStationSheet(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("OK") }
+                TextButton(onClick = { showDatePicker = false }) { Text("OK", color = AccentGreenDark) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
-            }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel", color = AccentGreenDark) }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.background
+            )
         ) {
             DateRangePicker(
                 state = datePickerState,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
+                colors = DatePickerDefaults.colors(
+                    titleContentColor = AccentGreenDark,
+                    headlineContentColor = AccentGreenDark,
+                    todayContentColor = AccentGreenDark,
+                    todayDateBorderColor = AccentGreenDark,
+                    selectedDayContainerColor = AccentGreenDark,
+                    selectedDayContentColor = Color.White,
+                    dayInSelectionRangeContainerColor = AccentGreenDark.copy(alpha = 0.2f),
+                    dayInSelectionRangeContentColor = AccentGreenDark
+                )
             )
         }
     }

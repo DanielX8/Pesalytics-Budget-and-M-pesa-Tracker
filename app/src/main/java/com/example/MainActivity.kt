@@ -228,6 +228,17 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
         }
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.checkWhatsNew(context)
+    }
+    
+    val showWhatsNewSheet by viewModel.showWhatsNewSheet.collectAsState()
+    if (showWhatsNewSheet) {
+        com.pesalytics.ui.components.WhatsNewSheet(
+            onDismiss = { viewModel.dismissWhatsNew(context) }
+        )
+    }
 
     val isTopLevelDestination = currentDestination?.hierarchy?.any {
         it.hasRoute<Home>() ||
