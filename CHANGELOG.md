@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.2] — 2026-08-04 · Export Station & JSON Backup
+
+### Added
+- **Export Station Bottom Sheet**: New dedicated UI for exporting financial data.
+- **Custom Date Filtering**: Select predefined ranges (This Month, YTD, etc.) or set a custom date range for PDF/CSV exports.
+- **Live Statement Preview**: The Export sheet dynamically shows total transaction count, income, expense, and net values for the selected period.
+- **JSON Backup**: Full database serialization for complete app state portability.
+
+### Changed
+- **Secure File Storage**: CSV and PDF files are now written to a secure internal `cacheDir/exports` and exposed via Android `FileProvider`, fully complying with Android 11+ scoped storage requirements.
+- **PDF Generation**: Removed the hardcoded 20-transaction limit. Reports now cover the exact date range specified.
+
+---
+
 ## [1.5.0] — 2026-07-24 · QA Audit Fixes & Billing Upgrade
 
 ### Added
