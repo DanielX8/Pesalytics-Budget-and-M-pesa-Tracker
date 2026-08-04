@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pesalytics.R
 
 import androidx.compose.material.icons.filled.Notifications
+import com.pesalytics.patterns.isUncategorized
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -162,6 +163,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                         "Withdraw" -> transaction.type == com.pesalytics.model.TransactionType.WITHDRAW
                         "Airtime" -> transaction.type == com.pesalytics.model.TransactionType.AIRTIME
                         "Fuliza" -> transaction.type == com.pesalytics.model.TransactionType.FULIZA || transaction.usedFulizaAmount > 0 || transaction.fulizaOutstandingBalance > 0
+                        "uncategorized" -> transaction.isUncategorized()
                         else -> transaction.category.equals(filter, ignoreCase = true)
                     }
                 }
@@ -196,6 +198,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                     "Fuliza" -> transaction.type == com.pesalytics.model.TransactionType.FULIZA ||
                                 transaction.usedFulizaAmount > 0 ||
                                 transaction.fulizaOutstandingBalance > 0
+                    "uncategorized" -> transaction.isUncategorized()
                     else -> transaction.category.equals(selectedFilter, ignoreCase = true)
                 }
 
@@ -246,7 +249,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
             confirmButton = {
                 TextButton(onClick = {
                     if (newCategoryName.isNotBlank()) {
-                        viewModel.updateTransactionCategory(txn, newCategoryName.trim())
+                        viewModel.updateTransactionCategoryAndRetrain(txn.id, txn.payee, newCategoryName.trim())
                         selectedTransaction = txn.copy(category = newCategoryName.trim())
                     }
                     showCategoryEdit = false

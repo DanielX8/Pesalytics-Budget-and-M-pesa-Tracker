@@ -172,6 +172,7 @@ class PesaViewModel(
     val goalRemindersEnabled = MutableStateFlow(false)
     val highSpendingAlertsEnabled = MutableStateFlow(true)
     val smartAlertsEnabled = MutableStateFlow(false)
+    val insightAlertsEnabled = MutableStateFlow(true)
     val dailySummaryEnabled = MutableStateFlow(true)
     val weeklyReportEnabled = MutableStateFlow(true)
     val monthlyReportEnabled = MutableStateFlow(true)
@@ -298,6 +299,7 @@ class PesaViewModel(
             "goal_reminders" -> goalRemindersEnabled.value = enabled
             "high_spending" -> highSpendingAlertsEnabled.value = enabled
             "smart_alerts" -> smartAlertsEnabled.value = enabled
+            "insight_alerts" -> insightAlertsEnabled.value = enabled
             "daily_summary" -> dailySummaryEnabled.value = enabled
             "weekly_report" -> weeklyReportEnabled.value = enabled
             "monthly_report" -> monthlyReportEnabled.value = enabled
@@ -322,6 +324,7 @@ class PesaViewModel(
         goalRemindersEnabled.value = prefs.getBoolean("notif_goal_reminders", false)
         highSpendingAlertsEnabled.value = prefs.getBoolean("notif_high_spending", true)
         smartAlertsEnabled.value = prefs.getBoolean("notif_smart_alerts", false)
+        insightAlertsEnabled.value = prefs.getBoolean("notif_insight_alerts", true)
         dailySummaryEnabled.value = prefs.getBoolean("notif_daily_summary", true)
         weeklyReportEnabled.value = prefs.getBoolean("notif_weekly_report", true)
         monthlyReportEnabled.value = prefs.getBoolean("notif_monthly_report", true)
@@ -898,8 +901,9 @@ class PesaViewModel(
         repository.allTransactions,
         monthlyStats,
         isBalanceVisible,
-        currentMonthYearString.flatMapLatest { repository.getBudgetsForMonth(it) }
-    ) { transactions, stats, isVisible, budgets ->
+        currentMonthYearString.flatMapLatest { repository.getBudgetsForMonth(it) },
+        repository.allBills
+    ) { transactions, stats, isVisible, budgets, bills ->
         val balance = transactions
             .filter {
                 it.type in listOf(
@@ -1023,7 +1027,15 @@ class PesaViewModel(
             fulizaLimit = fulizaTotalLimit,
             fulizaTotalBorrowed = fulizaTotalBorrowed,
             fulizaDueDate = fulizaDueDate ?: "",
-            insights = com.pesalytics.patterns.InsightEngine.generateInsights(transactions, optimalPeriod)
+            insights = com.pesalytics.patterns.InsightEngine.generateInsights(
+                transactions = transactions,
+                bills = bills,
+                budgets = budgets,
+                currentBudgetLimit = globalBudget?.limitAmount ?: 0.0,
+                monthlyExpense = stats.expense,
+                fulizaOutstanding = fulizaOutstandingBalance,
+                fulizaDueDate = fulizaDueDate ?: ""
+            )
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
@@ -1168,18 +1180,26 @@ class PesaViewModel(
         viewModelScope.launch { repository.deleteTransaction(id) }
     }
 
-    fun insertManualTransaction(amount: Double, payee: String, isIncome: Boolean) {
+    fun insertManualTransaction(
+        amount: Double, 
+        payee: String, 
+        isIncome: Boolean,
+        category: String = if (isIncome) "Income" else "Other",
+        source: String = "CASH",
+        timestamp: Long = System.currentTimeMillis(),
+        notes: String = ""
+    ) {
         viewModelScope.launch {
             val type = if (isIncome) TransactionType.MANUAL_INCOME else TransactionType.MANUAL_EXPENSE
-            val category = if (isIncome) "Income" else "Other"
             repository.insertTransaction(
                 Transaction(
-                    remoteRef = "MANUAL_${System.currentTimeMillis()}",
+                    remoteRef = "MANUAL_${source.uppercase(java.util.Locale.ROOT)}_${System.currentTimeMillis()}",
                     amount = amount,
                     type = type,
                     payee = payee.trim(),
                     category = category,
-                    timestamp = System.currentTimeMillis()
+                    timestamp = timestamp,
+                    originalSms = notes.takeIf { it.isNotBlank() }
                 )
             )
         }
@@ -1332,6 +1352,12 @@ class PesaViewModel(
             kotlinx.coroutines.withContext(Dispatchers.Main) {
                 addNotification("Added manual expense to $category")
             }
+        }
+    }
+
+    fun updateTransactionCategoryAndRetrain(transactionId: Int, payee: String, newCategory: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateTransactionCategoryAndRetrain(transactionId, payee, newCategory)
         }
     }
 }

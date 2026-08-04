@@ -17,3 +17,10 @@ local.properties
 .env
 debug.keystore
 *.jks
+
+app/build_corrupted/
+app/build_old/
+app/build_trash/
+build_output.txt
+old_DashboardScreen.kt
+old_sheet_extract.txt

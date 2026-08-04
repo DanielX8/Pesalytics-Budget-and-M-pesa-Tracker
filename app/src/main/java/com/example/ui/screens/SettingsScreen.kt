@@ -83,6 +83,7 @@ fun SettingsScreen(
     val goalRemindersEnabled by viewModel.goalRemindersEnabled.collectAsStateWithLifecycle()
     val highSpendingAlertsEnabled by viewModel.highSpendingAlertsEnabled.collectAsStateWithLifecycle()
     val smartAlertsEnabled by viewModel.smartAlertsEnabled.collectAsStateWithLifecycle()
+    val insightAlertsEnabled by viewModel.insightAlertsEnabled.collectAsStateWithLifecycle()
     val dailySummaryEnabled by viewModel.dailySummaryEnabled.collectAsStateWithLifecycle()
     val weeklyReportEnabled by viewModel.weeklyReportEnabled.collectAsStateWithLifecycle()
     val monthlyReportEnabled by viewModel.monthlyReportEnabled.collectAsStateWithLifecycle()
@@ -250,6 +251,8 @@ fun SettingsScreen(
                         ToggleRow("High Spending Alerts", highSpendingAlertsEnabled, masterNotifEnabled) { viewModel.setNotificationPref("high_spending", it, context) }
                         SettingsDivider()
                         ToggleRow("Smart Alerts", smartAlertsEnabled, masterNotifEnabled) { viewModel.setNotificationPref("smart_alerts", it, context) }
+                        SettingsDivider()
+                        ToggleRow("Smart Insight Alerts", insightAlertsEnabled, masterNotifEnabled) { viewModel.setNotificationPref("insight_alerts", it, context) }
                         SettingsDivider()
                         ToggleRow("Daily Spend Summary", dailySummaryEnabled, masterNotifEnabled) { viewModel.setNotificationPref("daily_summary", it, context) }
                         SettingsDivider()

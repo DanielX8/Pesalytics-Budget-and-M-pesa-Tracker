@@ -1,5 +1,6 @@
 package com.pesalytics.ui.screens
 
+import kotlinx.coroutines.launch
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -19,8 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.CallMade
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.filled.Lock
@@ -69,6 +72,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.atan2
 
+/** Mode toggle for the Analytics date filter. */
+enum class DateFilterMode { MONTH, CUSTOM }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(
@@ -89,30 +95,57 @@ fun AnalyticsScreen(
     val currentCalendarMonth = Calendar.getInstance().get(Calendar.MONTH)
     val selectedYear by viewModel.selectedYear.collectAsStateWithLifecycle()
     var selectedDay by remember { mutableStateOf<Int?>(null) }
-    
+
+    // ── Custom date range state ───────────────────────────────────────────────
+    var filterMode by remember { mutableStateOf(DateFilterMode.MONTH) }
+    var customStartMs by remember { mutableStateOf<Long?>(null) }
+    var customEndMs   by remember { mutableStateOf<Long?>(null) }
+    var showDateRangePicker by remember { mutableStateOf(false) }
+    val dateRangePickerState = rememberDateRangePickerState()
+
     LaunchedEffect(selectedMonthIndex, selectedYear) { 
         selectedDay = null 
     }
 
     // Use the ViewModel's year-aware currentMonthStart
     val monthStartTimestamp by viewModel.currentMonthStart.collectAsStateWithLifecycle()
-    
-    val (analyticsStartTimestamp, analyticsEndTimestamp) = remember(monthStartTimestamp, selectedDay) {
-        val cal = Calendar.getInstance().apply { timeInMillis = monthStartTimestamp }
-        val sDay = selectedDay
-        if (sDay != null) {
-            cal.set(Calendar.DAY_OF_MONTH, sDay)
-            val start = cal.timeInMillis
-            cal.add(Calendar.DAY_OF_MONTH, 1)
-            start to cal.timeInMillis
-        } else {
-            val start = cal.timeInMillis
-            cal.add(Calendar.MONTH, 1)
-            start to cal.timeInMillis
+
+    val (analyticsStartTimestamp, analyticsEndTimestamp) = remember(
+        filterMode, monthStartTimestamp, selectedDay, customStartMs, customEndMs
+    ) {
+        when (filterMode) {
+            DateFilterMode.MONTH -> {
+                val cal = Calendar.getInstance().apply { timeInMillis = monthStartTimestamp }
+                val sDay = selectedDay
+                if (sDay != null) {
+                    cal.set(Calendar.DAY_OF_MONTH, sDay)
+                    val start = cal.timeInMillis
+                    cal.add(Calendar.DAY_OF_MONTH, 1)
+                    start to cal.timeInMillis
+                } else {
+                    val start = cal.timeInMillis
+                    cal.add(Calendar.MONTH, 1)
+                    start to cal.timeInMillis
+                }
+            }
+            DateFilterMode.CUSTOM -> {
+                val start = customStartMs ?: monthStartTimestamp
+                val endCal = Calendar.getInstance().apply {
+                    timeInMillis = customEndMs ?: start
+                    add(Calendar.DAY_OF_MONTH, 1) // make end-day inclusive
+                }
+                start to endCal.timeInMillis
+            }
         }
     }
-    
+
     val displayMonth = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date(monthStartTimestamp))
+    val displayDateFmt = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+    val displayCustomRange = if (customStartMs != null && customEndMs != null) {
+        "${displayDateFmt.format(Date(customStartMs!!))}  →  ${displayDateFmt.format(Date(customEndMs!!))}"
+    } else {
+        "Tap to select a date range"
+    }
 
     val monthTransactions = uiState.transactions.filter { it.timestamp in analyticsStartTimestamp until analyticsEndTimestamp && !it.isFeeTransaction }
 
@@ -129,7 +162,49 @@ fun AnalyticsScreen(
     val totalSaved = totalIncome - totalExpense
     val totalFeesPaid = monthTransactions.sumOf { it.fee }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    // DateRangePicker dialog — hoisted above Scaffold so it overlays the whole screen
+    if (showDateRangePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDateRangePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val startMs = dateRangePickerState.selectedStartDateMillis
+                    val endMs   = dateRangePickerState.selectedEndDateMillis
+                    if (startMs != null && endMs != null) {
+                        val oneYearMs = 365L * 24 * 60 * 60 * 1000
+                        if (endMs - startMs > oneYearMs) {
+                            showDateRangePicker = false
+                            coroutineScope.launch { snackbarHostState.showSnackbar("Range exceeds 1 year. Please pick a shorter period.") }
+                        } else {
+                            customStartMs = startMs
+                            customEndMs   = endMs
+                            filterMode    = DateFilterMode.CUSTOM
+                            showDateRangePicker = false
+                        }
+                    } else {
+                        showDateRangePicker = false
+                    }
+                }) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDateRangePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DateRangePicker(
+                state = dateRangePickerState,
+                title = { Text("Select date range (max 1 year)", modifier = Modifier.padding(start = 64.dp, end = 12.dp, top = 16.dp)) },
+                headline = null,
+                showModeToggle = false,
+                modifier = Modifier.fillMaxWidth().height(500.dp)
+            )
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                 com.pesalytics.ui.components.PesalyticsTopBar(
@@ -165,36 +240,100 @@ fun AnalyticsScreen(
                     Text("Analytics Dashboard", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Visualize your spending habits.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surface).padding(vertical = 4.dp, horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { viewModel.setSelectedMonth((selectedMonthIndex - 1).coerceAtLeast(0)) }) {
-                        Icon(Icons.Default.ChevronLeft, contentDescription = "Previous Month")
-                    }
-                    Text(displayMonth, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    IconButton(
-                        onClick = { viewModel.setSelectedMonth((selectedMonthIndex + 1).coerceAtMost(currentCalendarMonth)) },
-                        enabled = selectedMonthIndex < currentCalendarMonth
+                    Spacer(modifier = Modifier.height(16.dp))
+                    // ── Mode toggle ──────────────────────────────────────────
+                    Row(
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceVariant),
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Icon(Icons.Default.ChevronRight, contentDescription = "Next Month")
+                        FilterChip(
+                            selected = filterMode == DateFilterMode.MONTH,
+                            onClick = { filterMode = DateFilterMode.MONTH },
+                            label = { Text("Month View") },
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(50)
+                        )
+                        FilterChip(
+                            selected = filterMode == DateFilterMode.CUSTOM,
+                            onClick = { filterMode = DateFilterMode.CUSTOM },
+                            label = { Text("Custom Range") },
+                            leadingIcon = { Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(50)
+                        )
                     }
                 }
             }
 
-            item {
-                com.pesalytics.ui.components.DayCarousel(
-                    selectedMonth = selectedMonthIndex,
-                    selectedYear = selectedYear,
-                    selectedDay = selectedDay,
-                    onDaySelected = { selectedDay = it }
-                )
+            // ── Month navigation — MONTH mode only ───────────────────────────
+            if (filterMode == DateFilterMode.MONTH) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surface).padding(vertical = 4.dp, horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { viewModel.setSelectedMonth((selectedMonthIndex - 1).coerceAtLeast(0)) }) {
+                            Icon(Icons.Default.ChevronLeft, contentDescription = "Previous Month")
+                        }
+                        Text(displayMonth, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        IconButton(
+                            onClick = { viewModel.setSelectedMonth((selectedMonthIndex + 1).coerceAtMost(currentCalendarMonth)) },
+                            enabled = selectedMonthIndex < currentCalendarMonth
+                        ) {
+                            Icon(Icons.Default.ChevronRight, contentDescription = "Next Month")
+                        }
+                    }
+                }
+                item {
+                    com.pesalytics.ui.components.DayCarousel(
+                        selectedMonth = selectedMonthIndex,
+                        selectedYear = selectedYear,
+                        selectedDay = selectedDay,
+                        onDaySelected = { selectedDay = it }
+                    )
+                }
             }
+
+            // ── Custom date range row — CUSTOM mode only ─────────────────────
+            if (filterMode == DateFilterMode.CUSTOM) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .clickable { showDateRangePicker = true }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Text(
+                                text = displayCustomRange,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (customStartMs != null) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (customStartMs != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (customStartMs != null) {
+                            IconButton(
+                                onClick = {
+                                    customStartMs = null
+                                    customEndMs = null
+                                    filterMode = DateFilterMode.MONTH
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear date range", modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // DateRangePicker is rendered as a modal above the Scaffold — no list item needed
 
             item {
                 androidx.compose.animation.AnimatedContent(
@@ -220,16 +359,18 @@ fun AnalyticsScreen(
                 }
             }
 
-            // Month Comparison — quick context before the detail cards
-            patternResult?.monthComparison?.let { comparison ->
-                item { MonthComparisonCard(comparison) }
+            // Month Comparison — only in MONTH mode (tied to calendar month logic)
+            if (filterMode == DateFilterMode.MONTH) {
+                patternResult?.monthComparison?.let { comparison ->
+                    item { MonthComparisonCard(comparison) }
+                }
             }
 
             // Where It Goes — primary overview: where did money go?
             item {
                 WhereItGoesChart(
                     transactions = monthTransactions,
-                    categoryDeltas = patternResult?.categoryDeltas ?: emptyList(),
+                    categoryDeltas = if (filterMode == DateFilterMode.MONTH) patternResult?.categoryDeltas ?: emptyList() else emptyList(),
                     onNavigateToAllTransactions = onNavigateToAllTransactions
                 )
             }
@@ -239,11 +380,14 @@ fun AnalyticsScreen(
             item { TopPayeesCard(monthTransactions) }
             item { IncomeSourcesCard(monthTransactions) }
 
-            // Trajectory
-            item { BalanceProgressionChart(monthTransactions, monthStartTimestamp) }
+            // Trajectory — use analyticsStartTimestamp so custom range chart starts at the right point
+            item { BalanceProgressionChart(monthTransactions, analyticsStartTimestamp) }
 
-            patternResult?.spendVelocity?.let { velocity ->
-                item { SpendVelocityBanner(velocity, uiState.transactions) }
+            // SpendVelocityBanner only valid in MONTH mode (compares against current calendar month)
+            if (filterMode == DateFilterMode.MONTH) {
+                patternResult?.spendVelocity?.let { velocity ->
+                    item { SpendVelocityBanner(velocity, uiState.transactions) }
+                }
             }
 
             // Supporting detail

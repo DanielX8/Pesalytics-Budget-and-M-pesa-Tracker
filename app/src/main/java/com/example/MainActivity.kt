@@ -444,7 +444,18 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         onNavigateToAnalytics = { navController.navigate(Analytics) },
                         onNavigateToBills = { navController.navigate(Bills) },
                         onNavigateToBudgetPlanner = { navController.navigate(BudgetPlanner) },
-                        onNavigateToGoals = { navController.navigate(FinancialGoals) }
+                        onNavigateToGoals = { navController.navigate(FinancialGoals) },
+                        onInsightClick = { route ->
+                            when {
+                                route == "budget_planner" -> navController.navigate(BudgetPlanner)
+                                route == "bills" -> navController.navigate(Bills)
+                                route == "analytics" -> navController.navigate(Analytics)
+                                route.startsWith("all_transactions?filter=") -> {
+                                    val filter = route.substringAfter("filter=")
+                                    navController.navigate(AllTransactions(filter))
+                                }
+                            }
+                        }
                     )
                 }
                 composable<Analytics>(

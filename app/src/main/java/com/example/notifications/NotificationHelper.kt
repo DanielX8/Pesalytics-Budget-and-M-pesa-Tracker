@@ -58,6 +58,12 @@ class NotificationHelper(private val context: Context) {
         showNotification(ALERTS_CHANNEL_ID, 1001, title, message, "budget_planner")
     }
 
+    /** Top prioritized smart insight */
+    fun showInsightAlert(title: String, message: String, route: String?) {
+        if (!isPrefEnabled("insight_alerts")) return
+        showNotification(ALERTS_CHANNEL_ID, 1006, title, message, route ?: "")
+    }
+
     /** Bill due within 3 days */
     fun showBillAlert(title: String, message: String, notifId: Int = 1002) {
         if (!isPrefEnabled("bill_alerts")) return

@@ -18,82 +18,6 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
         val notif = NotificationHelper(applicationContext)
         val prefs = applicationContext.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
 
-        // ── Yesterday's spending summary ─────────────────────────────────────
-        run {
-            val cal = Calendar.getInstance().apply {
-                add(Calendar.DAY_OF_YEAR, -1)
-                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-            }
-            val startYesterday = cal.timeInMillis
-            val endYesterday = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-
-            val expense = repository.getDailyExpense(startYesterday, endYesterday) ?: 0.0
-            if (expense > 0) {
-                // Enrich with transaction count and top category
-                val yesterdayTxns = repository.allTransactions.first()
-                    .filter { it.timestamp in startYesterday until endYesterday && !it.isFeeTransaction }
-                val txnCount = yesterdayTxns.size
-                val topCat = yesterdayTxns
-                    .filter {
-                        it.type != TransactionType.RECEIVE_MONEY &&
-                        it.type != TransactionType.MANUAL_INCOME &&
-                        it.type != TransactionType.MANUAL_TRANSFER &&
-                        it.type != TransactionType.FULIZA &&
-                        it.type != TransactionType.MSHWARI_TRANSFER &&
-                        it.type != TransactionType.POCHI_TRANSFER &&
-                        it.type != TransactionType.POCHI_RECEIVE
-                    }
-                    .groupBy { it.category ?: "Other" }
-                    .mapValues { e -> e.value.sumOf { it.amount } }
-                    .maxByOrNull { it.value }?.key
-
-                val body = buildString {
-                    append("You spent KES ${"%.0f".format(expense)} across $txnCount transaction${if (txnCount == 1) "" else "s"}.")
-                    if (topCat != null) append(" Top category: $topCat.")
-                }
-
-                notif.showDailySpendSummary("Yesterday's Spending", body)
-                appendInAppNotification(prefs, "Yesterday's spending: KES ${"%.0f".format(expense)} — $body")
-            }
-        }
-
-        // ── Bills due within 3 days (always fires) ──────────────────────────
-        val now = System.currentTimeMillis()
-        val startOfToday = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-        val endOfThreeDays = Calendar.getInstance().apply {
-            timeInMillis = startOfToday
-            add(Calendar.DAY_OF_YEAR, 3)
-            set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999)
-        }.timeInMillis
-
-        val dueSoon = repository.allBills.first()
-            .filter { !it.isPaid && it.nextDueDate in startOfToday..endOfThreeDays }
-
-        if (dueSoon.isNotEmpty()) {
-            val summary = dueSoon.joinToString(" • ") { bill ->
-                val calDue = Calendar.getInstance().apply {
-                    timeInMillis = bill.nextDueDate
-                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-                }
-                val days = ((calDue.timeInMillis - startOfToday) / (1000 * 60 * 60 * 24)).toInt()
-                val when_ = if (days <= 0) "TODAY" else if (days == 1) "TOMORROW" else "in $days days"
-                "${bill.name} due $when_ — KES ${"%.2f".format(bill.amount)}"
-            }
-            val title = if (dueSoon.size == 1) "Bill Due Soon" else "${dueSoon.size} Bills Due Soon"
-            notif.showBillAlert(title, summary)
-            appendInAppNotification(prefs, "$title: $summary")
-        }
-
-        // ── Budget threshold check ───────────────────────────────────────────
         val monthStart = Calendar.getInstance().apply {
             set(Calendar.DAY_OF_MONTH, 1)
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
@@ -104,27 +28,57 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
         }.timeInMillis
         val monthStr = java.text.SimpleDateFormat("MM/yyyy", java.util.Locale.getDefault())
             .format(java.util.Date(monthStart))
+
+        val transactions = repository.allTransactions.first()
+        val bills = repository.allBills.first()
         val budgets = repository.getBudgetsForMonth(monthStr).first()
         val globalBudget = budgets.find { it.category == "Overall" }
+        val monthlyExpense = repository.getMonthlyExpense(monthStart, monthEnd).first() ?: 0.0
 
-        if (globalBudget != null && globalBudget.limitAmount > 0) {
-            val monthExpense = repository.getMonthlyExpense(monthStart, monthEnd).first() ?: 0.0
-            val pct = monthExpense / globalBudget.limitAmount
-            when {
-                pct >= 1.0 -> {
-                    val msg = "You've exceeded your KES ${"%.0f".format(globalBudget.limitAmount)} monthly budget."
-                    notif.showBudgetAlert("Budget Exceeded", msg)
-                    appendInAppNotification(prefs, "Budget Exceeded: $msg")
-                }
-                pct >= 0.8 -> {
-                    val msg = "You've used ${"%.0f".format(pct * 100)}% of your monthly budget."
-                    notif.showBudgetAlert("Budget Warning", msg)
-                    appendInAppNotification(prefs, "Budget Warning: $msg")
-                }
-            }
+        val fulizaUsageTxns = transactions.filter { it.fulizaOutstandingBalance > 0 }
+        val allFulizaTxns = transactions.filter { it.type == TransactionType.FULIZA }
+        val allRepayments = allFulizaTxns.filter {
+            it.category == "Fuliza Full Repayment" ||
+            it.category == "Fuliza Partial Repayment" ||
+            it.category == "Fuliza Repayment"
+        }
+        val fullRepayments = allFulizaTxns.filter { it.category == "Fuliza Full Repayment" }
+        val fulizaTotalLimit = fullRepayments.maxByOrNull { it.timestamp }?.fulizaLimitAfter
+            ?: allFulizaTxns.filter { it.category == "Fuliza Repayment" }.maxByOrNull { it.timestamp }?.fulizaLimitAfter
+            ?: 0.0
+
+        val latestRepayment = allRepayments.maxByOrNull { it.timestamp }
+        val latestUsageTxn = fulizaUsageTxns.maxByOrNull { it.timestamp }
+        val latestRepaymentTime = latestRepayment?.timestamp ?: 0L
+        val latestUsageTime = latestUsageTxn?.timestamp ?: 0L
+        
+        val fulizaOutstanding = when {
+            latestUsageTime > latestRepaymentTime -> latestUsageTxn?.fulizaOutstandingBalance ?: 0.0
+            latestRepayment?.category == "Fuliza Full Repayment" ||
+            (latestRepayment?.category == "Fuliza Repayment" && fulizaTotalLimit > 0 &&
+             latestRepayment.fulizaLimitAfter >= fulizaTotalLimit) -> 0.0
+            fulizaTotalLimit > 0 -> (fulizaTotalLimit - (latestRepayment?.fulizaLimitAfter ?: 0.0)).coerceAtLeast(0.0)
+            else -> latestUsageTxn?.fulizaOutstandingBalance ?: 0.0
+        }
+        val fulizaDueDate = latestUsageTxn?.fulizaDueDate ?: ""
+
+        val insights = com.pesalytics.patterns.InsightEngine.generateInsights(
+            transactions = transactions,
+            bills = bills,
+            budgets = budgets,
+            currentBudgetLimit = globalBudget?.limitAmount ?: 0.0,
+            monthlyExpense = monthlyExpense,
+            fulizaOutstanding = fulizaOutstanding,
+            fulizaDueDate = fulizaDueDate
+        )
+
+        insights.firstOrNull()?.let { topInsight ->
+            notif.showInsightAlert(topInsight.title, topInsight.description, topInsight.actionRoute)
+            appendInAppNotification(prefs, "${topInsight.title}: ${topInsight.description}")
         }
 
         // ── Subscription / trial expiry warning ─────────────────────────────
+        val now = System.currentTimeMillis()
         val subPrefs = applicationContext.getSharedPreferences("pesa_subscription", android.content.Context.MODE_PRIVATE)
         val tierName = subPrefs.getString("tier", "FREE") ?: "FREE"
         val trialStartMs = subPrefs.getLong("trial_start_ms", 0L)

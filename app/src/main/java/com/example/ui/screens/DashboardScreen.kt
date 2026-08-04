@@ -99,7 +99,8 @@ fun DashboardScreen(
     onNavigateToAnalytics: () -> Unit,
     onNavigateToBills: () -> Unit,
     onNavigateToBudgetPlanner: () -> Unit,
-    onNavigateToGoals: () -> Unit
+    onNavigateToGoals: () -> Unit,
+    onInsightClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
@@ -216,84 +217,28 @@ fun DashboardScreen(
 
     if (showAddManualDialog) {
         val addManualSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        val coroutineScope = rememberCoroutineScope()
-        var manualAmount by remember { mutableStateOf("") }
-        var manualPayee by remember { mutableStateOf("") }
-        var isManualIncome by remember { mutableStateOf(false) }
-
-        ModalBottomSheet(
-            onDismissRequest = { showAddManualDialog = false },
-            sheetState = addManualSheetState,
-            dragHandle = { BottomSheetDefaults.DragHandle() }
-        ) {
-            Column(modifier = Modifier.padding(16.dp).padding(bottom = 32.dp)) {
-                Text("Add Manual Transaction", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Type selector
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    listOf("Expense" to false, "Income" to true).forEach { (label, isIncome) ->
-                        val isSelected = isManualIncome == isIncome
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) AccentGreenDark else androidx.compose.ui.graphics.Color.Transparent)
-                                .clickable { isManualIncome = isIncome }
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                label,
-                                color = if (isSelected) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = manualAmount,
-                    onValueChange = { manualAmount = it.filter { c -> c.isDigit() || c == '.' } },
-                    label = { Text("Amount (KES)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = manualPayee,
-                    onValueChange = { manualPayee = it },
-                    label = { Text("Payee / Description") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        val amount = manualAmount.toDoubleOrNull()
-                        if (amount != null && amount > 0 && manualPayee.isNotBlank()) {
-                            viewModel.insertManualTransaction(amount, manualPayee, isManualIncome)
-                            coroutineScope.launch {
-                                addManualSheetState.hide()
-                                showAddManualDialog = false
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = manualAmount.toDoubleOrNull() != null && manualPayee.isNotBlank()
-                ) {
-                    Text("Save Transaction")
-                }
-            }
+        val knownCategories by viewModel.knownCategories.collectAsStateWithLifecycle()
+        val historicalPayees = remember(uiState.transactions) {
+            uiState.transactions.map { it.payee }.distinct()
         }
+        
+        com.pesalytics.ui.components.EnrichedManualEntrySheet(
+            sheetState = addManualSheetState,
+            knownCategories = knownCategories,
+            historicalPayees = historicalPayees,
+            onDismiss = { showAddManualDialog = false },
+            onSave = { amount, payee, isIncome, category, source, timestamp, notes ->
+                viewModel.insertManualTransaction(
+                    amount = amount,
+                    payee = payee,
+                    isIncome = isIncome,
+                    category = category,
+                    source = source,
+                    timestamp = timestamp,
+                    notes = notes
+                )
+            }
+        )
     }
 
     if (showCategoryEdit && selectedTransaction != null) {
@@ -694,7 +639,7 @@ fun DashboardScreen(
             
             // Dynamic Insights
             if (uiState.insights.isNotEmpty()) {
-                item { InsightsCarousel(uiState.insights) }
+                item { InsightsCarousel(uiState.insights, onInsightClick) }
             }            
             
             item(key = "recent-header") {
@@ -1469,13 +1414,29 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null, onP
         }
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = transaction.payee,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                modifier = if (onPayeeTap != null) Modifier.clickable { onPayeeTap() } else Modifier
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (transaction.remoteRef.startsWith("MANUAL_")) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = "📝 Manual",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                Text(
+                    text = transaction.payee,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    modifier = if (onPayeeTap != null) Modifier.clickable { onPayeeTap() }.weight(1f, fill = false) else Modifier.weight(1f, fill = false)
+                )
+            }
             Spacer(modifier = Modifier.height(2.dp))
             Text(text = subtitleStr, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (transaction.usedFulizaAmount > 0.0) {
@@ -1773,7 +1734,7 @@ private fun CyclingWordText() {
 }
 
 @Composable
-fun InsightsCarousel(insights: List<com.pesalytics.patterns.Insight>) {
+fun InsightsCarousel(insights: List<com.pesalytics.patterns.Insight>, onInsightClick: (String) -> Unit) {
     androidx.compose.foundation.lazy.LazyRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1785,15 +1746,23 @@ fun InsightsCarousel(insights: List<com.pesalytics.patterns.Insight>) {
                 com.pesalytics.patterns.InsightType.WARNING -> ExpenseRed
                 com.pesalytics.patterns.InsightType.SUCCESS -> Color(0xFF2E7D32)
                 com.pesalytics.patterns.InsightType.INFO -> TransferBlue
+                com.pesalytics.patterns.InsightType.BILL_DUE -> WarningOrange
+                com.pesalytics.patterns.InsightType.BUDGET_ALERT -> ExpenseRed
             }
             val icon = when (insight.type) {
                 com.pesalytics.patterns.InsightType.WARNING -> Icons.Outlined.Warning
                 com.pesalytics.patterns.InsightType.SUCCESS -> Icons.Outlined.CheckCircle
                 com.pesalytics.patterns.InsightType.INFO -> Icons.Outlined.Info
+                com.pesalytics.patterns.InsightType.BILL_DUE -> Icons.Outlined.Notifications
+                com.pesalytics.patterns.InsightType.BUDGET_ALERT -> Icons.Outlined.Warning
             }
             
             Card(
-                modifier = Modifier.width(260.dp),
+                modifier = Modifier
+                    .width(260.dp)
+                    .clickable(enabled = insight.actionRoute != null) {
+                        insight.actionRoute?.let { onInsightClick(it) }
+                    },
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.elevatedCardColors(),
                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
