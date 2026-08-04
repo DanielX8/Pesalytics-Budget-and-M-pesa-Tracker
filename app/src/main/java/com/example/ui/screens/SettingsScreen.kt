@@ -268,9 +268,8 @@ fun SettingsScreen(
 
             item { SettingsSection("DATA EXPORT") {
                 SettingsCard {
-                        SupportListItem(Icons.Rounded.Upload, "Export Financial Statement", "Generate a PDF, CSV, or JSON backup of your data") {
-                            showExportStationSheet = true
-                        }
+                    SupportListItem(Icons.Rounded.Upload, "Export Financial Statement", "Generate a PDF, CSV, or JSON backup of your data") {
+                        showExportStationSheet = true
                     }
                 }
             } }

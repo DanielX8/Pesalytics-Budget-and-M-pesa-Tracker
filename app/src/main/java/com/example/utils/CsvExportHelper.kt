@@ -46,7 +46,7 @@ object CsvExportHelper {
                 val payee = "\"${t.payee.replace("\"", "\"\"")}\""
                 val isManual = t.remoteRef.startsWith("MANUAL_")
                 val source = if (isManual) t.remoteRef.removePrefix("MANUAL_") else "M-PESA"
-                val notes = "\"${t.originalSms.replace("\"", "\"\"")}\""
+                val notes = "\"${t.originalSms?.replace("\"", "\"\"") ?: ""}\""
                 
                 sb.appendLine(
                     "$date,$type,${t.category},$payee," +
