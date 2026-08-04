@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Back up trial/subscription state so reinstall doesn't reset the trial timer.
+             Include-only policy: everything else (prefs, databases) is excluded automatically. -->
+        <include domain="sharedpref" path="pesa_subscription.xml"/>
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="pesa_subscription.xml"/>
+    </device-transfer>
+</data-extraction-rules>

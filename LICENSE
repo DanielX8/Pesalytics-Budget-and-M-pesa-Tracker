@@ -1,21 +1,35 @@
-MIT License
+PROPRIETARY SOFTWARE LICENSE
 
-Copyright (c) 2026 Pesalytics
+Copyright (c) 2026 Daniel Odhiambo. All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software and its source code ("Software") are the proprietary and
+confidential property of Daniel Odhiambo ("Owner").
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+RESTRICTIONS
+You may NOT, without the express prior written permission of the Owner:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+1. Copy, reproduce, or duplicate the Software or any part of it.
+2. Modify, adapt, translate, or create derivative works based on the Software.
+3. Distribute, publish, sublicense, sell, resell, transfer, assign, or
+   otherwise dispose of the Software.
+4. Reverse engineer, disassemble, decompile, or otherwise attempt to derive
+   the source code of any compiled portions of the Software.
+5. Use the Software or any portion of it to build a competing product or
+   service, or assist a third party in doing so.
+6. Remove or alter any proprietary notices, labels, or marks on the Software.
+
+VIEWING RIGHTS
+The source code of this Software is made available on GitHub for the sole
+purposes of transparency, security review, and educational reference.
+Viewing the source code does not grant any rights to use, copy, modify,
+or distribute the Software.
+
+NO WARRANTY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. THE OWNER
+DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NON-INFRINGEMENT.
+
+CONTACT
+For licensing inquiries, partnership, or commercial use requests, contact:
+dleinx8@gmail.com

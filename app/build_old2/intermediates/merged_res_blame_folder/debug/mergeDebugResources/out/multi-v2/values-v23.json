@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.pesalytics.app-mergeDebugResources-72:/values-v23/values-v23.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\DLEIN\\.gradle\\caches\\9.3.1\\transforms\\467a735bcc2f8c1b89d73838d5199ed8\\workspace\\transformed\\work-runtime-2.10.0\\res\\values-v23\\values-v23.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,121",
+                        "endColumns": "65,62",
+                        "endOffsets": "116,179"
+                    }
+                }
+            ]
+        }
+    ]
+}

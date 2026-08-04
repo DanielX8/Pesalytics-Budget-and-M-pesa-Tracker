@@ -1,0 +1,234 @@
+[
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-hdpi_ic_launcher.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-hdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xhdpi_pesalytics_icon.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xhdpi/pesalytics_icon.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xxhdpi_pesalytics_icon_foreground.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xxhdpi/pesalytics_icon_foreground.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/font_rokkitt.ttf.flat",
+        "source": "com.pesalytics.app-main-76:/font/rokkitt.ttf"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xxhdpi_ic_launcher_round.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xxhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/xml_data_extraction_rules.xml.flat",
+        "source": "com.pesalytics.app-main-76:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-mdpi_pesalytics_icon_foreground.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-mdpi/pesalytics_icon_foreground.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xxxhdpi_pesalytics_icon_foreground.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xxxhdpi/pesalytics_icon_foreground.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable-xxxhdpi_ic_analytics_active.png.flat",
+        "source": "com.pesalytics.app-pngs-71:/drawable-xxxhdpi/ic_analytics_active.png"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_splash_screen_img.png.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/splash_screen_img.png"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_header_logo.png.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/header_logo.png"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable-ldpi_ic_analytics_active.png.flat",
+        "source": "com.pesalytics.app-pngs-71:/drawable-ldpi/ic_analytics_active.png"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xxxhdpi_ic_launcher.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xxxhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xxxhdpi_pesalytics_icon_round.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xxxhdpi/pesalytics_icon_round.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable-mdpi_ic_analytics_active.png.flat",
+        "source": "com.pesalytics.app-pngs-71:/drawable-mdpi/ic_analytics_active.png"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable-hdpi_ic_analytics_active.png.flat",
+        "source": "com.pesalytics.app-pngs-71:/drawable-hdpi/ic_analytics_active.png"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-mdpi_ic_launcher_round.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-mdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-mdpi_pesalytics_icon_round.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-mdpi/pesalytics_icon_round.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/font_poppins_regular.ttf.flat",
+        "source": "com.pesalytics.app-main-76:/font/poppins_regular.ttf"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/xml_file_paths.xml.flat",
+        "source": "com.pesalytics.app-main-76:/xml/file_paths.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_ic_nav_settings.xml.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/ic_nav_settings.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/font_poppins_bold.ttf.flat",
+        "source": "com.pesalytics.app-main-76:/font/poppins_bold.ttf"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xhdpi_ic_launcher.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xhdpi_pesalytics_icon_round.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xhdpi/pesalytics_icon_round.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xxhdpi_pesalytics_icon.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xxhdpi/pesalytics_icon.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable-anydpi-v24_ic_analytics_active.xml.flat",
+        "source": "com.pesalytics.app-pngs-71:/drawable-anydpi-v24/ic_analytics_active.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable-xxhdpi_ic_analytics_active.png.flat",
+        "source": "com.pesalytics.app-pngs-71:/drawable-xxhdpi/ic_analytics_active.png"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_splash_screen_darkmode.png.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/splash_screen_darkmode.png"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-hdpi_pesalytics_icon.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-hdpi/pesalytics_icon.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/font_poppins_semibold.ttf.flat",
+        "source": "com.pesalytics.app-main-76:/font/poppins_semibold.ttf"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/xml_backup_rules.xml.flat",
+        "source": "com.pesalytics.app-main-76:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_ic_analytics_inactive.xml.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/ic_analytics_inactive.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xxhdpi_ic_launcher.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xxhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_ic_nav_bills_filled.xml.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/ic_nav_bills_filled.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-hdpi_ic_launcher_round.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-hdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-mdpi_ic_launcher.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-mdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xxxhdpi_ic_launcher_round.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xxxhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-hdpi_pesalytics_icon_foreground.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-hdpi/pesalytics_icon_foreground.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_ic_nav_bills.xml.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/ic_nav_bills.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-anydpi-v26_pesalytics_icon.xml.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-anydpi-v26/pesalytics_icon.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable-xhdpi_ic_analytics_active.png.flat",
+        "source": "com.pesalytics.app-pngs-71:/drawable-xhdpi/ic_analytics_active.png"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-anydpi-v26_pesalytics_icon_round.xml.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-anydpi-v26/pesalytics_icon_round.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/font_space_grotesk.ttf.flat",
+        "source": "com.pesalytics.app-main-76:/font/space_grotesk.ttf"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-hdpi_pesalytics_icon_round.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-hdpi/pesalytics_icon_round.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_ic_nav_home_filled.xml.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/ic_nav_home_filled.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xhdpi_ic_launcher_round.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xxhdpi_pesalytics_icon_round.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xxhdpi/pesalytics_icon_round.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-mdpi_pesalytics_icon.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-mdpi/pesalytics_icon.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xxxhdpi_pesalytics_icon.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xxxhdpi/pesalytics_icon.webp"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_ic_nav_settings_filled.xml.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/ic_nav_settings_filled.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_ic_notification.xml.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/ic_notification.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/font_poppins_medium.ttf.flat",
+        "source": "com.pesalytics.app-main-76:/font/poppins_medium.ttf"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/drawable_ic_nav_home.xml.flat",
+        "source": "com.pesalytics.app-main-76:/drawable/ic_nav_home.xml"
+    },
+    {
+        "merged": "com.pesalytics.app-debug-74:/mipmap-xhdpi_pesalytics_icon_foreground.webp.flat",
+        "source": "com.pesalytics.app-main-76:/mipmap-xhdpi/pesalytics_icon_foreground.webp"
+    }
+]

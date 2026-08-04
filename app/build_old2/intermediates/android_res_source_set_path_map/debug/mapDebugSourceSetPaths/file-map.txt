@@ -1,0 +1,7 @@
+com.pesalytics.app-pngs-0 C:\Users\DLEIN\Documents\PERS PROJECTS\Pesalytics-Budget-and-M-pesa-Tracker-master\app\build\generated\res\pngs\debug
+com.pesalytics.app-updated_navigation_xml-1 C:\Users\DLEIN\Documents\PERS PROJECTS\Pesalytics-Budget-and-M-pesa-Tracker-master\app\build\generated\updated_navigation_xml\debug
+com.pesalytics.app-packageDebugResources-2 C:\Users\DLEIN\Documents\PERS PROJECTS\Pesalytics-Budget-and-M-pesa-Tracker-master\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.pesalytics.app-packageDebugResources-3 C:\Users\DLEIN\Documents\PERS PROJECTS\Pesalytics-Budget-and-M-pesa-Tracker-master\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.pesalytics.app-debug-4 C:\Users\DLEIN\Documents\PERS PROJECTS\Pesalytics-Budget-and-M-pesa-Tracker-master\app\build\intermediates\merged_res\debug\mergeDebugResources
+com.pesalytics.app-debug-5 C:\Users\DLEIN\Documents\PERS PROJECTS\Pesalytics-Budget-and-M-pesa-Tracker-master\app\src\debug\res
+com.pesalytics.app-main-6 C:\Users\DLEIN\Documents\PERS PROJECTS\Pesalytics-Budget-and-M-pesa-Tracker-master\app\src\main\res

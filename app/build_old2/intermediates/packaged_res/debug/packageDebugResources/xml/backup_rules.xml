@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Back up trial/subscription state so reinstall doesn't reset the trial timer.
+         Include-only policy: everything else (prefs, databases) is excluded automatically. -->
+    <include domain="sharedpref" path="pesa_subscription.xml"/>
+</full-backup-content>
