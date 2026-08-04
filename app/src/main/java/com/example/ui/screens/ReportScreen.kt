@@ -211,7 +211,7 @@ fun ReportScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
                     }
                     Button(
                         onClick = {
-                            com.pesalytics.utils.PdfExportHelper.generatePdf(context, transactions) {
+                            com.pesalytics.utils.PdfExportHelper.generatePdf(context, transactions, "Monthly Report") {
                                 viewModel.addNotification("PDF print dialog opened.")
                             }
                         },

@@ -151,7 +151,7 @@ fun SettingsScreen(
             editNicknameIndex = -1
         }
     }
-    var showExportGateDialog by remember { mutableStateOf(false) }
+
     var showDeleteAllDialog by remember { mutableStateOf(false) }
 
     Scaffold(

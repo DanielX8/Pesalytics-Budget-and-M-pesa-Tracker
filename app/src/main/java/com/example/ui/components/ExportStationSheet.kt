@@ -304,7 +304,7 @@ fun ExportStationSheet(
                                     pdfFile = it
                                     lock.countDown()
                                 }
-                                kotlinx.coroutines.Dispatchers.IO.invoke { lock.await() }
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { lock.await() }
                                 pdfFile
                             }
                             ExportFormat.CSV -> CsvExportHelper.exportToCsv(context, filteredTxns)
