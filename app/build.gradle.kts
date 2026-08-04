@@ -18,8 +18,8 @@ android {
     applicationId = "com.pesalytics"
     minSdk = 23
     targetSdk = 36
-    versionCode = 16
-    versionName = "1.5.3"
+    versionCode = 17
+    versionName = "1.5.4"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
