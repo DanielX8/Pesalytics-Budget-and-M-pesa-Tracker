@@ -130,7 +130,6 @@ class PesaRepository(
         }
     }
 
-    /** Wipes every table — used by the "Delete All Data" action. */
     suspend fun deleteAllData() {
         db.withTransaction {
             transactionDao.deleteAllTransactions()
@@ -140,4 +139,10 @@ class PesaRepository(
             customRuleDao.deleteAllRules()
         }
     }
+
+    suspend fun getTransactionsOnce(): List<Transaction> = transactionDao.getAllTransactionsOnce()
+    suspend fun getBillsOnce(): List<Bill> = billDao.getBillsOnce()
+    suspend fun getBudgetsOnce(): List<Budget> = budgetDao.getBudgetsOnce()
+    suspend fun getGoalsOnce(): List<Goal> = goalDao.getGoalsOnce()
+    suspend fun getGoalTransactionsOnce(): List<com.pesalytics.model.GoalTransaction> = goalDao.getGoalTransactionsOnce()
 }

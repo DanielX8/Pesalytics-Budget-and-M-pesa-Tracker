@@ -102,6 +102,9 @@ interface BillDao {
 
     @Query("DELETE FROM bills")
     suspend fun deleteAllBills()
+
+    @Query("SELECT * FROM bills")
+    suspend fun getBillsOnce(): List<Bill>
 }
 
 @Dao
@@ -117,6 +120,9 @@ interface BudgetDao {
 
     @Query("DELETE FROM budgets")
     suspend fun deleteAllBudgets()
+
+    @Query("SELECT * FROM budgets")
+    suspend fun getBudgetsOnce(): List<Budget>
 }
 
 @Dao
@@ -135,6 +141,12 @@ interface GoalDao {
 
     @Query("DELETE FROM goals")
     suspend fun deleteAllGoals()
+
+    @Query("SELECT * FROM goals")
+    suspend fun getGoalsOnce(): List<com.pesalytics.model.Goal>
+
+    @Query("SELECT * FROM goal_transactions ORDER BY timestamp DESC, id DESC")
+    suspend fun getGoalTransactionsOnce(): List<com.pesalytics.model.GoalTransaction>
 
     @Query("SELECT * FROM goal_transactions WHERE goalId = :goalId ORDER BY timestamp DESC, id DESC")
     fun getTransactionsForGoal(goalId: Int): Flow<List<com.pesalytics.model.GoalTransaction>>

@@ -14,8 +14,8 @@ import java.util.Locale
 
 object PdfExportHelper {
 
-    fun generatePdf(context: Context, transactions: List<Transaction>, onComplete: (File?) -> Unit) {
-        val htmlContent = generateHtmlReport(transactions)
+    fun generatePdf(context: Context, transactions: List<Transaction>, dateRangeLabel: String, onComplete: (File?) -> Unit) {
+        val htmlContent = generateHtmlReport(transactions, dateRangeLabel)
 
         val webView = WebView(context)
         webView.settings.javaScriptEnabled = false
@@ -30,7 +30,7 @@ object PdfExportHelper {
         webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
     }
 
-    private fun generateHtmlReport(transactions: List<Transaction>): String {
+    private fun generateHtmlReport(transactions: List<Transaction>, dateRangeLabel: String): String {
         val dateFmt  = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
         val tsFmt    = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
         val generatedOn = dateFmt.format(Date())
@@ -50,9 +50,7 @@ object PdfExportHelper {
         // Actual date range from the data
         val minTs = clean.minOfOrNull { it.timestamp }
         val maxTs = clean.maxOfOrNull { it.timestamp }
-        val dateRange = if (minTs != null && maxTs != null) {
-            "${dateFmt.format(Date(minTs))} – ${dateFmt.format(Date(maxTs))}"
-        } else generatedOn
+        
         val daySpan = if (minTs != null && maxTs != null) {
             maxOf(1L, (maxTs - minTs) / (1000L * 60 * 60 * 24)).toInt()
         } else 30
@@ -75,8 +73,8 @@ object PdfExportHelper {
             .sortedByDescending { it.second }
             .take(5)
 
-        // Recent transactions for the table (last 20, all types)
-        val recentAll = clean.sortedByDescending { it.timestamp }.take(20)
+        // All transactions for the table
+        val recentAll = clean.sortedByDescending { it.timestamp }
 
         val catColors = listOf("#49BC4C", "#0B4631", "#4496FF", "#FFB60D", "#FF4E4E", "#94A3B8")
 
@@ -202,7 +200,7 @@ object PdfExportHelper {
     </div>
     <div class="report-meta">
       <div class="report-title">FINANCIAL REPORT</div>
-      <div class="report-date">Period: $dateRange</div>
+      <div class="report-date">Period: $dateRangeLabel</div>
       <div class="report-date">Generated: $generatedOn</div>
     </div>
   </div>
@@ -276,13 +274,13 @@ object PdfExportHelper {
         <tr><td style="padding:8px 12px;">Carrier Fees</td><td class="val-col" style="padding:8px 12px;">KSh ${fmtInt(totalFees)}</td></tr>
         <tr style="font-weight:700;"><td style="padding:8px 12px;">Net ${if (netSavings >= 0) "Savings" else "Deficit"}</td><td class="val-col" style="padding:8px 12px;color:${if (netSavings >= 0) "#49BC4C" else "#FF4E4E"};">KSh ${fmtInt(kotlin.math.abs(netSavings))}</td></tr>
         <tr><td style="padding:8px 12px;">Transactions</td><td class="val-col" style="padding:8px 12px;">$txnCount</td></tr>
-        <tr><td style="padding:8px 12px;">Date Range</td><td class="val-col" style="padding:8px 12px;font-size:11px;">$dateRange</td></tr>
+        <tr><td style="padding:8px 12px;">Date Range</td><td class="val-col" style="padding:8px 12px;font-size:11px;">$dateRangeLabel</td></tr>
       </table>
     </div>
   </div>
 
   <!-- Transaction Table -->
-  <div class="section-title">Recent Transactions (last ${recentAll.size})</div>
+  <div class="section-title">Transactions in Period (${recentAll.size})</div>
   <table>
     <tr>
       <th>Date &amp; Time</th>
@@ -305,10 +303,37 @@ object PdfExportHelper {
     }
 
     private fun createPdfFile(context: Context, webView: WebView, onComplete: (File?) -> Unit) {
-        val fileName = "Pesalytics_Report_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.pdf"
-        val printAdapter = webView.createPrintDocumentAdapter(fileName)
-        val printManager = context.getSystemService(Context.PRINT_SERVICE) as android.print.PrintManager
-        printManager.print("Pesalytics Report", printAdapter, PrintAttributes.Builder().build())
-        onComplete(null)
+        try {
+            // Wait briefly for layout to finish
+            webView.postDelayed({
+                val width = webView.measuredWidth
+                val height = webView.measuredHeight
+                
+                // Fallback to standard A4 proportions if layout fails
+                val printWidth = if (width > 0) width else 800
+                val printHeight = if (height > 0) height else 1200
+                
+                val document = android.graphics.pdf.PdfDocument()
+                val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(printWidth, printHeight, 1).create()
+                val page = document.startPage(pageInfo)
+                
+                webView.draw(page.canvas)
+                document.finishPage(page)
+                
+                val exportDir = File(context.cacheDir, "exports")
+                if (!exportDir.exists()) exportDir.mkdirs()
+                
+                val fileName = "Pesalytics_Report_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.pdf"
+                val file = File(exportDir, fileName)
+                
+                document.writeTo(java.io.FileOutputStream(file))
+                document.close()
+                
+                onComplete(file)
+            }, 500)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            onComplete(null)
+        }
     }
 }

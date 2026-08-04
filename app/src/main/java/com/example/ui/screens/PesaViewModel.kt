@@ -83,7 +83,7 @@ data class BudgetInsights(
 )
 
 class PesaViewModel(
-    private val repository: PesaRepository,
+    val repository: PesaRepository,
     private val notificationHelper: com.pesalytics.notifications.NotificationHelper? = null,
     val subscriptionManager: SubscriptionManager? = null
 ) : ViewModel() {

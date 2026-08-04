@@ -138,6 +138,9 @@ fun SettingsScreen(
     val syncProgress by viewModel.syncProgress.collectAsStateWithLifecycle()
     var showEditNameSheet by remember { mutableStateOf(false) }
     var editTempName by remember { mutableStateOf(userName) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showExportGateDialog by remember { mutableStateOf(false) }
+    var showExportStationSheet by remember { mutableStateOf(false) }
     var editTempAvatar by remember { mutableStateOf(userAvatarIndex) }
     val editNicknamePool = remember { buildNicknamePool() }
     var editNicknameIndex by remember { mutableIntStateOf(-1) }
@@ -265,31 +268,8 @@ fun SettingsScreen(
 
             item { SettingsSection("DATA EXPORT") {
                 SettingsCard {
-                    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(AccentGreenDark.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.Upload, contentDescription = null, tint = AccentGreenDark)
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Data Portability", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text("Export transaction history", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ExportChip(".CSV") {
-                                if (!isPremium) showExportGateDialog = true
-                                else {
-                                    val file = com.pesalytics.utils.CsvExportHelper.exportToCsv(context, uiState.transactions)
-                                    viewModel.addNotification(if (file != null) "CSV saved to Downloads" else "Export failed")
-                                    if (file != null) android.widget.Toast.makeText(context, "CSV exported successfully", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                            ExportChip(".PDF") {
-                                if (!isPremium) showExportGateDialog = true
-                                else com.pesalytics.utils.PdfExportHelper.generatePdf(context, uiState.transactions) {
-                                    viewModel.addNotification("Print dialog opened for PDF generation.")
-                                    android.widget.Toast.makeText(context, "PDF generated successfully", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            }
+                        SupportListItem(Icons.Rounded.Upload, "Export Financial Statement", "Generate a PDF, CSV, or JSON backup of your data") {
+                            showExportStationSheet = true
                         }
                     }
                 }
@@ -367,6 +347,17 @@ fun SettingsScreen(
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
+    }
+
+    if (showExportStationSheet) {
+        com.pesalytics.ui.components.ExportStationSheet(
+            transactions = uiState.transactions,
+            repository = viewModel.repository,
+            isPremium = isPremium,
+            onDismiss = { showExportStationSheet = false },
+            onShowPremiumGate = { showExportStationSheet = false; showExportGateDialog = true },
+            onNotification = { viewModel.addNotification(it) }
+        )
     }
 
     if (showEditNameSheet) {
