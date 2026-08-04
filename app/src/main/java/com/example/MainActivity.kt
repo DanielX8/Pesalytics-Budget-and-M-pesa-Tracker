@@ -451,6 +451,7 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                 ) {
                     DashboardScreen(
                         viewModel = viewModel,
+                        navController = navController,
                         onNavigateToAllTransactions = { navController.navigate(AllTransactions()) },
                         onNavigateToAnalytics = { navController.navigate(Analytics) },
                         onNavigateToBills = { navController.navigate(Bills) },

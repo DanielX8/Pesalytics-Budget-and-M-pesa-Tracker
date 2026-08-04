@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.DonutLarge
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -58,6 +59,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.pesalytics.ui.navigation.PayeeHistory
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -95,6 +97,7 @@ private val dateTimeFormat = java.text.SimpleDateFormat("dd MMM · HH:mm", java.
 @Composable
 fun DashboardScreen(
     viewModel: PesaViewModel,
+    navController: androidx.navigation.NavController? = null,
     onNavigateToAllTransactions: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
     onNavigateToBills: () -> Unit,
@@ -343,7 +346,13 @@ fun DashboardScreen(
                 }
                 val shareIntent = android.content.Intent.createChooser(sendIntent, null)
                 context.startActivity(shareIntent)
-            }
+            },
+            onViewPayeeHistory = if (navController != null) { 
+                { 
+                    showTransactionDetails = false
+                    navController.navigate(PayeeHistory(payee = txn.payee)) 
+                } 
+            } else null
         )
     }
 
@@ -1233,7 +1242,7 @@ fun TransactionDetailsSheet(
             // Metadata List
             val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
             
-            MetadataRow(label = "Payee/Party", value = transaction.payee)
+            MetadataRow(label = "Payee/Party", value = transaction.payee, onClick = onViewPayeeHistory)
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
             
             Row(
@@ -1325,30 +1334,38 @@ fun TransactionDetailsSheet(
                 )
             }
 
-            if (onViewPayeeHistory != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = onViewPayeeHistory,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("View all transactions from ${transaction.payee}")
-                }
-            }
         }
     }
 }
 
 @Composable
-fun MetadataRow(label: String, value: String) {
+fun MetadataRow(label: String, value: String, onClick: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
             .padding(vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (onClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
+            if (onClick != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = "View History",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     }
 }
 
