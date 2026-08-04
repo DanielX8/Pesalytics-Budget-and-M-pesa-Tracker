@@ -23,7 +23,19 @@ object PdfExportHelper {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
-                createPdfFile(context, view, onComplete)
+                
+                val printManager = context.getSystemService(Context.PRINT_SERVICE) as android.print.PrintManager
+                val jobName = "Pesalytics_Report"
+                val printAdapter = view.createPrintDocumentAdapter(jobName)
+                
+                printManager.print(
+                    jobName,
+                    printAdapter,
+                    PrintAttributes.Builder().build()
+                )
+                
+                // Pass null because PrintManager handles saving/sharing natively
+                onComplete(null)
             }
         }
 
@@ -300,48 +312,5 @@ object PdfExportHelper {
 </body>
 </html>
         """.trimIndent()
-    }
-
-    private fun createPdfFile(context: Context, webView: WebView, onComplete: (File?) -> Unit) {
-        try {
-            // Wait briefly for layout to finish, use Handler instead of WebView.postDelayed 
-            // since WebView is not attached to a window and its message queue might be paused.
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                // Force layout so it actually draws correctly even when offscreen
-                webView.measure(
-                    android.view.View.MeasureSpec.makeMeasureSpec(800, android.view.View.MeasureSpec.EXACTLY),
-                    android.view.View.MeasureSpec.makeMeasureSpec(1200, android.view.View.MeasureSpec.EXACTLY)
-                )
-                webView.layout(0, 0, webView.measuredWidth, webView.measuredHeight)
-
-                val width = webView.measuredWidth
-                val height = webView.measuredHeight
-                
-                // Fallback to standard A4 proportions if layout fails
-                val printWidth = if (width > 0) width else 800
-                val printHeight = if (height > 0) height else 1200
-                
-                val document = android.graphics.pdf.PdfDocument()
-                val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(printWidth, printHeight, 1).create()
-                val page = document.startPage(pageInfo)
-                
-                webView.draw(page.canvas)
-                document.finishPage(page)
-                
-                val exportDir = File(context.cacheDir, "exports")
-                if (!exportDir.exists()) exportDir.mkdirs()
-                
-                val fileName = "Pesalytics_Report_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.pdf"
-                val file = File(exportDir, fileName)
-                
-                document.writeTo(java.io.FileOutputStream(file))
-                document.close()
-                
-                onComplete(file)
-            }, 500)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            onComplete(null)
-        }
     }
 }
