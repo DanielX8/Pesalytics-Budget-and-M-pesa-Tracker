@@ -20,8 +20,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.*
@@ -393,7 +393,7 @@ fun CreateGoalBottomSheet(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.TrendingDown, contentDescription = null, tint = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Filled.TrendingDown, contentDescription = null, tint = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Paying Off Debt", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = if (debtSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -670,7 +670,7 @@ fun GoalCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Icon(
-                    imageVector = if (isOnTrack) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
+                    imageVector = if (isOnTrack) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                     contentDescription = if (isOnTrack) "On track" else "Falling behind",
                     tint = if (isOnTrack) AccentGreenLight else ExpenseRed,
                     modifier = Modifier.size(16.dp)

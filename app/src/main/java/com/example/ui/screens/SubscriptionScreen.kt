@@ -86,8 +86,8 @@ fun SubscriptionScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        if (isPremium) "Thanks for supporting an ad-free, private finance app."
-                        else "Unlock deep analytics, unlimited budgets and bills — no ads, ever.",
+                        if (isPremium) "Thanks for supporting Pesalytics Premium."
+                        else "Unlock deep analytics, unlimited budgets, bills, and goals.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -145,8 +145,9 @@ fun SubscriptionScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             FeatureBullet("Automated M-PESA SMS parsing")
                             FeatureBullet("Manual cash & non-M-PESA entry")
-                            FeatureBullet("Spending Cap (global monthly limit)")
-                            FeatureBullet("1 financial goal")
+                            FeatureBullet("1 month transaction history")
+                            FeatureBullet("2 budget categories")
+                            FeatureBullet("Summary spending analytics")
                             if (!isPremium) {
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
@@ -178,12 +179,12 @@ fun SubscriptionScreen(
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("Pesalytics Premium", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
                             Spacer(modifier = Modifier.height(16.dp))
-                            FeatureBullet("Full Analytics suite (donut, calendar, rhythm)", color = Color.White, iconTint = Color.White)
-                            FeatureBullet("Per-category Budget Planner + trends", color = Color.White, iconTint = Color.White)
+                            FeatureBullet("Full analytics — trends, merchants, categories", color = Color.White, iconTint = Color.White)
+                            FeatureBullet("Unlimited transaction history", color = Color.White, iconTint = Color.White)
+                            FeatureBullet("Unlimited budget categories", color = Color.White, iconTint = Color.White)
                             FeatureBullet("Unlimited recurring bills + smart alerts", color = Color.White, iconTint = Color.White)
-                            FeatureBullet("Unlimited financial goals", color = Color.White, iconTint = Color.White)
-                            FeatureBullet("Data export (CSV & PDF)", color = Color.White, iconTint = Color.White)
-                            FeatureBullet("100% offline — your data never leaves the phone", color = Color.White, iconTint = Color.White)
+                            FeatureBullet("Unlimited savings goals", color = Color.White, iconTint = Color.White)
+                            FeatureBullet("Financial statements (CSV & PDF)", color = Color.White, iconTint = Color.White)
                             if (!isPremium) {
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Surface(
@@ -228,15 +229,17 @@ fun SubscriptionScreen(
                             Text("FREE", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                             Text("PREMIUM", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                         }
-                        ComparisonRow("Analytics", "Home only", "Full suite")
+                        ComparisonRow("Transaction history", "1 month", "Unlimited")
                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-                        ComparisonRow("Budget Planner", "Global cap", "Per-category")
+                        ComparisonRow("Budget categories", "2", "Unlimited")
                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-                        ComparisonRow("Bill Tracker", "—", "Unlimited")
+                        ComparisonRow("Analytics", "Summary", "Full suite")
                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-                        ComparisonRow("Financial Goals", "1", "Unlimited")
+                        ComparisonRow("Bill reminders", "—", "Unlimited")
                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-                        ComparisonRow("Data Export", "—", "CSV & PDF")
+                        ComparisonRow("Savings goals", "—", "Unlimited")
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                        ComparisonRow("Financial statements", "—", "PDF & CSV")
                     }
                 }
             }

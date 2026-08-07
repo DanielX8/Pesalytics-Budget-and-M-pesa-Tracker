@@ -541,8 +541,8 @@ fun SettingsScreen(
     if (showExportGateDialog) {
         AlertDialog(
             onDismissRequest = { showExportGateDialog = false },
-            title = { Text("Export to CSV or PDF") },
-            text = { Text("Export your transactions as CSV or PDF — available with Premium.") },
+            title = { Text("Financial Statements") },
+            text = { Text("Generate PDF or CSV financial statements from your transaction history — available with Premium.") },
             confirmButton = { Button(onClick = { showExportGateDialog = false; onNavigateToSubscription() }) { Text("View Premium") } },
             dismissButton = { TextButton(onClick = { showExportGateDialog = false }) { Text("Cancel") } }
         )

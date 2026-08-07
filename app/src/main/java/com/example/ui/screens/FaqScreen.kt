@@ -37,7 +37,7 @@ fun FaqScreen(onNavigateBack: () -> Unit) {
         ),
         FaqItem(
             question = "How do I export my data?",
-            answer = "You can export your transaction history at any time by going to Settings > Data Export. You have the option to generate a beautifully formatted PDF report or a CSV file for spreadsheet analysis."
+            answer = "You can generate financial statements at any time from Settings > Data Export. Choose a PDF financial report for a clean summary, or CSV for spreadsheet analysis. Financial statements are a Premium feature."
         ),
         FaqItem(
             question = "What happens if I change my phone?",
