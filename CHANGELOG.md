@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.5] — 2026-08-07 · Open Testing Release
+
+### Added
+- **Premium Subscription Flow**: Added detailed paywall UI and App Store Optimization copy.
+- **Privacy & Terms**: Updated deep links to point to the new `pesalytics.co.ke` domain instead of the staging site.
+
+### Fixed
+- Assorted bug fixes and stability improvements for Open Testing.
+
+---
+
 ## [1.5.2] — 2026-08-04 · Export Station & JSON Backup
 
 ### Added
