@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.6] — 2026-08-10 · Critical Bug Fixes
+
+### Fixed
+- **Null-Safety Compile Error**: Resolved an issue in `PesaViewModel.kt` where the billing client state could cause a crash or compile failure when temporarily unreachable.
+- **Spend Velocity Math**: Confirmed that `PatternEngine` operates specifically on the real-time month by design, avoiding flawed projections for past dates.
+
+---
+
 ## [1.5.5] — 2026-08-07 · Open Testing Release
 
 ### Added

@@ -151,7 +151,7 @@ class PesaViewModel(
     val isFirstLaunch = MutableStateFlow(true)
     val isPremium: StateFlow<Boolean> = subscriptionManager?.state
         ?.map { it.isPremium }
-        ?.stateIn(viewModelScope, SharingStarted.Eagerly, subscriptionManager.state.value.isPremium)
+        ?.stateIn(viewModelScope, SharingStarted.Eagerly, subscriptionManager?.state?.value?.isPremium ?: false)
         ?: MutableStateFlow(false)
 
     // ── Subscription state ────────────────────────────────────────────────────
