@@ -149,7 +149,11 @@ fun AnalyticsScreen(
 
     val monthTransactions = uiState.transactions.filter { it.timestamp in analyticsStartTimestamp until analyticsEndTimestamp && !it.isFeeTransaction }
 
-    val totalIncome = monthTransactions.filter { it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME }.sumOf { it.amount }
+    val totalIncome = monthTransactions.filter { 
+        it.type == TransactionType.RECEIVE_MONEY || 
+        it.type == TransactionType.MANUAL_INCOME || 
+        it.type == TransactionType.POCHI_RECEIVE 
+    }.sumOf { it.amount }
     val totalExpense = monthTransactions.filter {
         it.type != TransactionType.RECEIVE_MONEY &&
         it.type != TransactionType.MANUAL_INCOME &&
@@ -1621,7 +1625,9 @@ fun TopPayeesCard(transactions: List<com.pesalytics.model.Transaction>) {
 @Composable
 fun IncomeSourcesCard(transactions: List<com.pesalytics.model.Transaction>) {
     val income = transactions.filter {
-        (it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME) &&
+        (it.type == TransactionType.RECEIVE_MONEY || 
+         it.type == TransactionType.MANUAL_INCOME ||
+         it.type == TransactionType.POCHI_RECEIVE) &&
         !it.isFeeTransaction
     }
     val totalIncome = income.sumOf { it.amount }.coerceAtLeast(1.0)

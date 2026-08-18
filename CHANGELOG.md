@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.8] — 2026-08-18 · Pochi la Biashara Income & Display Fixes
+
+### Fixed
+- **Pochi Receive Classification & Display**: Fixed an issue where customer payments received directly into a Pochi la Biashara account rendered in red with a minus sign as expenses. Incoming Pochi payments now correctly display in income green with a `+` sign.
+- **Pochi SMS Regex Hardening**: Updated the Pochi SMS parser to support trailing periods after timestamps (`AM.` / `PM.`) and both "New Pochi balance is" and "New business balance is" Safaricom phrasing variations.
+- **Analytics & Exports Income Inclusion**: Added Pochi receive payments to total income calculations across Analytics, PDF/CSV Statement Exports, Financial Reports, and periodic summary notifications.
+
+---
+
 ## [1.5.7] — 2026-08-18 · What's New Sheet & Onboarding Polish
 
 ### Added

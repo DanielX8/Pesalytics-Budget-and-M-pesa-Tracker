@@ -77,17 +77,18 @@ fun ReportScreen(viewModel: PesaViewModel, onNavigateBack: () -> Unit) {
             .filter { !it.isFeeTransaction && it.timestamp >= cutoff }
     }
 
+    val nonExpenseTypes = setOf(TransactionType.RECEIVE_MONEY, TransactionType.MANUAL_INCOME, TransactionType.POCHI_RECEIVE, TransactionType.MANUAL_TRANSFER, TransactionType.MSHWARI_TRANSFER, TransactionType.POCHI_TRANSFER, TransactionType.FULIZA)
     val totalIncome = transactions.filter {
-        it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME
+        it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME || it.type == TransactionType.POCHI_RECEIVE
     }.sumOf { it.amount }
     val totalExpense = transactions.filter {
-        it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME
+        it.type !in nonExpenseTypes
     }.sumOf { it.amount }
     val totalFees = transactions.sumOf { it.fee }
     val netSavings = totalIncome - totalExpense
 
     val topCategory = transactions
-        .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
+        .filter { it.type !in nonExpenseTypes }
         .groupBy { it.category }
         .mapValues { e -> e.value.sumOf { it.amount } }
         .maxByOrNull { it.value }

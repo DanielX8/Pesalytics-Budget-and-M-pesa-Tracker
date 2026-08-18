@@ -1232,7 +1232,9 @@ fun TransactionDetailsSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val isIncome = transaction.type == TransactionType.RECEIVE_MONEY || transaction.type == TransactionType.MANUAL_INCOME
+                val isIncome = transaction.type == TransactionType.RECEIVE_MONEY || 
+                               transaction.type == TransactionType.MANUAL_INCOME ||
+                               transaction.type == TransactionType.POCHI_RECEIVE
                 val amountText = if (isIncome) "+ KES ${formatCurrency(transaction.amount)}" else "- KES ${formatCurrency(transaction.amount)}"
                 val amountColor = if (isIncome) AccentGreenLight else ExpenseRed
                 
@@ -1245,18 +1247,6 @@ fun TransactionDetailsSheet(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val icon = getIconForTransaction(transaction)
-                    val tint = if (isIncome) AccentGreenLight else ExpenseRed
-                    Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = transaction.type.name.replace("_", " "),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -1401,7 +1391,7 @@ fun getIconForTransaction(transaction: Transaction): androidx.compose.ui.graphic
         category == "airtime" -> Icons.Outlined.Phone
         category == "cash" || category == "withdraw" -> Icons.Outlined.AttachMoney
         category == "transfer" || category == "send money" -> Icons.Outlined.AttachMoney
-        category == "received money" || category == "income" || transaction.type == TransactionType.RECEIVE_MONEY || transaction.type == TransactionType.MANUAL_INCOME -> Icons.AutoMirrored.Outlined.TrendingDown
+        category == "received money" || category == "income" || transaction.type == TransactionType.RECEIVE_MONEY || transaction.type == TransactionType.MANUAL_INCOME || transaction.type == TransactionType.POCHI_RECEIVE -> Icons.AutoMirrored.Outlined.TrendingDown
         category == "shopping" || category == "buy goods" -> Icons.Outlined.ShoppingCart
         category == "bills" || category == "paybill" -> Icons.Outlined.Payment
         category == "fuliza" -> Icons.Outlined.AccountBalance
@@ -1416,7 +1406,9 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null, onP
     // Skip rendering fee-only records (legacy data from before the fix)
     if (transaction.isFeeTransaction) return
 
-    val isIncome = transaction.type == TransactionType.RECEIVE_MONEY || transaction.type == TransactionType.MANUAL_INCOME
+    val isIncome = transaction.type == TransactionType.RECEIVE_MONEY || 
+                   transaction.type == TransactionType.MANUAL_INCOME ||
+                   transaction.type == TransactionType.POCHI_RECEIVE
     val color = if (isIncome) AccentGreenLight else ExpenseRed
     val icon = getIconForTransaction(transaction)
 

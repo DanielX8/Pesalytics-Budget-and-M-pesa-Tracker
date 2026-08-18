@@ -49,8 +49,9 @@ object PdfExportHelper {
 
         val clean = transactions.filter { !it.isFeeTransaction }
 
-        val incomeTypes = setOf(TransactionType.RECEIVE_MONEY, TransactionType.MANUAL_INCOME)
-        val expenseTxns = clean.filter { it.type !in incomeTypes && it.type != TransactionType.MANUAL_TRANSFER }
+        val incomeTypes = setOf(TransactionType.RECEIVE_MONEY, TransactionType.MANUAL_INCOME, TransactionType.POCHI_RECEIVE)
+        val nonExpenseTypes = setOf(TransactionType.RECEIVE_MONEY, TransactionType.MANUAL_INCOME, TransactionType.POCHI_RECEIVE, TransactionType.MANUAL_TRANSFER, TransactionType.MSHWARI_TRANSFER, TransactionType.POCHI_TRANSFER, TransactionType.FULIZA)
+        val expenseTxns = clean.filter { it.type !in nonExpenseTypes }
         val incomeTxns  = clean.filter { it.type in incomeTypes }
 
         val totalExpense  = expenseTxns.sumOf { it.amount }

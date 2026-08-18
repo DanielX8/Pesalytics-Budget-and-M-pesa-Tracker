@@ -37,7 +37,7 @@ class MonthlyReportWorker(appContext: Context, workerParams: WorkerParameters) :
         }
 
         val income = monthTxns
-            .filter { it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME }
+            .filter { it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME || it.type == TransactionType.POCHI_RECEIVE }
             .sumOf { it.amount }
         val expense = monthTxns
             .filter {
@@ -53,7 +53,7 @@ class MonthlyReportWorker(appContext: Context, workerParams: WorkerParameters) :
         val savings = income - expense
         val txnCount = monthTxns.size
         val topCat = monthTxns
-            .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
+            .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME && it.type != TransactionType.POCHI_RECEIVE && it.type != TransactionType.POCHI_TRANSFER && it.type != TransactionType.MSHWARI_TRANSFER && it.type != TransactionType.MANUAL_TRANSFER && it.type != TransactionType.FULIZA }
             .groupBy { it.category ?: "Other" }
             .mapValues { e -> e.value.sumOf { it.amount } }
             .maxByOrNull { it.value }?.key

@@ -157,9 +157,10 @@ fun ExportStationSheet(
     val filteredTxns = transactions.filter { it.timestamp in startMs..endMs }
     
     // Summaries
-    val incomeTypes = setOf(TransactionType.RECEIVE_MONEY, TransactionType.MANUAL_INCOME)
+    val incomeTypes = setOf(TransactionType.RECEIVE_MONEY, TransactionType.MANUAL_INCOME, TransactionType.POCHI_RECEIVE)
     val totalIncome = filteredTxns.filter { it.type in incomeTypes && !it.isFeeTransaction }.sumOf { it.amount }
-    val totalExpense = filteredTxns.filter { it.type !in incomeTypes && it.type != TransactionType.MANUAL_TRANSFER && !it.isFeeTransaction }.sumOf { it.amount }
+    val nonExpenseTypes = setOf(TransactionType.RECEIVE_MONEY, TransactionType.MANUAL_INCOME, TransactionType.POCHI_RECEIVE, TransactionType.MANUAL_TRANSFER, TransactionType.MSHWARI_TRANSFER, TransactionType.POCHI_TRANSFER, TransactionType.FULIZA)
+    val totalExpense = filteredTxns.filter { it.type !in nonExpenseTypes && !it.isFeeTransaction }.sumOf { it.amount }
     val net = totalIncome - totalExpense
 
     ModalBottomSheet(

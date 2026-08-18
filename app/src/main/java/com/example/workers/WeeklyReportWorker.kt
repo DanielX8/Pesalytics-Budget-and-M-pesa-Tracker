@@ -48,11 +48,11 @@ class WeeklyReportWorker(appContext: Context, workerParams: WorkerParameters) :
             }
             .sumOf { it.amount }
         val weekIncome = weekTxns
-            .filter { it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME }
+            .filter { it.type == TransactionType.RECEIVE_MONEY || it.type == TransactionType.MANUAL_INCOME || it.type == TransactionType.POCHI_RECEIVE }
             .sumOf { it.amount }
         val txnCount = weekTxns.size
         val topCat = weekTxns
-            .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME }
+            .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME && it.type != TransactionType.POCHI_RECEIVE && it.type != TransactionType.POCHI_TRANSFER && it.type != TransactionType.MSHWARI_TRANSFER && it.type != TransactionType.MANUAL_TRANSFER && it.type != TransactionType.FULIZA }
             .groupBy { it.category ?: "Other" }
             .mapValues { e -> e.value.sumOf { it.amount } }
             .maxByOrNull { it.value }?.key

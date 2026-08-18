@@ -668,7 +668,7 @@ class PesaViewModel(
         if (body.contains("has been moved from your", ignoreCase = true) &&
             body.contains("account to your", ignoreCase = true)) {
             val pochiTransferRegex = Regex(
-                """([A-Z0-9]+)\s+Confirmed,\s+Ksh([\d,]+\.\d{2})\s+has been moved from your (M-PESA|Pochi|business) account to your (M-PESA|Pochi|business) account on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.+\s*New (?:business|Pochi) balance is Ksh([\d,]+\.\d{2})\.?\s*New M-PESA balance is Ksh([\d,]+\.\d{2})""",
+                """([A-Z0-9]+)\s+Confirmed,\s+Ksh\s*([\d,]+\.\d{2})\s+has been moved from your (M-PESA|Pochi|business) account to your (M-PESA|Pochi|business) account on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.?\s*New (?:business|Pochi) balance is Ksh\s*([\d,]+\.\d{2})\.?\s*New M-PESA balance is Ksh\s*([\d,]+\.\d{2})""",
                 RegexOption.IGNORE_CASE
             )
             pochiTransferRegex.find(body)?.let { m ->
@@ -687,11 +687,12 @@ class PesaViewModel(
             }
         }
 
-        // P4: customer payment received into Pochi ("You have received...New Pochi balance is")
-        if (body.contains("New Pochi balance is", ignoreCase = true) &&
+        // P4: customer payment received into Pochi ("You have received...New Pochi/business balance is")
+        if ((body.contains("New Pochi balance is", ignoreCase = true) ||
+             body.contains("New business balance is", ignoreCase = true)) &&
             body.contains("You have received", ignoreCase = true)) {
             val pochiReceiveRegex = Regex(
-                """([A-Z0-9]+)\s+Confirmed\.\s*You have received Ksh([\d,]+\.\d{2})\s+from\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\s+New Pochi balance is Ksh([\d,]+\.\d{2})""",
+                """([A-Z0-9]+)\s+Confirmed\.\s*You have received Ksh\s*([\d,]+\.\d{2})\s+from\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.?\s*New (?:Pochi|business) balance is Ksh\s*([\d,]+\.\d{2})""",
                 RegexOption.IGNORE_CASE
             )
             pochiReceiveRegex.find(body)?.let { m ->
@@ -713,7 +714,7 @@ class PesaViewModel(
              body.contains("New Pochi balance is", ignoreCase = true)) &&
             body.contains("sent to", ignoreCase = true)) {
             val pochiSendRegex = Regex(
-                """([A-Z0-9]+)\s+Confirmed\.\s*Ksh([\d,]+\.\d{2})\s+sent to\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.?\s*New (?:Pochi|business) balance is Ksh([\d,]+\.\d{2})""",
+                """([A-Z0-9]+)\s+Confirmed\.\s*Ksh\s*([\d,]+\.\d{2})\s+sent to\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.?\s*New (?:Pochi|business) balance is Ksh\s*([\d,]+\.\d{2})""",
                 RegexOption.IGNORE_CASE
             )
             pochiSendRegex.find(body)?.let { m ->
