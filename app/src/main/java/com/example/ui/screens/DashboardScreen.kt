@@ -1235,8 +1235,20 @@ fun TransactionDetailsSheet(
                 val isIncome = transaction.type == TransactionType.RECEIVE_MONEY || 
                                transaction.type == TransactionType.MANUAL_INCOME ||
                                transaction.type == TransactionType.POCHI_RECEIVE
-                val amountText = if (isIncome) "+ KES ${formatCurrency(transaction.amount)}" else "- KES ${formatCurrency(transaction.amount)}"
-                val amountColor = if (isIncome) AccentGreenLight else ExpenseRed
+                val isTransfer = transaction.type == TransactionType.POCHI_TRANSFER || 
+                                 transaction.type == TransactionType.MSHWARI_TRANSFER || 
+                                 transaction.type == TransactionType.MANUAL_TRANSFER
+
+                val amountText = when {
+                    isIncome -> "+ KES ${formatCurrency(transaction.amount)}"
+                    isTransfer -> "↔ KES ${formatCurrency(transaction.amount)}"
+                    else -> "- KES ${formatCurrency(transaction.amount)}"
+                }
+                val amountColor = when {
+                    isIncome -> AccentGreenLight
+                    isTransfer -> TransferBlue
+                    else -> ExpenseRed
+                }
                 
                 Text(
                     text = amountText,
@@ -1246,6 +1258,24 @@ fun TransactionDetailsSheet(
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
+                
+                val statusText = if (transaction.isFeeTransaction) "Fee" else if (isIncome) "Income" else if (isTransfer) "Transfer" else "Expense"
+                val statusBg = if (isIncome) AccentGreenLight.copy(alpha = 0.15f) else if (isTransfer) TransferBlue.copy(alpha = 0.15f) else ExpenseRed.copy(alpha = 0.15f)
+                val statusColor = if (isIncome) AccentGreenDark else if (isTransfer) TransferBlue else ExpenseRed
+                
+                Surface(
+                    color = statusBg,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = statusColor,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
                 
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -1390,7 +1420,7 @@ fun getIconForTransaction(transaction: Transaction): androidx.compose.ui.graphic
         category == "bank/m-pesa fees" -> Icons.AutoMirrored.Outlined.ReceiptLong
         category == "airtime" -> Icons.Outlined.Phone
         category == "cash" || category == "withdraw" -> Icons.Outlined.AttachMoney
-        category == "transfer" || category == "send money" -> Icons.Outlined.AttachMoney
+        category == "transfer" || category == "send money" || transaction.type == TransactionType.POCHI_TRANSFER || transaction.type == TransactionType.MSHWARI_TRANSFER || transaction.type == TransactionType.MANUAL_TRANSFER -> Icons.AutoMirrored.Outlined.CompareArrows
         category == "received money" || category == "income" || transaction.type == TransactionType.RECEIVE_MONEY || transaction.type == TransactionType.MANUAL_INCOME || transaction.type == TransactionType.POCHI_RECEIVE -> Icons.AutoMirrored.Outlined.TrendingDown
         category == "shopping" || category == "buy goods" -> Icons.Outlined.ShoppingCart
         category == "bills" || category == "paybill" -> Icons.Outlined.Payment
@@ -1409,7 +1439,15 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null, onP
     val isIncome = transaction.type == TransactionType.RECEIVE_MONEY || 
                    transaction.type == TransactionType.MANUAL_INCOME ||
                    transaction.type == TransactionType.POCHI_RECEIVE
-    val color = if (isIncome) AccentGreenLight else ExpenseRed
+    val isTransfer = transaction.type == TransactionType.POCHI_TRANSFER || 
+                     transaction.type == TransactionType.MSHWARI_TRANSFER || 
+                     transaction.type == TransactionType.MANUAL_TRANSFER
+
+    val color = when {
+        isIncome -> AccentGreenLight
+        isTransfer -> TransferBlue
+        else -> ExpenseRed
+    }
     val icon = getIconForTransaction(transaction)
 
     Row(
@@ -1481,8 +1519,13 @@ fun TransactionItem(transaction: Transaction, onClick: (() -> Unit)? = null, onP
         }
         
         Column(horizontalAlignment = Alignment.End) {
+            val amountPrefix = when {
+                isIncome -> "+"
+                isTransfer -> "↔ "
+                else -> "-"
+            }
             Text(
-                text = "${if (isIncome) "+" else "-"}KES ${formatCurrency(transaction.amount)}",
+                text = "${amountPrefix}KES ${formatCurrency(transaction.amount)}",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = color

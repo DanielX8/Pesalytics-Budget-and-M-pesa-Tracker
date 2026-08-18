@@ -140,16 +140,24 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
             cal.add(java.util.Calendar.MONTH, 1)
             val monthEndTimestamp = cal.timeInMillis
             
+            val incomeTypes = setOf(
+                com.pesalytics.model.TransactionType.RECEIVE_MONEY,
+                com.pesalytics.model.TransactionType.MANUAL_INCOME,
+                com.pesalytics.model.TransactionType.POCHI_RECEIVE
+            )
+            val transferTypes = setOf(
+                com.pesalytics.model.TransactionType.POCHI_TRANSFER,
+                com.pesalytics.model.TransactionType.MSHWARI_TRANSFER,
+                com.pesalytics.model.TransactionType.MANUAL_TRANSFER,
+                com.pesalytics.model.TransactionType.FULIZA
+            )
+            
             val transactionsInMonth = uiState.transactions.filter { t ->
                 !t.isFeeTransaction &&
                 t.timestamp in monthStartTimestamp until monthEndTimestamp &&
                 when (selectedCategory) {
-                    "Income" -> t.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY ||
-                                t.type == com.pesalytics.model.TransactionType.MANUAL_INCOME ||
-                                t.type == com.pesalytics.model.TransactionType.POCHI_RECEIVE
-                    "Expenses" -> t.type != com.pesalytics.model.TransactionType.RECEIVE_MONEY &&
-                                  t.type != com.pesalytics.model.TransactionType.MANUAL_INCOME &&
-                                  t.type != com.pesalytics.model.TransactionType.POCHI_RECEIVE
+                    "Income" -> t.type in incomeTypes
+                    "Expenses" -> t.type !in incomeTypes && t.type !in transferTypes
                     else -> true
                 }
             }
@@ -173,17 +181,25 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
 
     val filteredTransactions by remember(uiState.transactions, selectedCategory, selectedFilter, dayStartTimestamp, dayEndTimestamp, searchQuery) {
         derivedStateOf {
+            val incomeTypes = setOf(
+                com.pesalytics.model.TransactionType.RECEIVE_MONEY,
+                com.pesalytics.model.TransactionType.MANUAL_INCOME,
+                com.pesalytics.model.TransactionType.POCHI_RECEIVE
+            )
+            val transferTypes = setOf(
+                com.pesalytics.model.TransactionType.POCHI_TRANSFER,
+                com.pesalytics.model.TransactionType.MSHWARI_TRANSFER,
+                com.pesalytics.model.TransactionType.MANUAL_TRANSFER,
+                com.pesalytics.model.TransactionType.FULIZA
+            )
+
             uiState.transactions.filter { transaction ->
                 if (transaction.isFeeTransaction) return@filter false
                 if (transaction.timestamp !in dayStartTimestamp until dayEndTimestamp) return@filter false
 
                 val matchesCategory = when (selectedCategory) {
-                    "Income" -> transaction.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY ||
-                                transaction.type == com.pesalytics.model.TransactionType.MANUAL_INCOME ||
-                                transaction.type == com.pesalytics.model.TransactionType.POCHI_RECEIVE
-                    "Expenses" -> transaction.type != com.pesalytics.model.TransactionType.RECEIVE_MONEY &&
-                                  transaction.type != com.pesalytics.model.TransactionType.MANUAL_INCOME &&
-                                  transaction.type != com.pesalytics.model.TransactionType.POCHI_RECEIVE
+                    "Income" -> transaction.type in incomeTypes
+                    "Expenses" -> transaction.type !in incomeTypes && transaction.type !in transferTypes
                     else -> true
                 }
                 if (!matchesCategory) return@filter false
@@ -335,8 +351,23 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            val incomeTypes = setOf(
+                com.pesalytics.model.TransactionType.RECEIVE_MONEY,
+                com.pesalytics.model.TransactionType.MANUAL_INCOME,
+                com.pesalytics.model.TransactionType.POCHI_RECEIVE
+            )
+            val transferTypes = setOf(
+                com.pesalytics.model.TransactionType.POCHI_TRANSFER,
+                com.pesalytics.model.TransactionType.MSHWARI_TRANSFER,
+                com.pesalytics.model.TransactionType.MANUAL_TRANSFER,
+                com.pesalytics.model.TransactionType.FULIZA
+            )
             val filteredAmount = filteredTransactions.sumOf { 
-                if (it.type == com.pesalytics.model.TransactionType.RECEIVE_MONEY || it.type == com.pesalytics.model.TransactionType.MANUAL_INCOME) it.amount else -it.amount 
+                when {
+                    it.type in incomeTypes -> it.amount
+                    it.type in transferTypes -> 0.0
+                    else -> -it.amount
+                }
             }
             val amtColor = if (filteredAmount >= 0) com.pesalytics.ui.theme.AccentGreenLight else com.pesalytics.ui.theme.ExpenseRed
             val amtPrefix = if (filteredAmount >= 0) "+KES " else "-KES "

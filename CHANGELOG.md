@@ -11,6 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Pochi Receive Classification & Display**: Fixed an issue where customer payments received directly into a Pochi la Biashara account rendered in red with a minus sign as expenses. Incoming Pochi payments now correctly display in income green with a `+` sign.
 - **Pochi SMS Regex Hardening**: Updated the Pochi SMS parser to support trailing periods after timestamps (`AM.` / `PM.`) and both "New Pochi balance is" and "New business balance is" Safaricom phrasing variations.
 - **Analytics & Exports Income Inclusion**: Added Pochi receive payments to total income calculations across Analytics, PDF/CSV Statement Exports, Financial Reports, and periodic summary notifications.
+- **Internal Transfers Display (`TransferBlue`)**: Self-transfers between M-PESA and Pochi/M-Shwari now render cleanly in `TransferBlue` with `↔ KES` and are excluded from expense tabs to eliminate any confusion with real expenses.
 
 ---
 
