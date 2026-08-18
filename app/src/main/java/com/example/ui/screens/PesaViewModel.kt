@@ -630,11 +630,11 @@ class PesaViewModel(
         // === Mshwari transfer — insert before RECEIVE_MONEY to avoid misclassification ===
         if (body.contains("M-Shwari", ignoreCase = true) && body.contains("transferred", ignoreCase = true)) {
             val mshwariWithdrawRegex = Regex(
-                """([A-Z0-9]+)\s+Confirmed\.?\s*Ksh([\d,]+\.\d{2})\s+transferred from M-Shwari account on (\d{1,2}/\d{1,2}/\d{2,4}) at (\d{1,2}:\d{2}\s*[APM]{2})\.\s*M-Shwari balance is Ksh([\d,]+\.\d{2})\s*\.?\s*M-PESA balance is Ksh([\d,]+\.\d{2})""",
+                """([A-Z0-9]+)\s+Confirmed\.?\s*Ksh\s*([\d,]+\.\d{2})\s+transferred from (?:your )?M-Shwari (?:saving |savings |lock savings )?account on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.?\s*(?:New )?M-Shwari (?:saving |savings |lock savings )?account balance is Ksh\s*([\d,]+\.\d{2})\.?\s*(?:New )?M-PESA balance is Ksh\s*([\d,]+\.\d{2})""",
                 RegexOption.IGNORE_CASE
             )
             val mshwariDepositRegex = Regex(
-                """([A-Z0-9]+)\s+Confirmed\.?\s*Ksh([\d,]+\.\d{2})\s+transferred to M-Shwari account on (\d{1,2}/\d{1,2}/\d{2,4}) at (\d{1,2}:\d{2}\s*[APM]{2})\.\s*M-PESA balance is Ksh([\d,]+\.\d{2})\s*\.?\s*New M-Shwari saving account balance is Ksh([\d,]+\.\d{2})""",
+                """([A-Z0-9]+)\s+Confirmed\.?\s*Ksh\s*([\d,]+\.\d{2})\s+transferred to (?:your )?M-Shwari (?:saving |savings |lock savings )?account on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.?\s*(?:New )?M-PESA balance is Ksh\s*([\d,]+\.\d{2})\.?\s*(?:New )?M-Shwari (?:saving |savings |lock savings )?account balance is Ksh\s*([\d,]+\.\d{2})""",
                 RegexOption.IGNORE_CASE
             )
             mshwariWithdrawRegex.find(body)?.let { m ->
@@ -644,7 +644,7 @@ class PesaViewModel(
                 results.add(Transaction(
                     amount = amount, payee = "M-Shwari", timestamp = timestamp,
                     type = TransactionType.MSHWARI_TRANSFER, remoteRef = m.groupValues[1],
-                    category = "Mshwari Withdrawal", fee = 0.0,
+                    category = "Savings", fee = 0.0,
                     balanceAfter = mpesaBalance, mshwariBalanceAfter = mshwariBalance, originalSms = body
                 ))
                 return results
@@ -656,7 +656,7 @@ class PesaViewModel(
                 results.add(Transaction(
                     amount = amount, payee = "M-Shwari", timestamp = timestamp,
                     type = TransactionType.MSHWARI_TRANSFER, remoteRef = m.groupValues[1],
-                    category = "Mshwari Deposit", fee = 0.0,
+                    category = "Savings", fee = 0.0,
                     balanceAfter = mpesaBalance, mshwariBalanceAfter = mshwariBalance, originalSms = body
                 ))
                 return results
