@@ -229,12 +229,16 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
     }
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(Unit) {
-        viewModel.checkWhatsNew(context)
-    }
-    
+
+    // Only show What's New on top-level screens (not over Splash or Onboarding)
     val showWhatsNewSheet by viewModel.showWhatsNewSheet.collectAsState()
-    if (showWhatsNewSheet) {
+    val isMainDestination = currentDestination?.hierarchy?.any {
+        it.hasRoute<Home>() ||
+        it.hasRoute<Analytics>() ||
+        it.hasRoute<Bills>() ||
+        it.hasRoute<Settings>()
+    } ?: false
+    if (showWhatsNewSheet && isMainDestination) {
         com.pesalytics.ui.components.WhatsNewSheet(
             onDismiss = { viewModel.dismissWhatsNew(context) }
         )
@@ -429,6 +433,8 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                                 navController.navigate(Home) {
                                     popUpTo(Splash) { inclusive = true }
                                 }
+                                // Check after splash so the sheet never overlaps it
+                                viewModel.checkWhatsNew(context)
                             }
                         }
                     )

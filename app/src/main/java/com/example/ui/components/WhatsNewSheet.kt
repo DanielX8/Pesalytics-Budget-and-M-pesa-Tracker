@@ -12,7 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
 import com.pesalytics.ui.theme.AccentGreenLight
 
@@ -21,6 +25,8 @@ import com.pesalytics.ui.theme.AccentGreenLight
 fun WhatsNewSheet(
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    val features = remember { com.pesalytics.util.ChangelogParser.getLatestReleaseFeatures(context) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -43,7 +49,7 @@ fun WhatsNewSheet(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Pesalytics Version 1.5.2",
+                text = "Pesalytics Version ${com.pesalytics.BuildConfig.VERSION_NAME}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -54,21 +60,19 @@ fun WhatsNewSheet(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                FeatureItem(
-                    icon = Icons.Rounded.Star,
-                    title = "Export Station",
-                    description = "Generate PDF and CSV financial statements for any custom date range."
-                )
-                FeatureItem(
-                    icon = Icons.Rounded.CheckCircle,
-                    title = "JSON Backup & Restore",
-                    description = "Easily export and import all your data so you never lose track of your finances."
-                )
-                FeatureItem(
-                    icon = Icons.Rounded.CheckCircle,
-                    title = "Security Upgrades",
-                    description = "Upgraded file handling to comply with Android 11+ scoped storage requirements."
-                )
+                features.take(4).forEach { feature ->
+                    val icon = when (feature.category.lowercase()) {
+                        "added" -> Icons.Rounded.Star
+                        "fixed" -> Icons.Rounded.CheckCircle
+                        "changed", "improved" -> Icons.Rounded.Build
+                        else -> Icons.Rounded.Info
+                    }
+                    FeatureItem(
+                        icon = icon,
+                        title = feature.title,
+                        description = feature.description
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(32.dp))

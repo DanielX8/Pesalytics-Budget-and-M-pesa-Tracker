@@ -348,6 +348,42 @@ fun AnalyticsScreen(
 
             // DateRangePicker is rendered as a modal above the Scaffold — no list item needed
 
+            if (uiState.transactions.isEmpty()) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                "How Analytics work:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                "1. Continue using Pesalytics to track your expenses.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "2. As your data grows, we'll build a detailed breakdown of your spending habits.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "3. Check back here to see month-over-month comparisons, top payees, and category charts.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else {
             item {
                 androidx.compose.animation.AnimatedContent(
                     targetState = selectedMonthIndex,
@@ -423,6 +459,7 @@ fun AnalyticsScreen(
             item { NeedsVsWantsCard(monthTransactions, needsWantsClassification, onNavigateToNeedsWants) }
             item {
                 SpendingCalendar(monthTransactions, monthStartTimestamp, displayMonth)
+            }
             }
 
             item { Spacer(modifier = Modifier.height(32.dp)) }

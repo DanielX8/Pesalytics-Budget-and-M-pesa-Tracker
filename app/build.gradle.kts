@@ -135,3 +135,12 @@ dependencies {
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
+
+tasks.register<Copy>("copyChangelog") {
+    from(rootProject.file("CHANGELOG.md"))
+    into(layout.projectDirectory.dir("src/main/assets"))
+}
+
+tasks.named("preBuild") {
+    dependsOn("copyChangelog")
+}

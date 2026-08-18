@@ -676,7 +676,7 @@ class PesaViewModel(
                 val amount = m.groupValues[2].replace(",", "").toDoubleOrNull() ?: 0.0
                 val pochiBalance = m.groupValues[7].replace(",", "").toDoubleOrNull() ?: 0.0
                 val mpesaBalance = m.groupValues[8].replace(",", "").toDoubleOrNull() ?: 0.0
-                val category = if (sourceAccount.equals("M-PESA", ignoreCase = true)) "Pochi Deposit" else "Pochi Withdrawal"
+                val category = "Business"
                 results.add(Transaction(
                     amount = amount, payee = "Pochi la Biashara", timestamp = timestamp,
                     type = TransactionType.POCHI_TRANSFER, remoteRef = m.groupValues[1],
@@ -691,7 +691,7 @@ class PesaViewModel(
         if (body.contains("New Pochi balance is", ignoreCase = true) &&
             body.contains("You have received", ignoreCase = true)) {
             val pochiReceiveRegex = Regex(
-                """([A-Z0-9]+)\s+Confirmed\.You have received Ksh([\d,]+\.\d{2})\s+from\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\s+New Pochi balance is Ksh([\d,]+\.\d{2})""",
+                """([A-Z0-9]+)\s+Confirmed\.\s*You have received Ksh([\d,]+\.\d{2})\s+from\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\s+New Pochi balance is Ksh([\d,]+\.\d{2})""",
                 RegexOption.IGNORE_CASE
             )
             pochiReceiveRegex.find(body)?.let { m ->
@@ -701,18 +701,19 @@ class PesaViewModel(
                 results.add(Transaction(
                     amount = amount, payee = payer, timestamp = timestamp,
                     type = TransactionType.POCHI_RECEIVE, remoteRef = m.groupValues[1],
-                    category = "Pochi", fee = 0.0,
+                    category = "Business", fee = 0.0,
                     balanceAfter = 0.0, pochiBalanceAfter = pochiBalance, originalSms = body
                 ))
                 return results
             }
         }
 
-        // P1: send from business wallet to a person ("Confirmed. Ksh...sent to...New business balance is")
-        if (body.contains("New business balance is", ignoreCase = true) &&
+        // P1: send from business wallet to a person ("Confirmed. Ksh...sent to...New Pochi/business balance is")
+        if ((body.contains("New business balance is", ignoreCase = true) ||
+             body.contains("New Pochi balance is", ignoreCase = true)) &&
             body.contains("sent to", ignoreCase = true)) {
             val pochiSendRegex = Regex(
-                """([A-Z0-9]+)\s+Confirmed\.\s+Ksh([\d,]+\.\d{2})\s+sent to\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.\s*New business balance is Ksh([\d,]+\.\d{2})""",
+                """([A-Z0-9]+)\s+Confirmed\.\s*Ksh([\d,]+\.\d{2})\s+sent to\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+at\s+(\d{1,2}:\d{2}\s*[APM]{2})\.?\s*New (?:Pochi|business) balance is Ksh([\d,]+\.\d{2})""",
                 RegexOption.IGNORE_CASE
             )
             pochiSendRegex.find(body)?.let { m ->
@@ -722,7 +723,7 @@ class PesaViewModel(
                 results.add(Transaction(
                     amount = amount, payee = payee, timestamp = timestamp,
                     type = TransactionType.POCHI, remoteRef = m.groupValues[1],
-                    category = "Pochi", fee = 0.0,
+                    category = "Business", fee = 0.0,
                     balanceAfter = 0.0, pochiBalanceAfter = pochiBalance, originalSms = body
                 ))
                 return results
@@ -950,12 +951,12 @@ class PesaViewModel(
 
         // Pochi business wallet state (all-time wallet view)
         val pochiTxns = transactions.filter {
-            it.type == TransactionType.POCHI_RECEIVE || it.type == TransactionType.POCHI_TRANSFER
+            it.type == TransactionType.POCHI_RECEIVE || it.type == TransactionType.POCHI_TRANSFER || it.type == TransactionType.POCHI
         }
         val hasPochi = pochiTxns.isNotEmpty()
         val pochiBalance = pochiTxns.maxByOrNull { it.timestamp }?.pochiBalanceAfter ?: 0.0
         val pochiTotalReceived = pochiTxns.filter { it.type == TransactionType.POCHI_RECEIVE }.sumOf { it.amount }
-        val pochiTotalSent = pochiTxns.filter { it.category == "Pochi Withdrawal" }.sumOf { it.amount }
+        val pochiTotalSent = pochiTxns.filter { it.type == TransactionType.POCHI }.sumOf { it.amount }
 
         // Fuliza overdraft state — read from most recent Fuliza SMS, no limit arithmetic for full repayments
         val allFulizaTxns = transactions.filter { it.type == TransactionType.FULIZA }
@@ -1365,7 +1366,12 @@ class PesaViewModel(
     fun checkWhatsNew(context: android.content.Context) {
         val prefs = context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE)
         val lastSeen = prefs.getInt("last_seen_version_code", 0)
-        if (com.pesalytics.BuildConfig.VERSION_CODE > lastSeen) {
+        
+        if (lastSeen == 0) {
+            // Fresh install: don't show What's New, just record current version
+            prefs.edit().putInt("last_seen_version_code", com.pesalytics.BuildConfig.VERSION_CODE).apply()
+        } else if (com.pesalytics.BuildConfig.VERSION_CODE > lastSeen) {
+            // App update: show What's New sheet
             _showWhatsNewSheet.value = true
         }
     }

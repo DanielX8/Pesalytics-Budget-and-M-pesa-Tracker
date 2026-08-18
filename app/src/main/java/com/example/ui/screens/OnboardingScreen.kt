@@ -37,6 +37,7 @@ sealed class OnboardingContent {
     data class Standard(
         val title: String,
         val description: String,
+        val imageRes: Int? = null,
         val icon: ImageVector? = null,
         val bullets: List<String> = emptyList()
     ) : OnboardingContent()
@@ -45,6 +46,16 @@ sealed class OnboardingContent {
 }
 
 val onboardingSlides = listOf(
+    OnboardingContent.Standard(
+        title = "Small daily expenses add up fast",
+        description = "Coffee, delivery, subscriptions, taxis — small purchases quietly drain your budget",
+        imageRes = R.drawable.onboarding_expenses
+    ),
+    OnboardingContent.Standard(
+        title = "Your money disappears every month",
+        description = "Hidden expenses drain your budget.\nPeople lose 10,000–50,000 KES every month without realizing it",
+        imageRes = R.drawable.onboarding_drain
+    ),
     OnboardingContent.Standard(
         title = "Welcome to Pesalytics",
         description = "Your automated, privacy-first financial companion that transforms offline M-PESA alerts into powerful insights.",
@@ -197,7 +208,17 @@ fun OnboardingScreen(
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (page == 0) {
+                        if (slide.imageRes != null) {
+                            Image(
+                                painter = painterResource(id = slide.imageRes),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .padding(vertical = 16.dp),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                            )
+                        } else if (slide.title == "Welcome to Pesalytics") {
                             AnimatedLogo()
                             Spacer(modifier = Modifier.height(24.dp))
                         } else if (slide.icon != null) {
