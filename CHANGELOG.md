@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.7] — 2026-08-18 · What's New Sheet & Onboarding Polish
+
+### Added
+- **What's New Bottom Sheet**: After every app update, a bottom sheet automatically appears on the Home screen listing the latest changes pulled directly from `CHANGELOG.md`. New installs are excluded — it only shows on updates.
+- **ChangelogParser**: New utility that reads and parses `CHANGELOG.md` at runtime, powering the What's New sheet dynamically without any hardcoded copy.
+- **Onboarding Imagery**: Two new visual slides added to onboarding — an expenses overview slide and a spending drain slide — to better explain Pesalytics' core value before the user grants permissions.
+- **Notification Permission (Android 13+)**: Onboarding now explicitly requests `POST_NOTIFICATIONS` on API 33+ devices so bill alerts and spending summaries are guaranteed to arrive.
+
+### Fixed
+- **What's New Sheet Timing**: The sheet previously rendered as an overlay during the splash screen, blocking it. It now only appears after the splash has navigated to Home and only on main tab destinations (Home, Analytics, Bills, Settings).
+
+---
+
 ## [1.5.6] — 2026-08-10 · Critical Bug Fixes
 
 ### Fixed
