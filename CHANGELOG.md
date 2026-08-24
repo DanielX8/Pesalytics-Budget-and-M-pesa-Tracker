@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.9] — 2026-08-24 · Smart Financial Insights & Scheduled Push Notifications
+
+### Added
+- **Yesterday's Expenditure Insight (`signalYesterdaySpend`)**: Daily 8:00 AM briefing detailing total yesterday spend, top category breakdown, zero-spend celebrations, and high spending alerts.
+- **Weekend Spending Wrap & Bias (`signalWeekendBias`)**: Monday 8:30 AM recap summarizing weekend outflows and identifying Friday–Sunday discretionary spend surges.
+- **Frequent Merchant Habit Tracker (`signalFrequentMerchantWeekly` & `signalFrequentMerchantDaily`)**: Mid-week and weekly tracking of repeated payments to favorite Till/Paybill merchants with spend totals.
+- **M-PESA Tariff Toll & Saver Tips (`signalCarrierFeesToll`)**: Friday evening check summarizing monthly carrier fee totals and advising on free Till/Buy Goods alternatives.
+- **Savings Momentum & Budget Safe Pace (`signalSavingsGrowth` & `signalBudgetSafePace`)**: Recognizes positive net savings into M-Shwari and celebrates staying comfortably under budget.
+- **Month-End Survival Gauge (`signalMonthEndGauge`)**: Displays daily spending allowance during the final days of the month to finish safely under budget.
+- **Scheduled Smart Notification Cadence**: Background WorkManager cadence intelligently alternating between 8:00 AM Morning Pulse and 7:30 PM Evening Insights.
+- **Interactive Insights Cards**: Tappable insight cards with deep-link navigation to transactions, analytics, budgets, and bills.
+
+---
+
 ## [1.5.8] — 2026-08-18 · Pochi la Biashara Income & Display Fixes
 
 ### Fixed

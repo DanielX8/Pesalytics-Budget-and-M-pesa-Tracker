@@ -34,13 +34,14 @@ class PesalyticsApplication : Application() {
     private fun scheduleWorkers() {
         val wm = WorkManager.getInstance(this)
 
-        // Daily at 7:30 PM — spend summary + bill alerts + budget check.
+        // Daily spend & smart insights briefing (alternates between 8:00 AM morning and 7:30 PM evening).
         // Uses a OneTimeWorkRequest to avoid DST drift (re-schedules itself in doWork).
+        val nextSlotDelay = minOf(delayUntilTime(8, 0), delayUntilTime(19, 30))
         wm.enqueueUniqueWork(
             "daily_spend_notification",
             androidx.work.ExistingWorkPolicy.KEEP,
             androidx.work.OneTimeWorkRequestBuilder<DailySpendWorker>()
-                .setInitialDelay(delayUntilTime(19, 30), TimeUnit.MILLISECONDS)
+                .setInitialDelay(nextSlotDelay, TimeUnit.MILLISECONDS)
                 .addTag("daily_spend_notification")
                 .build()
         )

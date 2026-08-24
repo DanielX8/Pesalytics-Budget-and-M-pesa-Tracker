@@ -46,19 +46,26 @@ object InsightEngine {
     ): List<Insight> {
         val signals = mutableListOf<ScoredInsight>()
         
+        signalYesterdaySpend(transactions, monthlyExpense, now)?.let { signals.add(it) }
         signalBudgetBurnRate(currentBudgetLimit, monthlyExpense, now)?.let { signals.add(it) }
         signalBillDueAlert(bills, now)?.let { signals.add(it) }
         signalTodaySpend(transactions, monthlyExpense, now)?.let { signals.add(it) }
         signalIncomeSaveNudge(transactions, now)?.let { signals.add(it) }
         signalUnusualSingleTransaction(transactions, monthlyExpense, now)?.let { signals.add(it) }
         signalSpendingSpike(transactions, now)?.let { signals.add(it) }
+        signalWeekendBias(transactions, now)?.let { signals.add(it) }
+        signalFrequentMerchantWeekly(transactions, now)?.let { signals.add(it) }
+        signalCarrierFeesToll(transactions, now)?.let { signals.add(it) }
+        signalSavingsGrowth(transactions, now)?.let { signals.add(it) }
+        signalBudgetSafePace(currentBudgetLimit, monthlyExpense, now)?.let { signals.add(it) }
+        signalMonthEndGauge(currentBudgetLimit, monthlyExpense, now)?.let { signals.add(it) }
         signalFulizaRisk(fulizaOutstanding, fulizaDueDate, now)?.let { signals.add(it) }
         signalSavingsWin(transactions, now)?.let { signals.add(it) }
         signalMonthEndWarning(transactions, currentBudgetLimit, now)?.let { signals.add(it) }
         signalCategoryUncertainty(transactions, now)?.let { signals.add(it) }
         signalMultiPeriodComparison(transactions, now)?.let { signals.add(it) }
 
-        return signals.sortedByDescending { it.score }.take(3).map { it.insight }
+        return signals.sortedByDescending { it.score }.take(5).map { it.insight }
     }
 
     private fun getCal(timeMs: Long): Calendar = Calendar.getInstance().apply { timeInMillis = timeMs }
@@ -505,4 +512,311 @@ object InsightEngine {
             topCategoryPrevAmount = if (topCat != null) prevByCat[topCat] ?: 0.0 else 0.0
         )
     }
+
+    // 12. Yesterday's Spend
+    fun signalYesterdaySpend(transactions: List<Transaction>, monthlyExpense: Double, now: Long): ScoredInsight? {
+        val todayStart = getStartOfDay(now)
+        val yesterdayStart = todayStart - 24L * 60 * 60 * 1000L
+        val yestTxns = transactions.filter { it.timestamp in yesterdayStart until todayStart && isExpense(it) }
+        val yestSpend = yestTxns.sumOf { it.amount }
+
+        val cal = getCal(now)
+        val dayOfMonth = Math.max(1, cal.get(Calendar.DAY_OF_MONTH))
+        val dailyAvg = if (monthlyExpense > 0 && dayOfMonth > 1) monthlyExpense / dayOfMonth else 1200.0
+
+        if (yestTxns.isEmpty() || yestSpend == 0.0) {
+            // Check if user has active transaction history in the past 30 days
+            val thirtyDaysAgo = now - 30L * 24 * 60 * 60 * 1000L
+            val hasRecentHistory = transactions.any { it.timestamp >= thirtyDaysAgo }
+            if (hasRecentHistory) {
+                return ScoredInsight(
+                    Insight(
+                        title = "Zero-Spend Day 🎉",
+                        description = "You spent KES 0 yesterday — excellent financial discipline keeping expenses down!",
+                        type = InsightType.SUCCESS,
+                        actionRoute = "all_transactions"
+                    ), 78
+                )
+            }
+            return null
+        }
+
+        val topCategory = yestTxns
+            .filter { !it.category.isNullOrBlank() && it.category != "Other" }
+            .groupBy { it.category!! }
+            .maxByOrNull { it.value.sumOf { t -> t.amount } }
+
+        val topCatStr = if (topCategory != null) " (Top: ${topCategory.key})" else ""
+        val txCountStr = "${yestTxns.size} transaction${if (yestTxns.size > 1) "s" else ""}"
+
+        if (yestSpend > dailyAvg * 2.2 && yestSpend >= 2000.0) {
+            val mult = String.format(Locale.US, "%.1f", yestSpend / dailyAvg)
+            return ScoredInsight(
+                Insight(
+                    title = "High Yesterday Spend",
+                    description = "You spent KES ${formatAmount(yestSpend)} yesterday${topCatStr} — ${mult}x your daily average.",
+                    type = InsightType.WARNING,
+                    actionRoute = "all_transactions"
+                ), 88
+            )
+        }
+
+        return ScoredInsight(
+            Insight(
+                title = "Yesterday's Spend",
+                description = "You spent KES ${formatAmount(yestSpend)} yesterday across $txCountStr$topCatStr.",
+                type = InsightType.INFO,
+                actionRoute = "all_transactions"
+            ), 76
+        )
+    }
+
+    // 13. Weekend Bias & Weekend Wrap
+    fun signalWeekendBias(transactions: List<Transaction>, now: Long): ScoredInsight? {
+        val cal = getCal(now)
+        val dow = cal.get(Calendar.DAY_OF_WEEK) // Sunday=1, Monday=2, ... Saturday=7
+        val isMonday = (dow == Calendar.MONDAY)
+
+        val todayStart = getStartOfDay(now)
+
+        if (isMonday) {
+            // Sunday (yesterday) + Saturday (2 days ago) + Friday (3 days ago)
+            val fridayStart = todayStart - (3L * 24 * 60 * 60 * 1000L)
+            val weekendTxns = transactions.filter { it.timestamp in fridayStart until todayStart && isExpense(it) }
+            val weekendSpend = weekendTxns.sumOf { it.amount }
+            if (weekendSpend >= 1000.0) {
+                return ScoredInsight(
+                    Insight(
+                        title = "Weekend Wrap-Up",
+                        description = "You spent KES ${formatAmount(weekendSpend)} over the weekend across ${weekendTxns.size} transactions.",
+                        type = InsightType.INFO,
+                        actionRoute = "analytics"
+                    ), 82
+                )
+            }
+        }
+
+        // Rolling 30-day weekend vs weekday ratio
+        val thirtyDaysAgo = now - 30L * 24 * 60 * 60 * 1000L
+        val recentTxns = transactions.filter { it.timestamp >= thirtyDaysAgo && isExpense(it) }
+        if (recentTxns.size < 8) return null
+
+        var weekendSum = 0.0
+        var totalSum = 0.0
+        for (tx in recentTxns) {
+            val tCal = getCal(tx.timestamp)
+            val day = tCal.get(Calendar.DAY_OF_WEEK)
+            totalSum += tx.amount
+            if (day == Calendar.FRIDAY || day == Calendar.SATURDAY || day == Calendar.SUNDAY) {
+                weekendSum += tx.amount
+            }
+        }
+
+        if (totalSum >= 5000.0) {
+            val weekendRatio = weekendSum / totalSum
+            if (weekendRatio >= 0.58) {
+                val pct = (weekendRatio * 100).toInt()
+                return ScoredInsight(
+                    Insight(
+                        title = "Weekend Pattern",
+                        description = "$pct% of your spending occurs on weekends (Fri-Sun). Plan ahead for weekend entertainment & dining.",
+                        type = InsightType.INFO,
+                        actionRoute = "analytics"
+                    ), 66
+                )
+            }
+        }
+        return null
+    }
+
+    // 14. Frequent Merchant Weekly (Top merchant in past 7 days)
+    fun signalFrequentMerchantWeekly(transactions: List<Transaction>, now: Long): ScoredInsight? {
+        val sevenDaysAgo = now - 7L * 24 * 60 * 60 * 1000L
+        val weekTxns = transactions.filter { 
+            it.timestamp >= sevenDaysAgo && 
+            isExpense(it) && 
+            !it.payee.isNullOrBlank() &&
+            !it.payee.equals("M-PESA", ignoreCase = true) &&
+            !it.payee.equals("M-Shwari", ignoreCase = true) &&
+            !it.payee.equals("Fuliza", ignoreCase = true) &&
+            !it.payee.equals("Airtime", ignoreCase = true)
+        }
+
+        if (weekTxns.isEmpty()) return null
+
+        val merchantGroups = weekTxns.groupBy { it.payee.trim() }
+        val topMerchant = merchantGroups.maxByOrNull { it.value.size } ?: return null
+
+        if (topMerchant.value.size >= 3) {
+            val totalSpent = topMerchant.value.sumOf { it.amount }
+            val count = topMerchant.value.size
+            return ScoredInsight(
+                Insight(
+                    title = "Frequent Merchant",
+                    description = "You paid ${topMerchant.key} $count times this week totaling KES ${formatAmount(totalSpent)}.",
+                    type = InsightType.INFO,
+                    actionRoute = "payee_history"
+                ), 68
+            )
+        }
+        return null
+    }
+
+    // 15. Frequent Merchant Daily (Multiple visits to same payee today)
+    fun signalFrequentMerchantDaily(transactions: List<Transaction>, now: Long): ScoredInsight? {
+        val todayStart = getStartOfDay(now)
+        val todayTxns = transactions.filter {
+            it.timestamp >= todayStart && 
+            isExpense(it) && 
+            !it.payee.isNullOrBlank() &&
+            !it.payee.equals("M-PESA", ignoreCase = true) &&
+            !it.payee.equals("M-Shwari", ignoreCase = true)
+        }
+
+        val topToday = todayTxns.groupBy { it.payee.trim() }.maxByOrNull { it.value.size } ?: return null
+        if (topToday.value.size >= 2) {
+            val total = topToday.value.sumOf { it.amount }
+            return ScoredInsight(
+                Insight(
+                    title = "Multiple Visits Today",
+                    description = "You paid ${topToday.key} ${topToday.value.size} times today (KES ${formatAmount(total)}).",
+                    type = InsightType.INFO,
+                    actionRoute = "payee_history"
+                ), 52
+            )
+        }
+        return null
+    }
+
+    // 16. M-PESA Carrier Fees Toll
+    fun signalCarrierFeesToll(transactions: List<Transaction>, now: Long): ScoredInsight? {
+        val monthStart = getStartOfMonth(now)
+        val monthlyFees = transactions.filter { it.timestamp >= monthStart }.sumOf { it.fee }
+        if (monthlyFees >= 200.0) {
+            return ScoredInsight(
+                Insight(
+                    title = "M-PESA Tariff Check",
+                    description = "You've paid KES ${formatAmount(monthlyFees)} in carrier fees this month. Tip: Pay via Buy Goods / Till (0 charges) to save.",
+                    type = InsightType.INFO,
+                    actionRoute = "analytics"
+                ), 64
+            )
+        }
+        return null
+    }
+
+    // 17. Savings Growth & Momentum
+    fun signalSavingsGrowth(transactions: List<Transaction>, now: Long): ScoredInsight? {
+        val currentMonthStart = getStartOfMonth(now)
+        val prevMonthCal = getCal(currentMonthStart).apply { add(Calendar.MONTH, -1) }
+        val prevMonthStart = prevMonthCal.timeInMillis
+
+        val currSavings = transactions.filter { 
+            it.timestamp >= currentMonthStart && 
+            (it.type == TransactionType.MSHWARI_TRANSFER || it.category.equals("Savings", ignoreCase = true))
+        }.sumOf { it.amount }
+
+        val prevSavings = transactions.filter { 
+            it.timestamp in prevMonthStart until currentMonthStart && 
+            (it.type == TransactionType.MSHWARI_TRANSFER || it.category.equals("Savings", ignoreCase = true))
+        }.sumOf { it.amount }
+
+        if (currSavings >= 2000.0 && currSavings > prevSavings && prevSavings > 0) {
+            val growthPct = (((currSavings - prevSavings) / prevSavings) * 100).toInt()
+            return ScoredInsight(
+                Insight(
+                    title = "Savings Growth 🎉",
+                    description = "You've saved KES ${formatAmount(currSavings)} this month — up $growthPct% compared to last month!",
+                    type = InsightType.SUCCESS,
+                    actionRoute = "all_transactions"
+                ), 84
+            )
+        }
+        return null
+    }
+
+    // 18. Budget Safe Pace
+    fun signalBudgetSafePace(limit: Double, expense: Double, now: Long): ScoredInsight? {
+        if (limit <= 0) return null
+        val cal = getCal(now)
+        val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
+        if (dayOfMonth < 20) return null
+        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val daysLeft = daysInMonth - dayOfMonth + 1
+
+        val pct = expense / limit
+        if (pct <= 0.60 && daysLeft in 1..11) {
+            val projectedSaved = limit - expense
+            return ScoredInsight(
+                Insight(
+                    title = "Budget on Track 🎯",
+                    description = "$daysLeft days left and you've used only ${(pct * 100).toInt()}% of your budget. You're set to save KES ${formatAmount(projectedSaved)}!",
+                    type = InsightType.SUCCESS,
+                    actionRoute = "budget_planner"
+                ), 82
+            )
+        }
+        return null
+    }
+
+    // 19. Month-End Survival Gauge
+    fun signalMonthEndGauge(limit: Double, expense: Double, now: Long): ScoredInsight? {
+        if (limit <= 0) return null
+        val cal = getCal(now)
+        val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
+        if (dayOfMonth < 25) return null
+        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val daysLeft = daysInMonth - dayOfMonth + 1
+        if (daysLeft <= 0) return null
+
+        val remaining = limit - expense
+        if (remaining > 0) {
+            val dailyAllowance = remaining / daysLeft
+            return ScoredInsight(
+                Insight(
+                    title = "Month-End Daily Budget",
+                    description = "$daysLeft days left. Your safe daily spending allowance is KES ${formatAmount(dailyAllowance)} to stay within budget.",
+                    type = InsightType.INFO,
+                    actionRoute = "budget_planner"
+                ), 74
+            )
+        }
+        return null
+    }
+
+    // ── Dedicated Helper Extractors for Notification Workers ──────────────────
+
+    fun getYesterdaySpendInsight(transactions: List<Transaction>, monthlyExpense: Double, now: Long = System.currentTimeMillis()): Insight? =
+        signalYesterdaySpend(transactions, monthlyExpense, now)?.insight
+
+    fun getWeekendWrapInsight(transactions: List<Transaction>, now: Long = System.currentTimeMillis()): Insight? =
+        signalWeekendBias(transactions, now)?.insight
+
+    fun getFrequentMerchantWeeklyInsight(transactions: List<Transaction>, now: Long = System.currentTimeMillis()): Insight? =
+        signalFrequentMerchantWeekly(transactions, now)?.insight
+
+    fun getWeeklyBudgetOutlookInsight(budgets: List<Budget>, monthlyExpense: Double, now: Long = System.currentTimeMillis()): Insight? {
+        val globalBudget = budgets.find { it.category == "Overall" }
+        val limit = globalBudget?.limitAmount ?: 0.0
+        if (limit <= 0.0) return null
+
+        val cal = getCal(now)
+        val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
+        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val daysLeft = daysInMonth - dayOfMonth + 1
+        val remaining = limit - monthlyExpense
+        if (remaining > 0 && daysLeft > 0) {
+            val weeklyPace = (remaining / daysLeft) * 7.coerceAtMost(daysLeft)
+            return Insight(
+                title = "Weekly Budget Outlook",
+                description = "You have KES ${formatAmount(remaining)} remaining in your budget for the next $daysLeft days (~KES ${formatAmount(weeklyPace)} for this week).",
+                type = InsightType.INFO,
+                actionRoute = "budget_planner"
+            )
+        }
+        return null
+    }
+
+    fun getMpesaTariffSaverInsight(transactions: List<Transaction>, now: Long = System.currentTimeMillis()): Insight? =
+        signalCarrierFeesToll(transactions, now)?.insight
 }

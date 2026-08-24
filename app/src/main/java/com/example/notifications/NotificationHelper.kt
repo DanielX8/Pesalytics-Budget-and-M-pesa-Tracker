@@ -82,10 +82,34 @@ class NotificationHelper(private val context: Context) {
         showNotification(REPORTS_CHANNEL_ID, 1004, title, message, "all_transactions")
     }
 
-    /** Weekly spending wrap-up */
+    /** Weekly spending wrap-up / Weekend Wrap */
     fun showWeeklyReport(title: String, message: String) {
         if (!isPrefEnabled("weekly_report")) return
-        showNotification(REPORTS_CHANNEL_ID, 2002, title, message, "all_transactions")
+        showNotification(REPORTS_CHANNEL_ID, 2002, title, message, "analytics")
+    }
+
+    /** Weekend Wrap-up notification (Monday morning) */
+    fun showWeekendWrap(title: String, message: String) {
+        if (!isPrefEnabled("weekly_report")) return
+        showNotification(REPORTS_CHANNEL_ID, 2004, title, message, "analytics")
+    }
+
+    /** Frequent Merchant Tracker notification */
+    fun showFrequentMerchantAlert(title: String, message: String) {
+        if (!isPrefEnabled("insight_alerts")) return
+        showNotification(REPORTS_CHANNEL_ID, 2005, title, message, "payee_history")
+    }
+
+    /** M-PESA Tariff Saver Tip */
+    fun showTariffSaverTip(title: String, message: String) {
+        if (!isPrefEnabled("insight_alerts")) return
+        showNotification(REPORTS_CHANNEL_ID, 2006, title, message, "analytics")
+    }
+
+    /** Weekly Budget Outlook reminder (Sunday evening) */
+    fun showWeeklyBudgetOutlook(title: String, message: String) {
+        if (!isPrefEnabled("budget_alerts")) return
+        showNotification(ALERTS_CHANNEL_ID, 2007, title, message, "budget_planner")
     }
 
     /** Monthly financial summary */

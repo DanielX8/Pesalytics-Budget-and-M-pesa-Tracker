@@ -17,6 +17,10 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
         val repository = (applicationContext as PesalyticsApplication).repository
         val notif = NotificationHelper(applicationContext)
         val prefs = applicationContext.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val cal = Calendar.getInstance().apply { timeInMillis = now }
+        val currentHour = cal.get(Calendar.HOUR_OF_DAY)
+        val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK) // 1=Sun, 2=Mon, 3=Tue, 4=Wed, 5=Thu, 6=Fri, 7=Sat
 
         val monthStart = Calendar.getInstance().apply {
             set(Calendar.DAY_OF_MONTH, 1)
@@ -62,23 +66,74 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
         }
         val fulizaDueDate = latestUsageTxn?.fulizaDueDate ?: ""
 
-        val insights = com.pesalytics.patterns.InsightEngine.generateInsights(
-            transactions = transactions,
-            bills = bills,
-            budgets = budgets,
-            currentBudgetLimit = globalBudget?.limitAmount ?: 0.0,
-            monthlyExpense = monthlyExpense,
-            fulizaOutstanding = fulizaOutstanding,
-            fulizaDueDate = fulizaDueDate
-        )
+        val isMorningRun = currentHour < 12
 
-        insights.firstOrNull()?.let { topInsight ->
-            notif.showInsightAlert(topInsight.title, topInsight.description, topInsight.actionRoute)
-            appendInAppNotification(prefs, "${topInsight.title}: ${topInsight.description}")
+        if (isMorningRun) {
+            // ── 🌅 Morning Briefing (8:00 AM - 8:30 AM) ───────────────────────
+            if (dayOfWeek == Calendar.MONDAY) {
+                // Monday Morning: Check Weekend Wrap first
+                val weekendInsight = com.pesalytics.patterns.InsightEngine.getWeekendWrapInsight(transactions, now)
+                if (weekendInsight != null) {
+                    notif.showWeekendWrap(weekendInsight.title, weekendInsight.description)
+                    appendInAppNotification(prefs, "${weekendInsight.title}: ${weekendInsight.description}")
+                } else {
+                    // Fallback to yesterday spend
+                    val yestInsight = com.pesalytics.patterns.InsightEngine.getYesterdaySpendInsight(transactions, monthlyExpense, now)
+                    yestInsight?.let {
+                        notif.showDailySpendSummary(it.title, it.description)
+                        appendInAppNotification(prefs, "${it.title}: ${it.description}")
+                    }
+                }
+            } else {
+                // Regular Morning: Yesterday's Spend / Zero Spend Pulse
+                val yestInsight = com.pesalytics.patterns.InsightEngine.getYesterdaySpendInsight(transactions, monthlyExpense, now)
+                if (yestInsight != null) {
+                    notif.showDailySpendSummary(yestInsight.title, yestInsight.description)
+                    appendInAppNotification(prefs, "${yestInsight.title}: ${yestInsight.description}")
+                }
+            }
+        } else {
+            // ── 🌆 Evening Pulse (7:30 PM) ──────────────────────────────────
+            val contextualInsight = when {
+                // Sunday Evening: Weekly Budget Outlook
+                dayOfWeek == Calendar.SUNDAY -> {
+                    com.pesalytics.patterns.InsightEngine.getWeeklyBudgetOutlookInsight(budgets, monthlyExpense, now)
+                }
+                // Friday Evening: M-PESA Tariff Saver Tip
+                dayOfWeek == Calendar.FRIDAY -> {
+                    com.pesalytics.patterns.InsightEngine.getMpesaTariffSaverInsight(transactions, now)
+                }
+                // Wednesday or Saturday: Frequent Merchant Tracker
+                dayOfWeek == Calendar.WEDNESDAY || dayOfWeek == Calendar.SATURDAY -> {
+                    com.pesalytics.patterns.InsightEngine.getFrequentMerchantWeeklyInsight(transactions, now)
+                }
+                else -> null
+            }
+
+            if (contextualInsight != null) {
+                notif.showInsightAlert(contextualInsight.title, contextualInsight.description, contextualInsight.actionRoute)
+                appendInAppNotification(prefs, "${contextualInsight.title}: ${contextualInsight.description}")
+            } else {
+                // General Scored Top Insight
+                val insights = com.pesalytics.patterns.InsightEngine.generateInsights(
+                    transactions = transactions,
+                    bills = bills,
+                    budgets = budgets,
+                    currentBudgetLimit = globalBudget?.limitAmount ?: 0.0,
+                    monthlyExpense = monthlyExpense,
+                    fulizaOutstanding = fulizaOutstanding,
+                    fulizaDueDate = fulizaDueDate,
+                    now = now
+                )
+
+                insights.firstOrNull()?.let { topInsight ->
+                    notif.showInsightAlert(topInsight.title, topInsight.description, topInsight.actionRoute)
+                    appendInAppNotification(prefs, "${topInsight.title}: ${topInsight.description}")
+                }
+            }
         }
 
         // ── Subscription / trial expiry warning ─────────────────────────────
-        val now = System.currentTimeMillis()
         val subPrefs = applicationContext.getSharedPreferences("pesa_subscription", android.content.Context.MODE_PRIVATE)
         val tierName = subPrefs.getString("tier", "FREE") ?: "FREE"
         val trialStartMs = subPrefs.getLong("trial_start_ms", 0L)
@@ -95,8 +150,11 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
             }
         }
 
-        // Reschedule for next day 7:30 PM
-        val nextDelay = delayUntilTime(19, 30)
+        // ── Reschedule for next slot (Alternates between 8:00 AM and 7:30 PM) ──
+        val nextTargetHour = if (isMorningRun) 19 else 8
+        val nextTargetMinute = if (isMorningRun) 30 else 0
+        val nextDelay = delayUntilTime(nextTargetHour, nextTargetMinute)
+
         val workRequest = androidx.work.OneTimeWorkRequestBuilder<DailySpendWorker>()
             .setInitialDelay(nextDelay, TimeUnit.MILLISECONDS)
             .addTag("daily_spend_notification")
