@@ -5,6 +5,7 @@ import com.pesalytics.model.Budget
 import com.pesalytics.model.Transaction
 import com.pesalytics.model.TransactionType
 import java.util.Calendar
+import java.util.Locale
 
 data class Insight(
     val title: String,
