@@ -37,22 +37,12 @@ fun NotificationsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Notifications") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (notifications.isNotEmpty()) {
-                        TextButton(onClick = { viewModel.markAllNotificationsAsRead() }) {
-                            Text("Mark all read")
-                        }
-                    }
-                }
+            com.pesalytics.ui.components.PesalyticsTopBar(
+                viewModel = viewModel,
+                onNavigateBack = { navController.navigateUp() }
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (notifications.isEmpty()) {
             Box(
@@ -89,6 +79,23 @@ fun NotificationsScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
+                item {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column {
+                                Text("Notifications", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Stay updated with your latest alerts", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (notifications.isNotEmpty()) {
+                                TextButton(onClick = { viewModel.markAllNotificationsAsRead() }) {
+                                    Text("Mark all read", color = com.pesalytics.ui.theme.AccentGreenDark, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                } {
                 items(notifications, key = { it.id }) { notification ->
                     NotificationItem(
                         notification = notification,
@@ -207,6 +214,7 @@ fun NotificationItem(
         }
     }
 }
+
 
 
 
