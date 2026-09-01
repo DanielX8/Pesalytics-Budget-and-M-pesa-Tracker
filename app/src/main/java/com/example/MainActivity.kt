@@ -565,6 +565,13 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                         onNavigateToSubscription = { navController.navigate(Subscription) }
                     )
                 }
+                composable<Notifications> {
+                    com.pesalytics.ui.screens.NotificationsScreen(
+                        navController = navController,
+                        viewModel = viewModel
+                    )
+                }
+                
                 composable<Faq> {
                     com.pesalytics.ui.screens.FaqScreen(
                         onNavigateBack = { navController.popBackStack() }
@@ -574,3 +581,5 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
         }
     }
 }
+
+

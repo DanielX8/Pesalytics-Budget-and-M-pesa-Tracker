@@ -43,3 +43,7 @@ object NeedsWants
 
 @Serializable
 data class PayeeHistory(val payee: String)
+
+@Serializable
+object Notifications
+

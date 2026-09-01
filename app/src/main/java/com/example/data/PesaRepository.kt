@@ -5,6 +5,7 @@ import com.pesalytics.model.Budget
 import com.pesalytics.model.CustomRule
 import com.pesalytics.model.Transaction
 import com.pesalytics.model.Goal
+import com.pesalytics.model.AppNotificationEntity
 import kotlinx.coroutines.flow.Flow
 
 import androidx.room.withTransaction
@@ -21,6 +22,8 @@ class PesaRepository(
     val allBills: Flow<List<Bill>> = billDao.getAllBills()
     val allCustomRules: Flow<List<CustomRule>> = customRuleDao.getAllRules()
     val allGoals: Flow<List<Goal>> = goalDao.getAllGoals()
+    val allNotifications: Flow<List<AppNotificationEntity>> = db.notificationDao().getAllNotifications()
+    val unreadNotificationsCount: Flow<Int> = db.notificationDao().getUnreadCount()
 
     fun getMonthlyIncome(startOfMonth: Long, endOfMonth: Long) = transactionDao.getMonthlyIncome(startOfMonth, endOfMonth)
     fun getMonthlyExpense(startOfMonth: Long, endOfMonth: Long) = transactionDao.getMonthlyExpense(startOfMonth, endOfMonth)
@@ -144,7 +147,22 @@ class PesaRepository(
     suspend fun getBillsOnce(): List<Bill> = billDao.getBillsOnce()
     suspend fun getBudgetsOnce(): List<Budget> = budgetDao.getBudgetsOnce()
     suspend fun getGoalsOnce(): List<Goal> = goalDao.getGoalsOnce()
-    suspend fun getGoalTransactionsOnce(): List<com.pesalytics.model.GoalTransaction> = goalDao.getGoalTransactionsOnce()
+    suspend fun getGoalTransactionsOnce(): List<com.pesalytics.model.GoalTransaction> {
+        return goalDao.getGoalTransactionsOnce()
+    }
+
+    // ── Notifications ──────────────────────────────────────────────────────────
+    suspend fun markNotificationAsRead(id: Long) {
+        db.notificationDao().markAsRead(id)
+    }
+
+    suspend fun markAllNotificationsAsRead() {
+        db.notificationDao().markAllAsRead()
+    }
+
+    suspend fun deleteNotification(id: Long) {
+        db.notificationDao().deleteNotification(id)
+    }
 
     suspend fun restoreBackup(schema: com.pesalytics.utils.BackupSchema): RestoreResult {
         db.withTransaction {

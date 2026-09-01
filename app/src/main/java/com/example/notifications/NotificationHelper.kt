@@ -8,6 +8,12 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.pesalytics.data.AppDatabase
+import com.pesalytics.model.AppNotificationEntity
+import com.pesalytics.model.NotificationType
 import com.pesalytics.MainActivity
 import com.pesalytics.R
 
@@ -55,19 +61,19 @@ class NotificationHelper(private val context: Context) {
     /** Budget threshold crossed (80 % / 100 %) */
     fun showBudgetAlert(title: String, message: String) {
         if (!isPrefEnabled("budget_alerts")) return
-        showNotification(ALERTS_CHANNEL_ID, 1001, title, message, "budget_planner")
+        showNotification(ALERTS_CHANNEL_ID, 1001, title, message, "budget_planner", NotificationType.BUDGET_WARNING)
     }
 
     /** Top prioritized smart insight */
     fun showInsightAlert(title: String, message: String, route: String?) {
         if (!isPrefEnabled("insight_alerts")) return
-        showNotification(ALERTS_CHANNEL_ID, 1006, title, message, route ?: "")
+        showNotification(ALERTS_CHANNEL_ID, 1006, title, message, route ?: "", NotificationType.TARIFF_ALERT)
     }
 
     /** Bill due within 3 days */
     fun showBillAlert(title: String, message: String, notifId: Int = 1002) {
         if (!isPrefEnabled("bill_alerts")) return
-        showNotification(ALERTS_CHANNEL_ID, notifId, title, message, "bills")
+        showNotification(ALERTS_CHANNEL_ID, notifId, title, message, "bills", NotificationType.SYSTEM)
     }
 
     /** Monthly goal contribution reminder */
@@ -130,7 +136,17 @@ class NotificationHelper(private val context: Context) {
         showNotification(ALERTS_CHANNEL_ID, 1005, "Premium Expiring Soon", message, "settings")
     }
 
-    private fun showNotification(channelId: String, id: Int, title: String, message: String, deepLinkTarget: String = "") {
+    private fun showNotification(channelId: String, id: Int, title: String, message: String, deepLinkTarget: String = "", notificationType: NotificationType = NotificationType.SYSTEM) {
+    CoroutineScope(Dispatchers.IO).launch {
+        AppDatabase.getDatabase(context).notificationDao().insertNotification(
+            AppNotificationEntity(
+                title = title,
+                message = message,
+                type = notificationType,
+                actionRoute = deepLinkTarget.takeIf { it.isNotEmpty() }
+            )
+        )
+    }
         if (!isMasterEnabled() || !areNotificationsPermitted()) return
         createNotificationChannels()
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -153,3 +169,4 @@ class NotificationHelper(private val context: Context) {
         (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(id, notification)
     }
 }
+

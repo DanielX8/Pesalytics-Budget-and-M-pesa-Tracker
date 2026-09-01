@@ -891,6 +891,20 @@ class PesaViewModel(
     // ── DB-backed state ──────────────────────────────────────────────────────
     val bills = repository.allBills.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val goals = repository.allGoals.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val notifications = repository.allNotifications.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val unreadNotificationsCount = repository.unreadNotificationsCount.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    fun markNotificationAsRead(id: Long) {
+        viewModelScope.launch(Dispatchers.IO) { repository.markNotificationAsRead(id) }
+    }
+
+    fun markAllNotificationsAsRead() {
+        viewModelScope.launch(Dispatchers.IO) { repository.markAllNotificationsAsRead() }
+    }
+
+    fun deleteNotification(id: Long) {
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteNotification(id) }
+    }
 
     // Bundles the month window + aggregates from the DAO so the uiState combine has no
     // side-channel reads and always uses the correct upper bound for monthly queries.
@@ -1153,8 +1167,25 @@ class PesaViewModel(
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val threeDaysMs = 3L * 24 * 60 * 60 * 1000
-            val dueSoon = repository.allBills.first()
-                .filter { !it.isPaid && it.nextDueDate in now..(now + threeDaysMs) }
+            
+            val allBills = repository.allBills.first()
+            
+            // Auto-rollover: if a bill was paid, but the next due date is approaching or passed, reset isPaid
+            val billsToReset = allBills.filter { 
+                it.isPaid && it.cycle != com.example.model.BillCycle.NONE && now >= (it.nextDueDate - threeDaysMs) 
+            }
+            billsToReset.forEach { bill ->
+                repository.updateBill(bill.copy(isPaid = false))
+            }
+            
+            // Check for upcoming bills (simulate the DB update by updating in memory for the next check)
+            val updatedBills = allBills.map { bill ->
+                if (billsToReset.any { it.id == bill.id }) bill.copy(isPaid = false) else bill
+            }
+
+            val dueSoon = updatedBills
+                .filter { !it.isPaid && !it.isPaused && it.nextDueDate in now..(now + threeDaysMs) }
+            
             dueSoon.forEach { bill ->
                 val daysUntil = ((bill.nextDueDate - now) / (1000 * 60 * 60 * 24)).toInt()
                 val timeLabel = when (daysUntil) {

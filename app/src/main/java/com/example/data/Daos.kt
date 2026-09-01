@@ -10,6 +10,7 @@ import com.pesalytics.model.Bill
 import com.pesalytics.model.Budget
 import com.pesalytics.model.CustomRule
 import com.pesalytics.model.Transaction
+import com.pesalytics.model.AppNotificationEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -174,4 +175,28 @@ interface GoalDao {
 
     @Query("DELETE FROM goal_transactions WHERE id = :transactionId")
     suspend fun deleteGoalTransaction(transactionId: Int)
+}
+
+@Dao
+interface NotificationDao {
+    @Query("SELECT * FROM app_notifications ORDER BY timestamp DESC")
+    fun getAllNotifications(): Flow<List<AppNotificationEntity>>
+
+    @Query("SELECT COUNT(*) FROM app_notifications WHERE isRead = 0")
+    fun getUnreadCount(): Flow<Int>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNotification(notification: AppNotificationEntity)
+
+    @Query("UPDATE app_notifications SET isRead = 1 WHERE id = :id")
+    suspend fun markAsRead(id: Long)
+
+    @Query("UPDATE app_notifications SET isRead = 1")
+    suspend fun markAllAsRead()
+
+    @Query("DELETE FROM app_notifications WHERE id = :id")
+    suspend fun deleteNotification(id: Long)
+
+    @Query("DELETE FROM app_notifications")
+    suspend fun clearAll()
 }

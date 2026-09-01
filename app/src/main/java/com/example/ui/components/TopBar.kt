@@ -36,10 +36,10 @@ fun PesalyticsTopBar(
         )
     },
     onNavigateBack: (() -> Unit)? = null,
+    onNotificationClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
-    val notifications by viewModel.notifications.collectAsStateWithLifecycle()
-    var notificationsExpanded by remember { mutableStateOf(false) }
+    val unreadCount by viewModel.unreadNotificationsCount.collectAsStateWithLifecycle()
 
     CenterAlignedTopAppBar(
         title = titleContent,
@@ -59,35 +59,23 @@ fun PesalyticsTopBar(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { notificationsExpanded = true },
+                        .clickable { onNotificationClick?.invoke() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp), tint = AccentGreenDark)
-                    if (notifications.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp)
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(ExpenseRed)
-                        )
+                    if (unreadCount > 0) {
+                        Badge(
+                            modifier = Modifier.align(Alignment.TopEnd).padding(2.dp),
+                            containerColor = ExpenseRed
+                        ) {
+                            Text(unreadCount.toString())
+                        }
                     }
                 }
-                DropdownMenu(
-                    expanded = notificationsExpanded,
-                    onDismissRequest = { notificationsExpanded = false },
-                    modifier = Modifier.width(280.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 8.dp
-                ) {
-                    if (notifications.isEmpty()) {
-                        DropdownMenuItem(
-                            text = { Text("No new notifications", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                            onClick = { notificationsExpanded = false }
-                        )
-                    } else {
+            }
+        }
+    )
+} else {
                         notifications.forEach { notif ->
                             DropdownMenuItem(
                                 text = { Text(notif.message, style = MaterialTheme.typography.bodyMedium) },
@@ -107,3 +95,4 @@ fun PesalyticsTopBar(
         windowInsets = WindowInsets(0, 0, 0, 0)
     )
 }
+

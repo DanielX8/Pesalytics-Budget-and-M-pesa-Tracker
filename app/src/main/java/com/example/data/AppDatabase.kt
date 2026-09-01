@@ -11,6 +11,7 @@ import com.pesalytics.model.Budget
 import com.pesalytics.model.CustomRule
 import com.pesalytics.model.Transaction
 import com.pesalytics.model.Goal
+import com.pesalytics.model.AppNotificationEntity
 
 val MIGRATION_8_9 = object : Migration(8, 9) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -89,10 +90,19 @@ val MIGRATION_15_16 = object : Migration(15, 16) {
         val currentTime = System.currentTimeMillis()
         database.execSQL("ALTER TABLE goals ADD COLUMN createdAt INTEGER NOT NULL DEFAULT $currentTime")
     }
+
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            "CREATE TABLE IF NOT EXISTS `app_notifications` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `message` TEXT NOT NULL, `type` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `isRead` INTEGER NOT NULL, `actionRoute` TEXT)"
+        )
+    }
+}
 }
 
-@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class, com.pesalytics.model.GoalTransaction::class], version = 16, exportSchema = true)
+@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class, com.pesalytics.model.GoalTransaction::class, AppNotificationEntity::class], version = 17, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun notificationDao(): NotificationDao
     abstract fun transactionDao(): TransactionDao
     abstract fun billDao(): BillDao
     abstract fun budgetDao(): BudgetDao
@@ -109,10 +119,14 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "pesalytics_database"
-                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16).build()
+                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17).build()
                 INSTANCE = instance
                 instance
             }
         }
     }
 }
+
+
+
+

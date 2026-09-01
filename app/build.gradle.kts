@@ -18,8 +18,8 @@ android {
     applicationId = "com.pesalytics"
     minSdk = 23
     targetSdk = 36
-    versionCode = 22
-    versionName = "1.5.9"
+    versionCode = 23
+    versionName = "1.6.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -144,3 +144,4 @@ tasks.register<Copy>("copyChangelog") {
 tasks.named("preBuild") {
     dependsOn("copyChangelog")
 }
+
