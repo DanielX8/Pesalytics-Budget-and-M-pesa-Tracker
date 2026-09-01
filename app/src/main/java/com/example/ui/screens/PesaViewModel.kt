@@ -143,8 +143,7 @@ class PesaViewModel(
     private var balanceHideJob: Job? = null
     val themeMode = MutableStateFlow(ThemeMode.SYSTEM)
     val revealOrigin = MutableStateFlow(Offset.Zero)
-    private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
-    val notifications = _notifications.asStateFlow()
+    
 
     val userName = MutableStateFlow("User")
     val userAvatar = MutableStateFlow(0)
@@ -255,16 +254,7 @@ class PesaViewModel(
     private fun drainWorkerNotifications(prefs: android.content.SharedPreferences) {
         val raw = prefs.getString("pending_in_app_notifs", "") ?: ""
         if (raw.isBlank()) return
-        val existing = _notifications.value.map { it.message }.toSet()
-        val incoming = raw.split("\n")
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .filter { it !in existing }
-            .map { AppNotification(message = it) }
-        if (incoming.isNotEmpty()) {
-            _notifications.value = incoming + _notifications.value
-        }
+        // drained
         prefs.edit().remove("pending_in_app_notifs").apply()
     }
 
@@ -371,18 +361,21 @@ class PesaViewModel(
     }
 
     // ── Notifications (in-app) ───────────────────────────────────────────────
-    fun addNotification(message: String) {
-        if (_notifications.value.any { it.message == message }) return
-        _notifications.value = listOf(AppNotification(message = message)) + _notifications.value
-    }
+    fun addNotification(message: String) { 
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { 
+            com.pesalytics.data.AppDatabase.getDatabase(getApplication()).notificationDao().insertNotification(
+                com.pesalytics.model.AppNotificationEntity(
+                    title = "Alert", 
+                    message = message, 
+                    type = com.pesalytics.model.NotificationType.SYSTEM
+                )
+            ) 
+        } 
+    } }
 
-    fun dismissNotification(id: String) {
-        _notifications.value = _notifications.value.filter { it.id != id }
-    }
+    
 
-    fun clearNotifications() {
-        _notifications.value = emptyList()
-    }
+    
 
     // ── Pattern refresh ──────────────────────────────────────────────────────
     fun refreshPatterns() {
@@ -536,7 +529,7 @@ class PesaViewModel(
                         }
                     }
 
-                    _notifications.value = listOf(AppNotification(message = "Synced ${transactionsList.size} new M-PESA records.")) + _notifications.value
+                    addNotification("Synced ${transactionsList.size} new M-PESA records.")
                     checkBudgetThresholds()
                     refreshPatterns()
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -550,7 +543,7 @@ class PesaViewModel(
 
             } catch (e: Exception) {
                 e.printStackTrace()
-                _notifications.value = listOf(AppNotification(message = "Failed to sync SMS.")) + _notifications.value
+                addNotification("Failed to sync SMS.")
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     android.widget.Toast.makeText(context, "Failed to sync messages", android.widget.Toast.LENGTH_SHORT).show()
                 }
@@ -891,7 +884,7 @@ class PesaViewModel(
     // ── DB-backed state ──────────────────────────────────────────────────────
     val bills = repository.allBills.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val goals = repository.allGoals.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    val notifications = repository.allNotifications.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val notifications: kotlinx.coroutines.flow.StateFlow<List<com.pesalytics.model.AppNotificationEntity>> = repository.allNotifications.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val unreadNotificationsCount = repository.unreadNotificationsCount.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     fun markNotificationAsRead(id: Long) {
@@ -1172,7 +1165,7 @@ class PesaViewModel(
             
             // Auto-rollover: if a bill was paid, but the next due date is approaching or passed, reset isPaid
             val billsToReset = allBills.filter { 
-                it.isPaid && it.cycle != com.example.model.BillCycle.NONE && now >= (it.nextDueDate - threeDaysMs) 
+                it.isPaid && it.cycle != com.pesalytics.model.BillCycle.NONE && now >= (it.nextDueDate - threeDaysMs) 
             }
             billsToReset.forEach { bill ->
                 repository.updateBill(bill.copy(isPaid = false))
@@ -1313,7 +1306,7 @@ class PesaViewModel(
     fun deleteAllData(context: android.content.Context) {
         viewModelScope.launch {
             repository.deleteAllData()
-            clearNotifications()
+            markAllNotificationsAsRead()
             needsWantsClassification.value = emptyMap()
             context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
                 .remove("nw_needs").remove("nw_wants")
@@ -1461,3 +1454,9 @@ class PesaViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+
+
+
+
+
+

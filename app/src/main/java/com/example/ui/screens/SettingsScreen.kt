@@ -74,8 +74,7 @@ fun SettingsScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    val notifications by viewModel.notifications.collectAsStateWithLifecycle()
-    var notificationsExpanded by remember { mutableStateOf(false) }
+    
 
     val masterNotifEnabled by viewModel.masterNotifEnabled.collectAsStateWithLifecycle()
     val billAlertsEnabled by viewModel.billAlertsEnabled.collectAsStateWithLifecycle()
@@ -937,3 +936,4 @@ private fun rateApp(context: Context) {
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(AppLinks.PLAY_STORE_MARKET_URI))) }
         .onFailure { openUrl(context, AppLinks.PLAY_STORE_WEB_URL) }
 }
+
