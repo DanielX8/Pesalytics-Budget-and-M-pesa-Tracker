@@ -90,6 +90,7 @@ val MIGRATION_15_16 = object : Migration(15, 16) {
         val currentTime = System.currentTimeMillis()
         database.execSQL("ALTER TABLE goals ADD COLUMN createdAt INTEGER NOT NULL DEFAULT $currentTime")
     }
+}
 
 val MIGRATION_16_17 = object : Migration(16, 17) {
     override fun migrate(database: SupportSQLiteDatabase) {
@@ -126,6 +127,7 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 }
+
 
 
 

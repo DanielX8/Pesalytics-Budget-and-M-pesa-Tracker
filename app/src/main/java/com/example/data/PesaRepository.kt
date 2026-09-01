@@ -182,6 +182,10 @@ class PesaRepository(
             rulesAdded = schema.custom_rules.size
         )
     }
+
+    suspend fun insertNotification(notification: com.pesalytics.model.AppNotificationEntity) {
+        db.notificationDao().insertNotification(notification)
+    }
 }
 
 data class RestoreResult(
@@ -191,7 +195,3 @@ data class RestoreResult(
     val goalsAdded: Int,
     val rulesAdded: Int
 )
-
-    suspend fun insertNotification(notification: com.pesalytics.model.AppNotificationEntity) {
-        db.notificationDao().insertNotification(notification)
-    }
