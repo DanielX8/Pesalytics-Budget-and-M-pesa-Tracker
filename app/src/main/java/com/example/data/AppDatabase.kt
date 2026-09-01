@@ -99,7 +99,7 @@ val MIGRATION_16_17 = object : Migration(16, 17) {
         )
     }
 }
-}
+
 
 @Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class, com.pesalytics.model.GoalTransaction::class, AppNotificationEntity::class], version = 17, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
@@ -127,6 +127,7 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 }
+
 
 
 
