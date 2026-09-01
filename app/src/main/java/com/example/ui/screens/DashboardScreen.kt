@@ -361,7 +361,7 @@ fun DashboardScreen(
           Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
             com.pesalytics.ui.components.PesalyticsTopBar(
                 viewModel = viewModel,
-                onNotificationClick = { navController.navigate(com.pesalytics.ui.navigation.Notifications) },
+                onNotificationClick = { navController?.navigate(com.pesalytics.ui.navigation.Notifications) },
                 titleContent = {
                     Text("Pesalytics", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
                 }
@@ -1892,4 +1892,5 @@ fun InsightsCarousel(insights: List<com.pesalytics.patterns.Insight>, onInsightC
         }
     }
 }
+
 

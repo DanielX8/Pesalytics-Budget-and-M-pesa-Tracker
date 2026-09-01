@@ -95,7 +95,7 @@ fun NotificationsScreen(
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                     }
-                } {
+                }
                 items(notifications, key = { it.id }) { notification ->
                     NotificationItem(
                         notification = notification,
@@ -214,6 +214,7 @@ fun NotificationItem(
         }
     }
 }
+
 
 
 

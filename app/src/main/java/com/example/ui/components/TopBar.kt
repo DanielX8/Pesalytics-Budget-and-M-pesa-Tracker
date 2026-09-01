@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Notifications
@@ -52,41 +51,22 @@ fun PesalyticsTopBar(
         },
         actions = {
             actions()
-            Box {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 16.dp)
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { onNotificationClick?.invoke() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp), tint = AccentGreenDark)
-                    if (unreadCount > 0) {
-                        Badge(
-                            modifier = Modifier.align(Alignment.TopEnd).padding(2.dp),
-                            containerColor = ExpenseRed
-                        ) {
-                            Text(unreadCount.toString())
-                        }
-                    }
-                }
-            }
-        }
-    )
-} else {
-                        notifications.forEach { notif ->
-                            DropdownMenuItem(
-                                text = { Text(notif.message, style = MaterialTheme.typography.bodyMedium) },
-                                onClick = { viewModel.dismissNotification(notif.id) }
-                            )
-                        }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                        DropdownMenuItem(
-                            text = { Text("Clear All", style = MaterialTheme.typography.bodyMedium, color = ExpenseRed) },
-                            onClick = { viewModel.clearNotifications() }
-                        )
+            Box(
+                modifier = Modifier
+                    .padding(end = 16.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onNotificationClick?.invoke() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp), tint = AccentGreenDark)
+                if (unreadCount > 0) {
+                    Badge(
+                        modifier = Modifier.align(Alignment.TopEnd).padding(2.dp),
+                        containerColor = ExpenseRed
+                    ) {
+                        Text(unreadCount.toString())
                     }
                 }
             }
@@ -95,4 +75,3 @@ fun PesalyticsTopBar(
         windowInsets = WindowInsets(0, 0, 0, 0)
     )
 }
-

@@ -363,7 +363,7 @@ class PesaViewModel(
     // ── Notifications (in-app) ───────────────────────────────────────────────
     fun addNotification(message: String) { 
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { 
-            com.pesalytics.data.AppDatabase.getDatabase(getApplication()).notificationDao().insertNotification(
+            repository.insertNotification(
                 com.pesalytics.model.AppNotificationEntity(
                     title = "Alert", 
                     message = message, 
@@ -1165,7 +1165,7 @@ class PesaViewModel(
             
             // Auto-rollover: if a bill was paid, but the next due date is approaching or passed, reset isPaid
             val billsToReset = allBills.filter { 
-                it.isPaid && it.cycle != com.pesalytics.model.BillCycle.NONE && now >= (it.nextDueDate - threeDaysMs) 
+                it.isPaid && now >= (it.nextDueDate - threeDaysMs) 
             }
             billsToReset.forEach { bill ->
                 repository.updateBill(bill.copy(isPaid = false))
@@ -1454,6 +1454,8 @@ class PesaViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+
+
 
 
 
