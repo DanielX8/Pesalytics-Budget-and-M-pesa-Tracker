@@ -468,9 +468,14 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                                 route == "budget_planner" -> navController.navigate(BudgetPlanner)
                                 route == "bills" -> navController.navigate(Bills)
                                 route == "analytics" -> navController.navigate(Analytics)
+                                route == "all_transactions" -> navController.navigate(AllTransactions())
                                 route.startsWith("all_transactions?filter=") -> {
                                     val filter = route.substringAfter("filter=")
                                     navController.navigate(AllTransactions(filter))
+                                }
+                                route.startsWith("payee_history?payee=") -> {
+                                    val payee = route.substringAfter("payee=")
+                                    navController.navigate(PayeeHistory(payee))
                                 }
                             }
                         }
@@ -581,5 +586,6 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
         }
     }
 }
+
 
 

@@ -186,7 +186,8 @@ object InsightEngine {
                 Insight(
                     "High Daily Spend",
                     "You've spent KES ${formatAmount(todaySpend)} today — ${String.format(java.util.Locale.US, "%.1f", todaySpend/dailyAvg)}x your KES ${formatAmount(dailyAvg)} daily average.",
-                    InsightType.WARNING
+                    InsightType.WARNING,
+                    actionRoute = "all_transactions"
                 ), 70
             )
         }
@@ -194,7 +195,8 @@ object InsightEngine {
             Insight(
                 "Today's Spending",
                 "KES ${formatAmount(todaySpend)} spent today. Well within your usual daily pace.",
-                InsightType.INFO
+                InsightType.INFO,
+                actionRoute = "all_transactions"
             ), 40
         )
     }
@@ -656,7 +658,7 @@ object InsightEngine {
                     title = "Frequent Merchant",
                     description = "You paid ${topMerchant.key} $count times this week totaling KES ${formatAmount(totalSpent)}.",
                     type = InsightType.INFO,
-                    actionRoute = "payee_history"
+                    actionRoute = "payee_history?payee=${topMerchant.key}"
                 ), 68
             )
         }
@@ -682,7 +684,7 @@ object InsightEngine {
                     title = "Multiple Visits Today",
                     description = "You paid ${topToday.key} ${topToday.value.size} times today (KES ${formatAmount(total)}).",
                     type = InsightType.INFO,
-                    actionRoute = "payee_history"
+                    actionRoute = "payee_history?payee=${topToday.key}"
                 ), 52
             )
         }
@@ -821,3 +823,5 @@ object InsightEngine {
     fun getMpesaTariffSaverInsight(transactions: List<Transaction>, now: Long = System.currentTimeMillis()): Insight? =
         signalCarrierFeesToll(transactions, now)?.insight
 }
+
+
