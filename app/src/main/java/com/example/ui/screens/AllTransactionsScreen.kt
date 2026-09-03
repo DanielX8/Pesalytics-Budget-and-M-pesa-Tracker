@@ -162,17 +162,35 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                 }
             }
             expenseFilterOptions.associateWith { filter ->
-                transactionsInMonth.count { transaction ->
-                    when (filter) {
-                        "All" -> true
-                        "Send Money" -> transaction.type == com.pesalytics.model.TransactionType.SEND_MONEY
-                        "Paybill" -> transaction.type == com.pesalytics.model.TransactionType.PAYBILL
-                        "Buy Goods" -> transaction.type == com.pesalytics.model.TransactionType.BUY_GOODS
-                        "Withdraw" -> transaction.type == com.pesalytics.model.TransactionType.WITHDRAW
-                        "Airtime" -> transaction.type == com.pesalytics.model.TransactionType.AIRTIME
-                        "Fuliza" -> transaction.type == com.pesalytics.model.TransactionType.FULIZA || transaction.usedFulizaAmount > 0 || transaction.fulizaOutstandingBalance > 0
-                        "uncategorized" -> transaction.isUncategorized()
-                        else -> transaction.category.equals(filter, ignoreCase = true)
+                if (filter == "Yesterday" || filter == "Today") {
+                    val cal = java.util.Calendar.getInstance()
+                    cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                    cal.set(java.util.Calendar.MINUTE, 0)
+                    cal.set(java.util.Calendar.SECOND, 0)
+                    cal.set(java.util.Calendar.MILLISECOND, 0)
+                    val todayStart = cal.timeInMillis
+                    val yesterdayStart = todayStart - 24L * 3600 * 1000L
+                    
+                    uiState.transactions.count { transaction ->
+                        !transaction.isFeeTransaction && when (filter) {
+                            "Yesterday" -> transaction.timestamp in yesterdayStart until todayStart
+                            "Today" -> transaction.timestamp >= todayStart
+                            else -> false
+                        }
+                    }
+                } else {
+                    transactionsInMonth.count { transaction ->
+                        when (filter) {
+                            "All" -> true
+                            "Send Money" -> transaction.type == com.pesalytics.model.TransactionType.SEND_MONEY
+                            "Paybill" -> transaction.type == com.pesalytics.model.TransactionType.PAYBILL
+                            "Buy Goods" -> transaction.type == com.pesalytics.model.TransactionType.BUY_GOODS
+                            "Withdraw" -> transaction.type == com.pesalytics.model.TransactionType.WITHDRAW
+                            "Airtime" -> transaction.type == com.pesalytics.model.TransactionType.AIRTIME
+                            "Fuliza" -> transaction.type == com.pesalytics.model.TransactionType.FULIZA || transaction.usedFulizaAmount > 0 || transaction.fulizaOutstandingBalance > 0
+                            "uncategorized" -> transaction.isUncategorized()
+                            else -> transaction.category.equals(filter, ignoreCase = true)
+                        }
                     }
                 }
             }
@@ -195,17 +213,38 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
 
             uiState.transactions.filter { transaction ->
                 if (transaction.isFeeTransaction) return@filter false
-                if (transaction.timestamp !in dayStartTimestamp until dayEndTimestamp) return@filter false
+                
+                val isDateFilter = selectedFilter == "Yesterday" || selectedFilter == "Today"
+                if (!isDateFilter && transaction.timestamp !in dayStartTimestamp until dayEndTimestamp) return@filter false
 
                 val matchesCategory = when (selectedCategory) {
                     "Income" -> transaction.type in incomeTypes
                     "Expenses" -> transaction.type !in incomeTypes && transaction.type !in transferTypes
                     else -> true
                 }
-                if (!matchesCategory) return@filter false
+                if (!isDateFilter && !matchesCategory) return@filter false
 
-                val matchesFilter = if (selectedCategory != "Expenses") true else when (selectedFilter) {
+                val matchesFilter = if (!isDateFilter && selectedCategory != "Expenses") true else when (selectedFilter) {
                     "All" -> true
+                    "Yesterday" -> {
+                        val cal = java.util.Calendar.getInstance()
+                        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                        cal.set(java.util.Calendar.MINUTE, 0)
+                        cal.set(java.util.Calendar.SECOND, 0)
+                        cal.set(java.util.Calendar.MILLISECOND, 0)
+                        val todayStart = cal.timeInMillis
+                        val yesterdayStart = todayStart - 24L * 3600 * 1000L
+                        transaction.timestamp in yesterdayStart until todayStart
+                    }
+                    "Today" -> {
+                        val cal = java.util.Calendar.getInstance()
+                        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                        cal.set(java.util.Calendar.MINUTE, 0)
+                        cal.set(java.util.Calendar.SECOND, 0)
+                        cal.set(java.util.Calendar.MILLISECOND, 0)
+                        val todayStart = cal.timeInMillis
+                        transaction.timestamp >= todayStart
+                    }
                     "Send Money" -> transaction.type == com.pesalytics.model.TransactionType.SEND_MONEY
                     "Paybill" -> transaction.type == com.pesalytics.model.TransactionType.PAYBILL
                     "Buy Goods" -> transaction.type == com.pesalytics.model.TransactionType.BUY_GOODS

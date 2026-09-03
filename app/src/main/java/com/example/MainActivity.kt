@@ -475,7 +475,7 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                                 }
                                 route.startsWith("payee_history?payee=") -> {
                                     val payee = route.substringAfter("payee=")
-                                    navController.navigate(PayeeHistory(payee))
+                                    navController.navigate(PayeeHistory(android.net.Uri.encode(payee)))
                                 }
                             }
                         }
@@ -558,7 +558,7 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
                 ) { backStackEntry ->
                     val dest: PayeeHistory = backStackEntry.toRoute()
                     PayeeHistoryScreen(
-                        payee = dest.payee,
+                        payee = android.net.Uri.decode(dest.payee),
                         viewModel = viewModel,
                         onNavigateBack = { navController.popBackStack() }
                     )

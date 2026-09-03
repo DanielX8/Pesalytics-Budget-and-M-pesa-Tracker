@@ -187,7 +187,7 @@ object InsightEngine {
                     "High Daily Spend",
                     "You've spent KES ${formatAmount(todaySpend)} today — ${String.format(java.util.Locale.US, "%.1f", todaySpend/dailyAvg)}x your KES ${formatAmount(dailyAvg)} daily average.",
                     InsightType.WARNING,
-                    actionRoute = "all_transactions"
+                    actionRoute = "all_transactions?filter=Today"
                 ), 70
             )
         }
@@ -196,7 +196,7 @@ object InsightEngine {
                 "Today's Spending",
                 "KES ${formatAmount(todaySpend)} spent today. Well within your usual daily pace.",
                 InsightType.INFO,
-                actionRoute = "all_transactions"
+                actionRoute = "all_transactions?filter=Today"
             ), 40
         )
     }
@@ -537,7 +537,7 @@ object InsightEngine {
                         title = "Zero-Spend Day 🎉",
                         description = "You spent KES 0 yesterday — excellent financial discipline keeping expenses down!",
                         type = InsightType.SUCCESS,
-                        actionRoute = "all_transactions"
+                        actionRoute = "all_transactions?filter=Yesterday"
                     ), 78
                 )
             }
@@ -559,7 +559,7 @@ object InsightEngine {
                     title = "High Yesterday Spend",
                     description = "You spent KES ${formatAmount(yestSpend)} yesterday${topCatStr} — ${mult}x your daily average.",
                     type = InsightType.WARNING,
-                    actionRoute = "all_transactions"
+                    actionRoute = "all_transactions?filter=Yesterday"
                 ), 88
             )
         }
@@ -569,7 +569,7 @@ object InsightEngine {
                 title = "Yesterday's Spend",
                 description = "You spent KES ${formatAmount(yestSpend)} yesterday across $txCountStr$topCatStr.",
                 type = InsightType.INFO,
-                actionRoute = "all_transactions"
+                actionRoute = "all_transactions?filter=Yesterday"
             ), 76
         )
     }
