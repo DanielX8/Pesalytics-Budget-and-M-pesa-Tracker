@@ -13,7 +13,7 @@ enum class TransactionType {
     SEND_MONEY,
     WITHDRAW,
     RECEIVE_MONEY,
-    POCHI,
+    POCHI_SEND,
     AIRTIME,
     MANUAL_INCOME,
     MANUAL_EXPENSE,
@@ -23,6 +23,16 @@ enum class TransactionType {
     POCHI_TRANSFER,
     FULIZA
 }
+
+/** Account scope for Personal M-PESA vs Pochi la Biashara filtering. */
+@Serializable
+enum class AccountScope(val displayName: String) {
+    ALL("All Accounts"),
+    PERSONAL("Personal M-PESA"),
+    POCHI("Pochi la Biashara")
+}
+
+val POCHI_TYPES = setOf(TransactionType.POCHI_SEND, TransactionType.POCHI_RECEIVE, TransactionType.POCHI_TRANSFER)
 
 @Immutable
 @Entity(
@@ -49,7 +59,16 @@ data class Transaction(
     val mshwariBalanceAfter: Double = 0.0,
     val pochiBalanceAfter: Double = 0.0,
     val fulizaLimitAfter: Double = 0.0
-)
+) {
+    fun isPochiTransaction(): Boolean =
+        type == TransactionType.POCHI_SEND ||
+        type == TransactionType.POCHI_RECEIVE ||
+        type == TransactionType.POCHI_TRANSFER
+
+    fun isPersonalTransaction(): Boolean =
+        type != TransactionType.POCHI_SEND &&
+        type != TransactionType.POCHI_RECEIVE
+}
 
 @Entity(tableName = "custom_rules")
 @Serializable

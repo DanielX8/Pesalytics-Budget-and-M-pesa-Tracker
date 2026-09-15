@@ -14,8 +14,8 @@ import java.util.Locale
 
 object PdfExportHelper {
 
-    fun generatePdf(context: Context, transactions: List<Transaction>, dateRangeLabel: String, onComplete: (File?) -> Unit) {
-        val htmlContent = generateHtmlReport(transactions, dateRangeLabel)
+    fun generatePdf(context: Context, transactions: List<Transaction>, dateRangeLabel: String, accountScope: String = "ALL", onComplete: (File?) -> Unit) {
+        val htmlContent = generateHtmlReport(transactions, dateRangeLabel, accountScope)
 
         val webView = WebView(context)
         webView.settings.javaScriptEnabled = false
@@ -42,7 +42,7 @@ object PdfExportHelper {
         webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
     }
 
-    private fun generateHtmlReport(transactions: List<Transaction>, dateRangeLabel: String): String {
+    private fun generateHtmlReport(transactions: List<Transaction>, dateRangeLabel: String, accountScope: String = "ALL"): String {
         val dateFmt  = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
         val tsFmt    = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
         val generatedOn = dateFmt.format(Date())
@@ -212,7 +212,12 @@ object PdfExportHelper {
       <span class="logo-sub">KNOW MORE, GROW MORE</span>
     </div>
     <div class="report-meta">
-      <div class="report-title">FINANCIAL REPORT</div>
+      <div class="report-title">${when(accountScope) {
+        "POCHI" -> "POCHI LA BIASHARA — BUSINESS REPORT"
+        "PERSONAL" -> "PERSONAL M-PESA — FINANCIAL REPORT"
+        else -> "CONSOLIDATED FINANCIAL REPORT"
+      }}</div>
+      ${if (accountScope == "POCHI") "<div class=\"report-date\">Account: Pochi Business Wallet</div>" else ""}
       <div class="report-date">Period: $dateRangeLabel</div>
       <div class="report-date">Generated: $generatedOn</div>
     </div>

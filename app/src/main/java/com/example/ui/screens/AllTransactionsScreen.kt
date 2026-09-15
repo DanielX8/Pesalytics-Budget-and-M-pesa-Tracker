@@ -81,6 +81,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
     ) }
     var selectedFilter by remember { mutableStateOf(if (initialFilter in filterOptions) initialFilter else filterOptions[0]) }
     var searchQuery by remember { mutableStateOf("") }
+    var selectedAccountScope by remember { mutableStateOf(com.pesalytics.model.AccountScope.ALL) }
 
     val monthFormat = remember { java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault()) }
     val currentMonth = remember { monthFormat.format(java.util.Date()) }
@@ -134,7 +135,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
         }
     }
 
-    val filterCounts by remember(uiState.transactions, selectedCategory, monthStartTimestamp) {
+    val filterCounts by remember(uiState.transactions, selectedCategory, monthStartTimestamp, selectedAccountScope) {
         derivedStateOf {
             val cal = java.util.Calendar.getInstance().apply { timeInMillis = monthStartTimestamp }
             cal.add(java.util.Calendar.MONTH, 1)
@@ -155,6 +156,11 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
             val transactionsInMonth = uiState.transactions.filter { t ->
                 !t.isFeeTransaction &&
                 t.timestamp in monthStartTimestamp until monthEndTimestamp &&
+                when (selectedAccountScope) {
+                    com.pesalytics.model.AccountScope.POCHI -> t.isPochiTransaction()
+                    com.pesalytics.model.AccountScope.PERSONAL -> t.isPersonalTransaction()
+                    else -> true
+                } &&
                 when (selectedCategory) {
                     "Income" -> t.type in incomeTypes
                     "Expenses" -> t.type !in incomeTypes && t.type !in transferTypes
@@ -197,7 +203,7 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
         }
     }
 
-    val filteredTransactions by remember(uiState.transactions, selectedCategory, selectedFilter, dayStartTimestamp, dayEndTimestamp, searchQuery) {
+    val filteredTransactions by remember(uiState.transactions, selectedCategory, selectedFilter, dayStartTimestamp, dayEndTimestamp, searchQuery, selectedAccountScope) {
         derivedStateOf {
             val incomeTypes = setOf(
                 com.pesalytics.model.TransactionType.RECEIVE_MONEY,
@@ -213,7 +219,9 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
 
             uiState.transactions.filter { transaction ->
                 if (transaction.isFeeTransaction) return@filter false
-                
+                if (selectedAccountScope == com.pesalytics.model.AccountScope.POCHI && !transaction.isPochiTransaction()) return@filter false
+                if (selectedAccountScope == com.pesalytics.model.AccountScope.PERSONAL && !transaction.isPersonalTransaction()) return@filter false
+
                 val isDateFilter = selectedFilter == "Yesterday" || selectedFilter == "Today"
                 if (!isDateFilter && transaction.timestamp !in dayStartTimestamp until dayEndTimestamp) return@filter false
 
@@ -427,6 +435,34 @@ fun AllTransactionsScreen(viewModel: PesaViewModel, initialFilter: String = "All
                 )
             }
 
+            // Pochi Account Scope Selector (only when Pochi data exists)
+            if (uiState.hasPochi) {
+                androidx.compose.foundation.layout.Row(
+                    modifier = androidx.compose.ui.Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    com.pesalytics.model.AccountScope.values().forEach { scope ->
+                        FilterChip(
+                            selected = selectedAccountScope == scope,
+                            onClick = { selectedAccountScope = scope },
+                            label = { Text(scope.displayName, style = MaterialTheme.typography.labelSmall) },
+                            modifier = androidx.compose.ui.Modifier.weight(1f).padding(horizontal = 4.dp, vertical = 4.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = if (scope == com.pesalytics.model.AccountScope.POCHI)
+                                    androidx.compose.ui.graphics.Color(0xFF1565C0)
+                                else
+                                    com.pesalytics.ui.theme.AccentGreenDark,
+                                selectedLabelColor = androidx.compose.ui.graphics.Color.White
+                            )
+                        )
+                    }
+                }
+            }
             // Month Tabs
             val tabAccent = interactiveGreen
             ScrollableTabRow(

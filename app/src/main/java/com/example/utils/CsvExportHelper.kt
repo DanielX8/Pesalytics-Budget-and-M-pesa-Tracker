@@ -13,12 +13,17 @@ import java.util.Locale
 
 object CsvExportHelper {
 
-    fun exportToCsv(context: Context, transactions: List<Transaction>): File? {
+    fun exportToCsv(context: Context, transactions: List<Transaction>, accountScope: String = "ALL"): File? {
         if (transactions.isEmpty()) return null
 
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val fileName = "pesalytics_$stamp.csv"
-        val csvContent = buildCsvContent(transactions)
+        val prefix = when (accountScope) {
+            "POCHI" -> "pesalytics_pochi"
+            "PERSONAL" -> "pesalytics_personal"
+            else -> "pesalytics"
+        }
+        val fileName = "${prefix}_${stamp}.csv"
+        val csvContent = buildCsvContent(transactions, accountScope)
 
         return try {
             val exportDir = File(context.cacheDir, "exports")
@@ -33,10 +38,11 @@ object CsvExportHelper {
         }
     }
 
-    private fun buildCsvContent(transactions: List<Transaction>): String {
+    private fun buildCsvContent(transactions: List<Transaction>, accountScope: String = "ALL"): String {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        val pochiTypes = setOf("POCHI", "POCHI_SEND", "POCHI_RECEIVE", "POCHI_TRANSFER")
         val sb = StringBuilder()
-        sb.appendLine("Date,Type,Category,Payee,Amount (KES),Fee (KES),Balance After,M-PESA Ref,Source,Notes")
+        sb.appendLine("Date,Type,Category,Payee,Amount (KES),Fee (KES),Balance After,M-PESA Ref,Account,Source,Notes")
         transactions
             .filter { !it.isFeeTransaction }
             .sortedByDescending { it.timestamp }
@@ -48,14 +54,15 @@ object CsvExportHelper {
                 val source = if (isManual) t.remoteRef.removePrefix("MANUAL_") else "M-PESA"
                 val notes = "\"${t.originalSms?.replace("\"", "\"\"") ?: ""}\""
                 
+                val account = when (t.type.name) { "POCHI_TRANSFER" -> "\"Transfer (Pochi ↔ M-PESA)\""; in pochiTypes -> "\"Pochi la Biashara\""; else -> "\"Personal M-PESA\"" }
                 sb.appendLine(
                     "$date,$type,${t.category},$payee," +
                     "${"%.2f".format(t.amount)},${"%.2f".format(t.fee)}," +
-                    "${"%.2f".format(t.balanceAfter)},${t.remoteRef},$source,$notes"
+                    "${"%.2f".format(t.balanceAfter)},${t.remoteRef},$account,$source,$notes"
                 )
             }
         val grandTotal = transactions.filter { !it.isFeeTransaction }.sumOf { it.amount }
-        sb.appendLine("TOTAL,,,,${String.format("%.2f", grandTotal)},,,,,")
+        sb.appendLine("TOTAL,,,,,${String.format("%.2f", grandTotal)},,,,,,")
         return sb.toString()
     }
 }

@@ -189,94 +189,123 @@ fun OnboardingScreen(
         onNavigateNext()
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
         ) { page ->
             when (val slide = onboardingSlides[page]) {
                 is OnboardingContent.Standard -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 32.dp)
-                            .padding(bottom = 100.dp), // space for bottom controls
+                            .padding(horizontal = 28.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         if (slide.imageRes != null) {
-                            Image(
-                                painter = painterResource(id = slide.imageRes),
-                                contentDescription = null,
+                            Box(
                                 modifier = Modifier
+                                    .weight(1.2f)
                                     .fillMaxWidth()
-                                    .weight(1f)
-                                    .padding(vertical = 16.dp),
-                                contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                            )
+                                    .padding(top = 12.dp, bottom = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(id = slide.imageRes),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                )
+                            }
                         } else if (slide.title == "Welcome to Pesalytics") {
                             AnimatedLogo()
                             Spacer(modifier = Modifier.height(24.dp))
                         } else if (slide.icon != null) {
-                            Icon(
-                                imageVector = slide.icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(72.dp),
-                                tint = AccentGreenLight
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape)
+                                    .background(AccentGreenLight.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = slide.icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(44.dp),
+                                    tint = AccentGreenLight
+                                )
+                            }
                             Spacer(modifier = Modifier.height(24.dp))
                         }
 
-                        Text(
-                            text = slide.title,
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(if (slide.imageRes != null) 0.8f else 1f, fill = false),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = slide.title,
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 24.sp,
+                                    lineHeight = 30.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center
+                            )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        Text(
-                            text = slide.description,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 24.sp
-                        )
+                            Text(
+                                text = slide.description,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 15.sp,
+                                    lineHeight = 22.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
 
-                        if (slide.bullets.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(32.dp))
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                                shape = RoundedCornerShape(20.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(24.dp),
-                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                            if (slide.bullets.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(20.dp))
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    slide.bullets.forEach { bullet ->
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.CheckCircle,
-                                                contentDescription = null,
-                                                tint = AccentGreenLight,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(16.dp))
-                                            Text(
-                                                text = bullet,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                style = MaterialTheme.typography.bodyMedium
-                                            )
+                                    Column(
+                                        modifier = Modifier.padding(20.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        slide.bullets.forEach { bullet ->
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.CheckCircle,
+                                                    contentDescription = null,
+                                                    tint = AccentGreenLight,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Text(
+                                                    text = bullet,
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -289,7 +318,7 @@ fun OnboardingScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 32.dp)
-                            .padding(bottom = 100.dp),
+                            ,
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -397,22 +426,22 @@ fun OnboardingScreen(
         // Bottom Controls
         Column(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(32.dp),
+                .padding(horizontal = 28.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Page Indicator
             Row(
                 horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(bottom = 32.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 16.dp)
             ) {
                 repeat(onboardingSlides.size) { iteration ->
                     val isSelected = pagerState.currentPage == iteration
                     val width by animateDpAsState(targetValue = if (isSelected) 24.dp else 8.dp, label = "indicator_width")
                     Box(
                         modifier = Modifier
-                            .padding(horizontal = 4.dp)
+                            .padding(horizontal = 3.dp)
                             .height(8.dp)
                             .width(width)
                             .clip(CircleShape)
@@ -433,8 +462,8 @@ fun OnboardingScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
+                        .height(54.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentGreenLight)
                 ) {
                     Text(
@@ -453,8 +482,8 @@ fun OnboardingScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
+                        .height(54.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentGreenLight,
                         contentColor = Color.White

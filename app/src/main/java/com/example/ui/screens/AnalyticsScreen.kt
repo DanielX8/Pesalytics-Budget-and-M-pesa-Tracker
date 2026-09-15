@@ -102,6 +102,7 @@ fun AnalyticsScreen(
     var customEndMs   by remember { mutableStateOf<Long?>(null) }
     var showDateRangePicker by remember { mutableStateOf(false) }
     val dateRangePickerState = rememberDateRangePickerState()
+    var selectedAccountScope by remember { mutableStateOf(com.pesalytics.model.AccountScope.ALL) }
 
     LaunchedEffect(selectedMonthIndex, selectedYear) { 
         selectedDay = null 
@@ -147,7 +148,15 @@ fun AnalyticsScreen(
         "Tap to select a date range"
     }
 
-    val monthTransactions = uiState.transactions.filter { it.timestamp in analyticsStartTimestamp until analyticsEndTimestamp && !it.isFeeTransaction }
+    val monthTransactions = uiState.transactions.filter {
+        it.timestamp in analyticsStartTimestamp until analyticsEndTimestamp &&
+        !it.isFeeTransaction &&
+        when (selectedAccountScope) {
+            com.pesalytics.model.AccountScope.POCHI -> it.isPochiTransaction()
+            com.pesalytics.model.AccountScope.PERSONAL -> it.isPersonalTransaction()
+            else -> true
+        }
+    }
 
     val totalIncome = monthTransactions.filter { 
         it.type == TransactionType.RECEIVE_MONEY || 
@@ -351,6 +360,36 @@ fun AnalyticsScreen(
             }
 
             // DateRangePicker is rendered as a modal above the Scaffold — no list item needed
+
+            // Pochi Account Scope Selector
+            if (uiState.hasPochi) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        com.pesalytics.model.AccountScope.values().forEach { scope ->
+                            FilterChip(
+                                selected = selectedAccountScope == scope,
+                                onClick = { selectedAccountScope = scope },
+                                label = { Text(scope.displayName, style = MaterialTheme.typography.labelSmall) },
+                                modifier = Modifier.weight(1f).padding(horizontal = 4.dp, vertical = 4.dp),
+                                shape = RoundedCornerShape(50),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = if (scope == com.pesalytics.model.AccountScope.POCHI)
+                                        Color(0xFF1565C0)
+                                    else
+                                        com.pesalytics.ui.theme.AccentGreenDark,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
+                    }
+                }
+            }
 
             if (uiState.transactions.isEmpty()) {
                 item {
@@ -928,7 +967,8 @@ fun WhereItGoesChart(transactions: List<com.pesalytics.model.Transaction>, categ
         TransactionType.BUY_GOODS to "Buy Goods",
         TransactionType.WITHDRAW to "Withdraw",
         TransactionType.AIRTIME to "Airtime",
-        TransactionType.MANUAL_EXPENSE to "Other"
+        TransactionType.MANUAL_EXPENSE to "Other",
+        TransactionType.POCHI_SEND to "Pochi Send"
     )
     val categoryIcon = mapOf(
         "Groceries" to Icons.Rounded.ShoppingCart,
@@ -1510,7 +1550,7 @@ fun LargestTransactionsCard(transactions: List<com.pesalytics.model.Transaction>
         TransactionType.WITHDRAW to "Withdraw",
         TransactionType.AIRTIME to "Airtime",
         TransactionType.MANUAL_EXPENSE to "Manual",
-        TransactionType.POCHI to "Pochi"
+        TransactionType.POCHI_SEND to "Pochi Send"
     )
     val top = transactions
         .filter { it.type != TransactionType.RECEIVE_MONEY && it.type != TransactionType.MANUAL_INCOME && !it.isFeeTransaction }

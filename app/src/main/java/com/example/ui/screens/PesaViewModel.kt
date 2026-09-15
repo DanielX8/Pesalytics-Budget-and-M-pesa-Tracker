@@ -716,7 +716,7 @@ class PesaViewModel(
                 val pochiBalance = m.groupValues[6].replace(",", "").toDoubleOrNull() ?: 0.0
                 results.add(Transaction(
                     amount = amount, payee = payee, timestamp = timestamp,
-                    type = TransactionType.POCHI, remoteRef = m.groupValues[1],
+                    type = TransactionType.POCHI_SEND, remoteRef = m.groupValues[1],
                     category = "Business", fee = 0.0,
                     balanceAfter = 0.0, pochiBalanceAfter = pochiBalance, originalSms = body
                 ))
@@ -754,7 +754,7 @@ class PesaViewModel(
                 SmsFields(m.groupValues[1], m.groupValues[2].replace(",","").toDoubleOrNull() ?: 0.0, "Fuliza", 0.0, 0.0, null)
             },
             // Pochi la Biashara — payment to a business wallet (no account number, "sent to" phrasing)
-            RuleEntry(TransactionType.POCHI, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*Ksh([\\d,]+\\.\\d{2})\\s+sent to\\s+(.+?)\\s+Pochi la Biashara\\s+on\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+at\\s+(\\d{1,2}:\\d{2}\\s*[APM]{2})\\.?\\s*New M-PESA balance is Ksh([\\d,]+\\.\\d{2})\\.(?:\\s*Transaction cost,?\\s*Ksh([\\d,]+\\.\\d{2})\\.?)?", RegexOption.IGNORE_CASE)) { m ->
+            RuleEntry(TransactionType.SEND_MONEY, Regex("([A-Z0-9]+)\\s+Confirmed\\.?\\s*Ksh([\\d,]+\\.\\d{2})\\s+sent to\\s+(.+?)\\s+Pochi la Biashara\\s+on\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+at\\s+(\\d{1,2}:\\d{2}\\s*[APM]{2})\\.?\\s*New M-PESA balance is Ksh([\\d,]+\\.\\d{2})\\.(?:\\s*Transaction cost,?\\s*Ksh([\\d,]+\\.\\d{2})\\.?)?", RegexOption.IGNORE_CASE)) { m ->
                 SmsFields(m.groupValues[1], m.groupValues[2].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues[3].trim(), m.groupValues[6].replace(",","").toDoubleOrNull() ?: 0.0, m.groupValues.getOrNull(7)?.replace(",","")?.toDoubleOrNull() ?: 0.0, null)
             }
         )
@@ -928,7 +928,7 @@ class PesaViewModel(
                 it.type in listOf(
                     TransactionType.PAYBILL, TransactionType.BUY_GOODS, TransactionType.SEND_MONEY,
                     TransactionType.WITHDRAW, TransactionType.RECEIVE_MONEY, TransactionType.AIRTIME,
-                    TransactionType.FULIZA, TransactionType.POCHI, TransactionType.POCHI_TRANSFER, 
+                    TransactionType.FULIZA, TransactionType.POCHI_TRANSFER, 
                     TransactionType.MSHWARI_TRANSFER
                 ) && it.balanceAfter >= 0.0
             }
@@ -959,12 +959,12 @@ class PesaViewModel(
 
         // Pochi business wallet state (all-time wallet view)
         val pochiTxns = transactions.filter {
-            it.type == TransactionType.POCHI_RECEIVE || it.type == TransactionType.POCHI_TRANSFER || it.type == TransactionType.POCHI
+            it.type == TransactionType.POCHI_RECEIVE || it.type == TransactionType.POCHI_TRANSFER || it.type == TransactionType.POCHI_SEND
         }
         val hasPochi = pochiTxns.isNotEmpty()
         val pochiBalance = pochiTxns.maxByOrNull { it.timestamp }?.pochiBalanceAfter ?: 0.0
         val pochiTotalReceived = pochiTxns.filter { it.type == TransactionType.POCHI_RECEIVE }.sumOf { it.amount }
-        val pochiTotalSent = pochiTxns.filter { it.type == TransactionType.POCHI }.sumOf { it.amount }
+        val pochiTotalSent = pochiTxns.filter { it.type == TransactionType.POCHI_SEND }.sumOf { it.amount }
 
         // Fuliza overdraft state — read from most recent Fuliza SMS, no limit arithmetic for full repayments
         val allFulizaTxns = transactions.filter { it.type == TransactionType.FULIZA }
@@ -1355,7 +1355,7 @@ class PesaViewModel(
                     is com.pesalytics.data.billing.PromoGrant.Monthly     -> "✅ 1 month Premium granted!"
                     is com.pesalytics.data.billing.PromoGrant.Quarterly   -> "✅ 3 months Premium granted!"
                     is com.pesalytics.data.billing.PromoGrant.Yearly      -> "✅ 1 year Premium granted!"
-                    is com.pesalytics.data.billing.PromoGrant.Trial14Days -> "✅ 14-day trial extended!"
+                    is com.pesalytics.data.billing.PromoGrant.Trial14Days, is com.pesalytics.data.billing.PromoGrant.Trial30Days -> "✅ 30-day trial extended!"
                 }
                 is PromoResult.AlreadyRedeemed    -> "This code has already been used on this device."
                 is PromoResult.Invalid            -> "Invalid promo code. Check and try again."
