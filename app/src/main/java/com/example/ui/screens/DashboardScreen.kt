@@ -162,14 +162,14 @@ fun DashboardScreen(
                 Text("🎉", style = MaterialTheme.typography.displaySmall)
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    "14-Day Free Trial Started!",
+                    "30-Day Free Trial Started!",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    "You now have full access to all Pesalytics Premium features for 14 days — completely free. Enjoy the analytics, budget planner, bill tracker, and data exports. No payment required to start.",
+                    "You now have full access to all Pesalytics Premium features for 30 days — completely free. Enjoy the analytics, budget planner, bill tracker, and data exports. No payment required to start.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center

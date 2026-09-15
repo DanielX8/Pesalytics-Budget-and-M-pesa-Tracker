@@ -100,8 +100,14 @@ val MIGRATION_16_17 = object : Migration(16, 17) {
     }
 }
 
+val MIGRATION_17_18 = object : Migration(17, 18) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("UPDATE transactions SET type = 'POCHI_SEND' WHERE type = 'POCHI'")
+    }
+}
 
-@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class, com.pesalytics.model.GoalTransaction::class, AppNotificationEntity::class], version = 17, exportSchema = true)
+
+@Database(entities = [Transaction::class, Bill::class, Budget::class, CustomRule::class, Goal::class, com.pesalytics.model.GoalTransaction::class, AppNotificationEntity::class], version = 18, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
     abstract fun transactionDao(): TransactionDao
@@ -120,7 +126,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "pesalytics_database"
-                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17).build()
+                ).addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18).build()
                 INSTANCE = instance
                 instance
             }

@@ -178,7 +178,7 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
             return SubscriptionState(tier = SubscriptionTier.PREMIUM_MONTHLY, expiryMs = referralExpiry, source = "referral")
         }
         val trialStart = prefs.getLong("trial_start_ms", 0L)
-        val trialDuration = TimeUnit.DAYS.toMillis(14)
+        val trialDuration = TimeUnit.DAYS.toMillis(30)
         if (trialStart > 0L && (now - trialStart) < trialDuration) {
             val remaining = TimeUnit.MILLISECONDS.toDays(trialDuration - (now - trialStart)).toInt().coerceAtLeast(1)
             return SubscriptionState(tier = SubscriptionTier.TRIAL, expiryMs = trialStart + trialDuration, trialDaysRemaining = remaining)
@@ -223,7 +223,7 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
             is PromoGrant.Yearly -> prefs.edit()
                 .putString("tier", SubscriptionTier.PREMIUM_YEARLY.name)
                 .putLong("expiry_ms", now + TimeUnit.DAYS.toMillis(366)).apply()
-            is PromoGrant.Trial14Days -> prefs.edit()
+            is PromoGrant.Trial14Days, is PromoGrant.Trial30Days -> prefs.edit()
                 .putLong("trial_start_ms", now).apply()
         }
         _state.value = loadStateFromPrefs()

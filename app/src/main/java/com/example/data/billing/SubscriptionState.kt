@@ -20,6 +20,7 @@ sealed class PromoGrant {
     object Quarterly   : PromoGrant()
     object Yearly      : PromoGrant()
     object Trial14Days : PromoGrant()
+    object Trial30Days : PromoGrant()
 }
 
 data class PromoCodeEntry(val grant: PromoGrant, val label: String)

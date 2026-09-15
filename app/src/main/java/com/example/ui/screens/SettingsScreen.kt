@@ -696,7 +696,7 @@ private fun PlanCard(viewModel: PesaViewModel, isPremium: Boolean, onNavigateToS
         com.pesalytics.domain.model.SubscriptionTier.PREMIUM_QUARTERLY -> "Quarterly Plan"
         com.pesalytics.domain.model.SubscriptionTier.PREMIUM_YEARLY    -> "Yearly Plan"
         com.pesalytics.domain.model.SubscriptionTier.PREMIUM_LIFETIME  -> "Lifetime"
-        com.pesalytics.domain.model.SubscriptionTier.TRIAL             -> "14-Day Free Trial"
+        com.pesalytics.domain.model.SubscriptionTier.TRIAL             -> "30-Day Free Trial"
         com.pesalytics.domain.model.SubscriptionTier.FREE              -> "Free Plan"
     }
     val statusLabel = when {

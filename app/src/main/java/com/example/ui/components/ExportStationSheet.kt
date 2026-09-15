@@ -62,6 +62,10 @@ fun ExportStationSheet(
     
     var selectedPeriod by remember { mutableStateOf(ExportPeriod.THIS_MONTH) }
     var selectedFormat by remember { mutableStateOf(ExportFormat.PDF) }
+    val hasPochi = remember(transactions) {
+        transactions.any { it.isPochiTransaction() }
+    }
+    var selectedAccountScope by remember { mutableStateOf(com.pesalytics.model.AccountScope.ALL) }
     
     // Custom Date Range
     var showDatePicker by remember { mutableStateOf(false) }
@@ -153,8 +157,15 @@ fun ExportStationSheet(
         selectedPeriod = ExportPeriod.ALL_TIME
     }
 
-    // Filter transactions
-    val filteredTxns = transactions.filter { it.timestamp in startMs..endMs }
+    // Filter transactions — account scope aware
+    val filteredTxns = transactions.filter {
+        it.timestamp in startMs..endMs &&
+        when (selectedAccountScope) {
+            com.pesalytics.model.AccountScope.POCHI -> it.isPochiTransaction()
+            com.pesalytics.model.AccountScope.PERSONAL -> it.isPersonalTransaction()
+            else -> true
+        }
+    }
     
     // Summaries
     val incomeTypes = setOf(TransactionType.RECEIVE_MONEY, TransactionType.MANUAL_INCOME, TransactionType.POCHI_RECEIVE)
@@ -221,6 +232,37 @@ fun ExportStationSheet(
                         ),
                         enabled = !isDisabled
                     )
+                }
+            }
+
+            // Account Scope selector (Pochi users only)
+            if (hasPochi) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("ACCOUNT", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    com.pesalytics.model.AccountScope.values().forEach { scope ->
+                        FilterChip(
+                            selected = selectedAccountScope == scope,
+                            onClick = { selectedAccountScope = scope },
+                            label = { Text(scope.displayName, style = MaterialTheme.typography.labelSmall) },
+                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp, vertical = 4.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = if (scope == com.pesalytics.model.AccountScope.POCHI)
+                                    Color(0xFF1565C0)
+                                else
+                                    AccentGreenDark,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
                 }
             }
 
@@ -308,14 +350,14 @@ fun ExportStationSheet(
                             ExportFormat.PDF -> {
                                 var pdfFile: java.io.File? = null
                                 val lock = java.util.concurrent.CountDownLatch(1)
-                                PdfExportHelper.generatePdf(context, filteredTxns, periodLabel) { 
+                                PdfExportHelper.generatePdf(context, filteredTxns, periodLabel, selectedAccountScope.name) { 
                                     pdfFile = it
                                     lock.countDown()
                                 }
                                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { lock.await() }
                                 pdfFile
                             }
-                            ExportFormat.CSV -> CsvExportHelper.exportToCsv(context, filteredTxns)
+                            ExportFormat.CSV -> CsvExportHelper.exportToCsv(context, filteredTxns, selectedAccountScope.name)
                             ExportFormat.JSON -> JsonExportHelper.generateBackup(context, repository)
                         }
 

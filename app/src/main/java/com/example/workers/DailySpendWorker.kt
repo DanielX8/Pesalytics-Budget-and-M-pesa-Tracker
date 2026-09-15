@@ -139,7 +139,7 @@ class DailySpendWorker(appContext: Context, workerParams: WorkerParameters) :
         val trialStartMs = subPrefs.getLong("trial_start_ms", 0L)
         val paymentExpiryMs = subPrefs.getLong("expiry_ms", 0L)
         val effectiveExpiryMs = when (tierName) {
-            "TRIAL" -> if (trialStartMs > 0L) trialStartMs + TimeUnit.DAYS.toMillis(14) else 0L
+            "TRIAL" -> if (trialStartMs > 0L) trialStartMs + TimeUnit.DAYS.toMillis(30) else 0L
             "PREMIUM_MONTHLY", "PREMIUM_QUARTERLY", "PREMIUM_YEARLY" -> paymentExpiryMs
             else -> 0L
         }
