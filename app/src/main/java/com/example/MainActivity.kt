@@ -34,7 +34,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.pesalytics.ui.theme.AccentGreenDark
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -113,6 +116,7 @@ private val PayeeHistoryPopExitTransition = slideOutVertically(
 )
 
 class MainActivity : ComponentActivity() {
+    private var vmRef: PesaViewModel? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -122,6 +126,7 @@ class MainActivity : ComponentActivity() {
             val notificationHelper = remember { com.pesalytics.notifications.NotificationHelper(app) }
             val factory = remember { PesaViewModelFactory(app.repository, notificationHelper, app.subscriptionManager) }
             val viewModel: PesaViewModel = viewModel(factory = factory)
+            LaunchedEffect(viewModel) { vmRef = viewModel }
             LaunchedEffect(notifDeepLink) {
                 if (notifDeepLink != null) viewModel.pendingDeepLink.value = notifDeepLink
             }
@@ -193,6 +198,9 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        intent.getStringExtra("navigate_to")?.let { target ->
+            vmRef?.pendingDeepLink?.value = target
+        }
     }
 
     override fun onStart() {
@@ -210,6 +218,7 @@ class MainActivity : ComponentActivity() {
 
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -219,12 +228,16 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
     LaunchedEffect(pendingDeepLink) {
         val target = pendingDeepLink ?: return@LaunchedEffect
         viewModel.pendingDeepLink.value = null
-        when (target) {
-            "budget_planner"    -> navController.navigate(BudgetPlanner)
-            "bills"             -> navController.navigate(Bills)
-            "goals"             -> navController.navigate(FinancialGoals)
-            "all_transactions"  -> navController.navigate(AllTransactions())
-            "settings"          -> navController.navigate(Settings)
+        when {
+            target.startsWith("tx_details/") -> {
+                val ref = target.removePrefix("tx_details/")
+                viewModel.openTransactionDetailsByRef(ref)
+            }
+            target == "budget_planner"    -> navController.navigate(BudgetPlanner)
+            target == "bills"             -> navController.navigate(Bills)
+            target == "goals"             -> navController.navigate(FinancialGoals)
+            target == "all_transactions"  -> navController.navigate(AllTransactions())
+            target == "settings"          -> navController.navigate(Settings)
         }
     }
 
@@ -250,6 +263,79 @@ fun PesalyticsApp(viewModel: PesaViewModel, navController: NavHostController) {
         it.hasRoute<Bills>() ||
         it.hasRoute<Settings>()
     } ?: false
+
+    val detailTx: com.pesalytics.model.Transaction? by viewModel.transactionForDetailsSheet.collectAsState(initial = null)
+    var showCategoryEdit by remember { mutableStateOf(false) }
+    var newCategoryName by remember { mutableStateOf("") }
+    val categorySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val categoryScope = rememberCoroutineScope()
+
+    if (showCategoryEdit && detailTx != null) {
+        val txn = detailTx!!
+        ModalBottomSheet(
+            onDismissRequest = { showCategoryEdit = false },
+            sheetState = categorySheetState,
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+                    .navigationBarsPadding()
+            ) {
+                Text("Edit Category", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = newCategoryName,
+                    onValueChange = { newCategoryName = it },
+                    label = { Text("Category Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = {
+                        if (newCategoryName.isNotBlank()) {
+                            viewModel.updateTransactionCategory(txn, newCategoryName.trim())
+                            viewModel.openTransactionDetails(txn.copy(category = newCategoryName.trim()))
+                        }
+                        categoryScope.launch { categorySheetState.hide() }.invokeOnCompletion { showCategoryEdit = false }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGreenDark),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = newCategoryName.isNotBlank()
+                ) {
+                    Text("Save Category", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        }
+    }
+
+    if (detailTx != null) {
+        val txn = detailTx!!
+        com.pesalytics.ui.screens.TransactionDetailsSheet(
+            transaction = txn,
+            onDismiss = { viewModel.closeTransactionDetails() },
+            onEditCategory = {
+                newCategoryName = txn.category
+                showCategoryEdit = true
+            },
+            onViewPayeeHistory = {
+                viewModel.closeTransactionDetails()
+                navController.navigate(PayeeHistory(payee = txn.payee))
+            },
+            onShare = {
+                val sendIntent = android.content.Intent().apply {
+                    action = android.content.Intent.ACTION_SEND
+                    putExtra(android.content.Intent.EXTRA_TEXT, "Pesalytics Transaction Receipt:\nRef: ${txn.remoteRef}\nPayee: ${txn.payee}\nAmount: KES ${com.pesalytics.ui.screens.formatCurrency(txn.amount)}")
+                    type = "text/plain"
+                }
+                val shareIntent = android.content.Intent.createChooser(sendIntent, null)
+                context.startActivity(shareIntent)
+            }
+        )
+    }
 
     Scaffold(
         bottomBar = {

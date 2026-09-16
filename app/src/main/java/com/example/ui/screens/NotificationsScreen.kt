@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -126,6 +127,7 @@ fun NotificationItem(
         NotificationType.TARIFF_ALERT -> Icons.Default.Info
         NotificationType.MERCHANT_INSIGHT -> Icons.Default.Store
         NotificationType.GOAL_REMINDER -> Icons.Default.Star
+        NotificationType.SMS_SYNC -> Icons.AutoMirrored.Filled.ReceiptLong
         NotificationType.SYSTEM -> Icons.Default.Notifications
     }
     
@@ -135,6 +137,7 @@ fun NotificationItem(
         NotificationType.TARIFF_ALERT -> Color(0xFFFFB300)
         NotificationType.MERCHANT_INSIGHT -> MaterialTheme.colorScheme.tertiary
         NotificationType.GOAL_REMINDER -> Color(0xFF43A047)
+        NotificationType.SMS_SYNC -> com.pesalytics.ui.theme.AccentGreenDark
         NotificationType.SYSTEM -> MaterialTheme.colorScheme.secondary
     }
 

@@ -68,6 +68,16 @@ data class Transaction(
     fun isPersonalTransaction(): Boolean =
         type != TransactionType.POCHI_SEND &&
         type != TransactionType.POCHI_RECEIVE
+
+    fun isIncome(): Boolean =
+        type == TransactionType.RECEIVE_MONEY ||
+        type == TransactionType.MANUAL_INCOME ||
+        type == TransactionType.POCHI_RECEIVE
+
+    fun isTransfer(): Boolean =
+        type == TransactionType.MANUAL_TRANSFER ||
+        type == TransactionType.MSHWARI_TRANSFER ||
+        type == TransactionType.POCHI_TRANSFER
 }
 
 @Entity(tableName = "custom_rules")

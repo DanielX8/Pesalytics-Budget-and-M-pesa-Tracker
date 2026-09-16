@@ -22,6 +22,7 @@ class NotificationHelper(private val context: Context) {
     companion object {
         const val ALERTS_CHANNEL_ID  = "alerts_channel"
         const val REPORTS_CHANNEL_ID = "reports_channel"
+        const val SYNC_CHANNEL_ID    = "sync_channel"
     }
 
     // NOTE: channels are created lazily (right before the first notification is posted),
@@ -46,6 +47,11 @@ class NotificationHelper(private val context: Context) {
             manager.createNotificationChannel(
                 NotificationChannel(ALERTS_CHANNEL_ID, "Budget & Bill Alerts", NotificationManager.IMPORTANCE_HIGH).apply {
                     description = "Immediate alerts for budget thresholds and upcoming bills"
+                }
+            )
+            manager.createNotificationChannel(
+                NotificationChannel(SYNC_CHANNEL_ID, "M-PESA Sync & Transactions", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    description = "Summaries of newly synced M-PESA transactions and category breakdowns"
                 }
             )
             manager.createNotificationChannel(
@@ -124,6 +130,67 @@ class NotificationHelper(private val context: Context) {
         showNotification(REPORTS_CHANNEL_ID, 2003, title, message, "all_transactions")
     }
 
+    /** Newly synced M-PESA transactions organized by category */
+    fun showSmsSyncSummary(
+        title: String,
+        summaryText: String,
+        categoryLines: List<String>,
+        deepLinkTarget: String = "all_transactions",
+        notifId: Int = 1008
+    ) {
+        val fullMessage = if (categoryLines.isEmpty()) {
+            summaryText
+        } else {
+            summaryText + "\n\n" + categoryLines.joinToString("\n")
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            AppDatabase.getDatabase(context).notificationDao().insertNotification(
+                AppNotificationEntity(
+                    title = title,
+                    message = fullMessage,
+                    type = NotificationType.SMS_SYNC,
+                    actionRoute = deepLinkTarget.takeIf { it.isNotEmpty() }
+                )
+            )
+        }
+
+        if (!isMasterEnabled() || !areNotificationsPermitted()) return
+        if (!isPrefEnabled("sync_alerts", default = true)) return
+        createNotificationChannels()
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            if (deepLinkTarget.isNotEmpty()) putExtra("navigate_to", deepLinkTarget)
+        }
+        val pi = PendingIntent.getActivity(
+            context,
+            notifId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val inboxStyle = NotificationCompat.InboxStyle()
+            .setBigContentTitle(title)
+            .setSummaryText(summaryText)
+
+        categoryLines.forEach { line ->
+            inboxStyle.addLine(line)
+        }
+
+        val notification = NotificationCompat.Builder(context, SYNC_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(summaryText)
+            .setStyle(inboxStyle)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .build()
+
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(notifId, notification)
+    }
+
     /** Subscription or trial expiry warning (3 days / 1 day / today) */
     fun showSubscriptionExpiryAlert(isTrial: Boolean, daysLeft: Int) {
         if (!isMasterEnabled() || !areNotificationsPermitted()) return
@@ -137,16 +204,16 @@ class NotificationHelper(private val context: Context) {
     }
 
     private fun showNotification(channelId: String, id: Int, title: String, message: String, deepLinkTarget: String = "", notificationType: NotificationType = NotificationType.SYSTEM) {
-    CoroutineScope(Dispatchers.IO).launch {
-        AppDatabase.getDatabase(context).notificationDao().insertNotification(
-            AppNotificationEntity(
-                title = title,
-                message = message,
-                type = notificationType,
-                actionRoute = deepLinkTarget.takeIf { it.isNotEmpty() }
+        CoroutineScope(Dispatchers.IO).launch {
+            AppDatabase.getDatabase(context).notificationDao().insertNotification(
+                AppNotificationEntity(
+                    title = title,
+                    message = message,
+                    type = notificationType,
+                    actionRoute = deepLinkTarget.takeIf { it.isNotEmpty() }
+                )
             )
-        )
-    }
+        }
         if (!isMasterEnabled() || !areNotificationsPermitted()) return
         createNotificationChannels()
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -169,4 +236,3 @@ class NotificationHelper(private val context: Context) {
         (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(id, notification)
     }
 }
-

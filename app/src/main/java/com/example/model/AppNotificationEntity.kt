@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 enum class NotificationType {
-    DAILY_BRIEF, TARIFF_ALERT, BUDGET_WARNING, MERCHANT_INSIGHT, MONTHLY_REPORT, SYSTEM, GOAL_REMINDER
+    DAILY_BRIEF, TARIFF_ALERT, BUDGET_WARNING, MERCHANT_INSIGHT, MONTHLY_REPORT, SYSTEM, GOAL_REMINDER, SMS_SYNC
 }
 
 @Entity(tableName = "app_notifications")

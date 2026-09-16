@@ -36,6 +36,7 @@ object AppNotificationDispatcher {
             NotificationType.TARIFF_ALERT -> helper.showTariffSaverTip(title, message)
             NotificationType.MERCHANT_INSIGHT -> helper.showFrequentMerchantAlert(title, message)
             NotificationType.GOAL_REMINDER -> helper.showGoalReminder(title, message)
+            NotificationType.SMS_SYNC -> helper.showSmsSyncSummary(title, message, emptyList())
             NotificationType.SYSTEM -> helper.showInsightAlert(title, message, actionRoute)
         }
     }

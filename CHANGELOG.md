@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.6.3] - 2026-09-16 · Categorized M-PESA Sync Notifications & Direct Transaction Routing
+
+### Added
+- **Categorized M-PESA Sync Notifications**: When syncing transactions, receive an expandable system notification with tailored category emojis (Groceries, Fuel, Dining, Bills, etc.) and formatted spend/income totals.
+- **Direct Transaction Details Routing**: Tapping on a sync notification or an in-app sync entry opens the detailed transaction sheet for that specific transaction directly.
+- **Sync Notification Settings**: Added a toggle in Settings allowing users to customize whether they receive SMS sync summary alerts.
+
+---
+
 ## [1.6.2] - 2026-09-15 · 30-Day Free Trial, Pochi Send & Onboarding Polish
 
 ### Added
