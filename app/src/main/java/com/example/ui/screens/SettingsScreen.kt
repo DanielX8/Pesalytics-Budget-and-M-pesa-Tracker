@@ -86,6 +86,7 @@ fun SettingsScreen(
     val dailySummaryEnabled by viewModel.dailySummaryEnabled.collectAsStateWithLifecycle()
     val weeklyReportEnabled by viewModel.weeklyReportEnabled.collectAsStateWithLifecycle()
     val monthlyReportEnabled by viewModel.monthlyReportEnabled.collectAsStateWithLifecycle()
+    val syncAlertsEnabled by viewModel.syncAlertsEnabled.collectAsStateWithLifecycle()
 
     val savedFrequency = context.getSharedPreferences("pesa_prefs", Context.MODE_PRIVATE)
         .getString("report_frequency", "Daily") ?: "Daily"
@@ -283,6 +284,8 @@ fun SettingsScreen(
                         ToggleRow("Weekly Report", weeklyReportEnabled, masterNotifEnabled) { viewModel.setNotificationPref("weekly_report", it, context) }
                         SettingsDivider()
                         ToggleRow("Monthly Report", monthlyReportEnabled, masterNotifEnabled) { viewModel.setNotificationPref("monthly_report", it, context) }
+                        SettingsDivider()
+                        ToggleRow("SMS Sync Summaries", syncAlertsEnabled, masterNotifEnabled) { viewModel.setNotificationPref("sync_alerts", it, context) }
                     }
                 }
             } }

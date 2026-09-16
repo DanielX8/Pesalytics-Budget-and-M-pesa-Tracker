@@ -175,9 +175,28 @@ class PesaViewModel(
     val dailySummaryEnabled = MutableStateFlow(true)
     val weeklyReportEnabled = MutableStateFlow(true)
     val monthlyReportEnabled = MutableStateFlow(true)
+    val syncAlertsEnabled = MutableStateFlow(true)
 
     // ── Deep-link from notification tap ─────────────────────────────────────
     val pendingDeepLink = MutableStateFlow<String?>(null)
+    val transactionForDetailsSheet = MutableStateFlow<com.pesalytics.model.Transaction?>(null)
+
+    fun openTransactionDetails(transaction: com.pesalytics.model.Transaction) {
+        transactionForDetailsSheet.value = transaction
+    }
+
+    fun openTransactionDetailsByRef(remoteRef: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val tx = repository.allTransactions.first().find { it.remoteRef == remoteRef }
+            if (tx != null) {
+                transactionForDetailsSheet.value = tx
+            }
+        }
+    }
+
+    fun closeTransactionDetails() {
+        transactionForDetailsSheet.value = null
+    }
 
     // ── SMS sync progress ────────────────────────────────────────────────────
     val isSyncing = MutableStateFlow(false)
@@ -301,6 +320,7 @@ class PesaViewModel(
             "daily_summary" -> dailySummaryEnabled.value = enabled
             "weekly_report" -> weeklyReportEnabled.value = enabled
             "monthly_report" -> monthlyReportEnabled.value = enabled
+            "sync_alerts" -> syncAlertsEnabled.value = enabled
         }
         context.getSharedPreferences("pesa_prefs", android.content.Context.MODE_PRIVATE).edit()
             .putBoolean("notif_$key", enabled)
@@ -326,6 +346,7 @@ class PesaViewModel(
         dailySummaryEnabled.value = prefs.getBoolean("notif_daily_summary", true)
         weeklyReportEnabled.value = prefs.getBoolean("notif_weekly_report", true)
         monthlyReportEnabled.value = prefs.getBoolean("notif_monthly_report", true)
+        syncAlertsEnabled.value = prefs.getBoolean("notif_sync_alerts", true)
     }
 
     // ── Needs vs Wants classification ─────────────────────────────────────────
@@ -384,6 +405,28 @@ class PesaViewModel(
             if (transactions.isNotEmpty()) {
                 _patternResult.value = patternEngine.compute(transactions)
             }
+        }
+    }
+
+    private fun getCategoryEmoji(category: String): String {
+        return when (category.lowercase()) {
+            "groceries" -> "🛒"
+            "eating out", "food & dining", "food" -> "🍔"
+            "fuel" -> "⛽"
+            "transport" -> "🚗"
+            "bills", "utilities" -> "💡"
+            "shopping" -> "🛍️"
+            "airtime" -> "📱"
+            "savings", "mshwari", "deposit" -> "🏦"
+            "income", "salary" -> "💰"
+            "cash", "withdrawal", "withdraw" -> "💵"
+            "business", "pochi" -> "💼"
+            "transfer", "send money" -> "💸"
+            "entertainment" -> "🍿"
+            "health", "medical" -> "💊"
+            "education" -> "🎓"
+            "fuliza" -> "⚡"
+            else -> "💳"
         }
     }
 
@@ -529,7 +572,52 @@ class PesaViewModel(
                         }
                     }
 
-                    addNotification("Synced ${transactionsList.size} new M-PESA records.")
+                    // Build sleek category breakdown notification
+                    val totalCount = transactionsList.size
+                    val title = if (totalCount == 1) "M-PESA Sync · 1 New Transaction" else "M-PESA Sync · $totalCount New Transactions"
+
+                    val nonFeeTransactions = transactionsList.filter { !it.isFeeTransaction }
+                    val totalExpense = nonFeeTransactions.filter { !it.isIncome() && !it.isTransfer() }.sumOf { it.amount }
+                    val totalIncome = nonFeeTransactions.filter { it.isIncome() }.sumOf { it.amount }
+                    val totalTransfer = nonFeeTransactions.filter { it.isTransfer() }.sumOf { it.amount }
+
+                    val byCategory = nonFeeTransactions.groupBy { it.category }
+
+                    val summary = when {
+                        totalExpense > 0 && totalIncome > 0 ->
+                            "KES ${formatCurrency(totalExpense)} spent · +KES ${formatCurrency(totalIncome)} received"
+                        totalExpense > 0 ->
+                            "KES ${formatCurrency(totalExpense)} spent across ${byCategory.size} ${if (byCategory.size == 1) "category" else "categories"}"
+                        totalIncome > 0 ->
+                            "+KES ${formatCurrency(totalIncome)} received across ${byCategory.size} ${if (byCategory.size == 1) "category" else "categories"}"
+                        totalTransfer > 0 ->
+                            "KES ${formatCurrency(totalTransfer)} transferred"
+                        else ->
+                            "$totalCount new records synced"
+                    }
+
+                    val categoryLines = byCategory.entries
+                        .sortedByDescending { it.value.sumOf { tx -> tx.amount } }
+                        .map { (cat, txs) ->
+                            val count = txs.size
+                            val sum = txs.sumOf { it.amount }
+                            val isCatIncome = txs.all { it.isIncome() }
+                            val prefix = if (isCatIncome) "+ " else ""
+                            val emoji = getCategoryEmoji(cat)
+                            val countSuffix = if (count > 1) " ($count)" else ""
+                            "$emoji $cat: $prefix KES ${formatCurrency(sum)}$countSuffix"
+                        }
+
+                    val latestTx = nonFeeTransactions.firstOrNull() ?: transactionsList.first()
+                    val targetRoute = "tx_details/${latestTx.remoteRef}"
+
+                    val notifHelper = com.pesalytics.notifications.NotificationHelper(context)
+                    notifHelper.showSmsSyncSummary(
+                        title = title,
+                        summaryText = summary,
+                        categoryLines = categoryLines,
+                        deepLinkTarget = targetRoute
+                    )
                     checkBudgetThresholds()
                     refreshPatterns()
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
