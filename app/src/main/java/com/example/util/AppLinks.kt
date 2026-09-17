@@ -5,6 +5,8 @@ package com.pesalytics.util
  * Pesalytics website is deployed — no other code changes needed.
  */
 object AppLinks {
+    // Official contact & support email
+    const val SUPPORT_EMAIL = "hello@pesalytics.co.ke"
     // Served from the live website
     const val PRIVACY_POLICY_URL = "https://pesalytics.co.ke/privacy"
     const val TERMS_OF_SERVICE_URL = "https://pesalytics.co.ke/terms"
