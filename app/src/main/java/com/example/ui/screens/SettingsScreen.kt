@@ -360,6 +360,8 @@ fun SettingsScreen(
                     SettingsDivider(padded = true)
                     SupportListItem(Icons.Rounded.Info, "FAQ", null) { onNavigateToFaq() }
                     SettingsDivider(padded = true)
+                    SupportListItem(Icons.Rounded.Email, "Contact Support", "hello@pesalytics.co.ke") { openEmail(context, AppLinks.SUPPORT_EMAIL, "Pesalytics Support / Feedback") }
+                    SettingsDivider(padded = true)
                     SupportListItem(Icons.Rounded.ChatBubbleOutline, "Live Support Chat with AI", "Coming Soon") {}
                 }
             } }
@@ -938,5 +940,14 @@ private fun shareText(context: Context, text: String) {
 private fun rateApp(context: Context) {
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(AppLinks.PLAY_STORE_MARKET_URI))) }
         .onFailure { openUrl(context, AppLinks.PLAY_STORE_WEB_URL) }
+}
+
+private fun openEmail(context: Context, email: String, subject: String) {
+    val intent = Intent(Intent.ACTION_SENDTO).apply {
+        data = Uri.parse("mailto:$email")
+        putExtra(Intent.EXTRA_SUBJECT, subject)
+    }
+    runCatching { context.startActivity(Intent.createChooser(intent, "Contact Pesalytics")) }
+        .onFailure { openUrl(context, "mailto:$email") }
 }
 
