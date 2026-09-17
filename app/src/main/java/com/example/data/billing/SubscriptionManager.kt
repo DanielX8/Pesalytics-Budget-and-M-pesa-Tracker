@@ -15,7 +15,8 @@ import java.util.concurrent.atomic.AtomicLong
 class SubscriptionManager(private val context: Context) : PurchasesUpdatedListener, BillingClientStateListener {
 
     private val prefs = context.getSharedPreferences("pesa_subscription", Context.MODE_PRIVATE)
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var managerJob = SupervisorJob()
+    private var scope = CoroutineScope(managerJob + Dispatchers.IO)
     private val reconnectDelay = AtomicLong(1_000L)
 
     private val _state = MutableStateFlow(loadStateFromPrefs())
@@ -37,12 +38,16 @@ class SubscriptionManager(private val context: Context) : PurchasesUpdatedListen
     // ── Play Billing connection ──────────────────────────────────────────
 
     fun connect() {
+        if (!managerJob.isActive) {
+            managerJob = SupervisorJob()
+            scope = CoroutineScope(managerJob + Dispatchers.IO)
+        }
         if (!billingClient.isReady) billingClient.startConnection(this)
     }
 
     fun disconnect() {
         billingClient.endConnection()  // stop incoming events before cancelling inflight coroutines
-        scope.cancel()
+        managerJob.cancel()
     }
 
     override fun onBillingSetupFinished(result: BillingResult) {

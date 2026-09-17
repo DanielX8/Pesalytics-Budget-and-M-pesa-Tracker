@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.6.4] - 2026-09-17 · Export Station Scroll & Billing Lifecycle Hardening
+
+### Fixed
+- **Export Station Action Visibility**: Fixed vertical scroll containment and modal sheet expansion in `ExportStationSheet` to ensure the "Generate & Share" CTA button is always immediately accessible across all screen densities without being clipped or hidden.
+- **SubscriptionManager Coroutine Lifecycle**: Hardened Google Play Billing service reconnection logic so child coroutine jobs cleanly recreate upon activity recreation after disconnection, preventing dropped product queries or unhandled purchase updates.
+
+---
+
 ## [1.6.3] - 2026-09-16 · Categorized M-PESA Sync Notifications & Direct Transaction Routing
 
 ### Added
