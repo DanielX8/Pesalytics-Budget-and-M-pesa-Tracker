@@ -1,13 +1,14 @@
 <a name="top"></a>
-[![Android](https://img.shields.io/badge/Android-7.0+-3DDC84)](https://developer.android.com/about/versions/nougat)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-7F52FF)](https://kotlinlang.org/)
-[![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device-FF6B6B)](#)
-[![Status](https://img.shields.io/badge/Status-Active_Development-brightgreen)](#)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Google Play](https://img.shields.io/badge/Google_Play-Live_on_Store-4285F4?logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=com.pesalytics)
+[![Android](https://img.shields.io/badge/Android-7.0+-3DDC84?logo=android&logoColor=white)](https://developer.android.com/about/versions/nougat)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device-00C853)](#)
+[![Status](https://img.shields.io/badge/Status-Production_Release-brightgreen)](#)
+[![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 
 ## Pesalytics — Intelligent, Private M-PESA Financial Tracker
 
-Turn your M-PESA SMS messages into a clean, searchable, and highly visual financial timeline. 100% private, zero cloud processing.
+Turn your raw M-PESA and Pochi la Biashara SMS messages into a clean, searchable, and highly visual financial dashboard. **100% on-device, zero cloud servers, zero telemetry leaks.**
 
 [![Share](https://img.shields.io/badge/share-000000?logo=x&logoColor=white)](https://x.com/intent/tweet?text=Check%20out%20Pesalytics%20-%20Privacy-first%20M-PESA%20expense%20tracker!%20%23Android%20%23PrivacyFirst%20%23MPESA)
 [![Share](https://img.shields.io/badge/share-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/sharing/share-offsite/?url=https://github.com/DanielX8/Pesalytics-Budget-and-M-pesa-Tracker)
@@ -16,82 +17,104 @@ Turn your M-PESA SMS messages into a clean, searchable, and highly visual financ
   <img src="banner.png" alt="Pesalytics Banner" width="100%" />
 </div>
 
+<br/>
+
+<div align="center">
+  <h3>🏛 System Architecture & Reactive Data Flow Map</h3>
+  <a href="https://htmlpreview.github.io/?https://github.com/DanielX8/Pesalytics-Budget-and-M-pesa-Tracker/blob/master/docs/index.html">
+    <img src="docs/architecture/pesalytics-architecture.svg" alt="Pesalytics Architecture Map" width="100%" />
+  </a>
+  <p>
+    <a href="https://htmlpreview.github.io/?https://github.com/DanielX8/Pesalytics-Budget-and-M-pesa-Tracker/blob/master/docs/index.html">
+      <img src="https://img.shields.io/badge/%F0%9F%8E%AE_Explore-Live_Interactive_Map-00C853?style=for-the-badge&logoColor=white" alt="Open Interactive Map" />
+    </a>
+  </p>
+  <p><sub><em>100% On-Device Privacy Boundary • Room SQLite v14 • Reactive StateFlow Architecture • Click above for live interactive traces</em></sub></p>
+</div>
+
+---
+
+## 🚀 Get Pesalytics
+
+<div align="center">
+  <a href="https://play.google.com/store/apps/details?id=com.pesalytics">
+    <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80" />
+  </a>
+</div>
+
+### ⬇️ Direct Sideload / GitHub Releases
+If you prefer direct APK installation without the Google Play Store:
+1. Go to the [**Releases page**](https://github.com/DanielX8/Pesalytics-Budget-and-M-pesa-Tracker/releases).
+2. Download the latest `.apk` file (e.g. `pesalytics-release-v1.6.3.apk`).
+3. Open the file on your Android device and confirm installation.
+
+---
+
 ## Overview
 
-Your phone already receives a text for every M-PESA transaction you make. Pesalytics securely reads those messages to build a comprehensive, zero-setup expense tracker. No accounts, no manual entry, and no cloud syncing required.
-
-### 🚀 Coming Soon To:
-<img src="https://img.shields.io/badge/Google_Play-Coming_Soon-lightgrey?style=for-the-badge&logo=google-play&logoColor=white" alt="Coming Soon to Google Play" />
-<img src="https://img.shields.io/badge/F--Droid-Coming_Soon-lightgrey?style=for-the-badge&logo=f-droid&logoColor=white" alt="Coming Soon to F-Droid" />
-
----
-
-## ⬇️ Download the App
-
-> **Just want to install the app?** No coding required — download the APK directly.
-
-1. Go to the [**Releases page**](https://github.com/DanielX8/Pesalytics-Budget-and-M-pesa-Tracker/releases)
-2. Tap the latest release (e.g. `v1.4.3`)
-3. Under **Assets**, download the `.apk` file (e.g. `pesalytics-release-v1.4.3.apk`)
-4. On your Android phone, open the downloaded file
-5. If prompted, allow **"Install from unknown sources"** in your phone's settings
-6. Install and enjoy!
-
-> **Tip:** After installation, sideloaded updates from the same release page will work seamlessly — no need to uninstall first, as long as you always download from this page.
-
----
+Your phone already receives an SMS for every M-PESA transaction you make. Pesalytics securely reads those messages to build a comprehensive, zero-setup expense tracker and financial statement engine. **No account creation, no password logins, and no banking data uploaded to the cloud.**
 
 ### How it works
+1. **Grant Read-Only SMS Permission** — All parsing happens in-memory and in local SQLite; nothing is uploaded anywhere.
+2. **Instant Transaction Parsing** — Pesalytics extracts transaction types, payees, amounts, balances, and hidden fees in real time.
+3. **Smart Insights & Financial Statements** — View categorized monthly budgets, track bill schedules, and export formal PDF/CSV financial statements.
 
-1. **Grant SMS Permission** (Read-only) — No account creation, no cloud syncing, your data never leaves your device.
-2. **Instant Transaction Parsing** — Pesalytics reads your M-PESA messages in real-time, extracting amounts, payees, transaction fees, and dates.
-3. **Gain Deep Insights** — Instantly view your spending habits, track your budgets, and monitor your financial goals.
+---
 
 ## Why Pesalytics?
 
 ### 🔑 Key Differentiators
-- **🔒 100% On-Device & Private** — All SMS parsing and analytics happen locally on your phone. No servers, no tracking.
-- **🇰🇪 Built for M-PESA** — Specifically tailored for Kenya's leading mobile money platform. It understands "Send Money", "Buy Goods", "Paybill", and even "Fuliza".
-- **⚡ Zero Setup** — Just grant the necessary permissions and your financial dashboard is built instantly.
+- **🔒 100% On-Device & Private** — All SMS parsing, machine learning categorization, and financial aggregations run locally on your phone.
+- **🇰🇪 Purpose-Built for M-PESA & Pochi** — Deep native support for Send Money, Paybill, Buy Goods Till, Pochi la Biashara, Fuliza loans, and M-Shwari savings.
+- **💼 Dual-Wallet Account Scopes** — Seamlessly filter between Personal transactions and Business Pochi transactions.
+- **⚡ Instant Sync with Categorized Alerts** — New transactions are automatically grouped by category (Groceries, Utilities, Transport) with direct deep-links from system notifications.
+- **📄 Pro Financial Statements** — Generate formatted PDF statements with charts, CSV spreadsheets for Excel/Sheets, or complete JSON encrypted backups.
 
-### 🌟 Core Features
-- **🤖 Smart SMS Parsing** — Automatically strips away unnecessary numbers and characters to give you clean merchant and payee names.
-- **📊 Visual Analytics** — Dive into your spending with beautiful bar charts, dynamic donut charts, and spending leak meters.
-- **💰 Budget Planner** — Set limits for your spending. Pesalytics tracks your progress and visually warns you when you approach your thresholds.
-- **🎯 Financial Goals** — Dedicated trackers to help you save up for that new gadget or pay off debts smoothly.
-- **💸 Fee Tracking** — Keep an eye on the hidden costs. Pesalytics explicitly tracks your M-PESA transaction fees.
+---
 
-### ✨ More Features
-- **🌗 Dynamic Theming** — Gorgeous Material Design 3 UI with seamless transitions between Light and Dark modes.
-- **💳 Clean UI Navigation** — Custom, visually striking vector icons that provide a premium user experience.
-- **📦 Room Database** — Lightning-fast local storage for all your categorized transactions.
+### 🌟 Core Capabilities
+- **🤖 Offline Merchant Categorization** — Built-in offline dictionary mapping 130+ Kenyan merchants to 16 financial categories.
+- **📊 Visual Spending Analytics** — Real-time spend velocity meters, interactive donut breakdowns, and daily transaction timelines.
+- **💰 Category Budget Planner** — Set monthly spending caps per category with proactive overspend warnings.
+- **📅 Recurring Bills & Pausing** — Track recurring utility/rent due dates with one-tap pausing and automatic cycle roll-over.
+- **🎯 Financial Savings Goals** — Visual milestone trackers to help you save up for specific targets.
+- **💳 M-PESA Fee Tracking** — Automatically isolate and calculate hidden Safaricom transaction fees.
 
-## Tech Stack
-*   **Language**: Kotlin
-*   **UI Framework**: Jetpack Compose (Material Design 3)
-*   **Architecture**: MVVM (Model-View-ViewModel)
-*   **Local Database**: Room Database
-*   **Asynchrony**: Kotlin Coroutines & Flow
+---
 
-## Getting Started / Installation
+## 🛠 Tech Stack & Architecture
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/DanielX8/Pesalytics-Budget-and-M-pesa-Tracker.git
-    cd Pesalytics-Budget-and-M-pesa-Tracker
-    ```
-2.  **Open in Android Studio:**
-    *   Launch Android Studio.
-    *   Select `File > Open` and choose the cloned directory.
-3.  **Build and Run:**
-    *   Sync the project with Gradle files.
-    *   Select your emulator or physical device.
-    *   Click the **Run** button (`Shift + F10`).
+- **Language**: Kotlin 2.0+
+- **UI Framework**: Jetpack Compose (Material Design 3 with Dynamic Theme Reveal)
+- **Architecture**: MVVM + Clean Architecture + Unidirectional Data Flow (UDF)
+- **Reactive Streams**: Kotlin Coroutines & `StateFlow`
+- **Local Persistence**: Android Room Database (SQLite schema v14, 6 DAOs)
+- **Background Automation**: Android WorkManager (Daily Spend & Weekly Summary workers)
+- **Monetization**: Google Play Billing KTX (`billing-ktx:7.0.0`) with 30-day Free Trial support
+- **Design Tokens & Fonts**: Bundled Poppins Typography & Custom Dark Mode Palette
 
-## Usage Example
-Once installed, grant the necessary SMS permissions to allow the app to sync your transaction data:
-```kotlin
-// The app will prompt for the following permission dynamically
-<uses-permission android:name="android.permission.READ_SMS" />
-```
-Navigate to the **Settings** tab and tap **Sync MPESA Data** to populate your dashboard automatically.
+---
+
+## 📱 Developer Setup & Build
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/DanielX8/Pesalytics-Budget-and-M-pesa-Tracker.git
+   cd Pesalytics-Budget-and-M-pesa-Tracker
+   ```
+
+2. **Open in Android Studio:**
+   - Open Android Studio Ladybug / Meerkat or newer.
+   - Select `File > Open` and select the repository root.
+
+3. **Build and Run:**
+   ```bash
+   ./gradlew assembleDebug
+   ```
+
+---
+
+## ⚖️ License
+
+Copyright © 2026 Daniel Odhiambo. All Rights Reserved.  
+Source code is published for transparency, security review, and educational reference under the [Proprietary License](LICENSE).
