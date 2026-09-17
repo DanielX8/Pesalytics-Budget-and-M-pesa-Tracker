@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.6.5] - 2026-09-17 · Official Contact & Support Email Integration
+
+### Added
+- **In-App Contact Support**: Added direct support email intent to Settings linking to hello@pesalytics.co.ke.
+
+---
+
 ## [1.6.4] - 2026-09-17 · Export Station Scroll & Billing Lifecycle Hardening
 
 ### Fixed
